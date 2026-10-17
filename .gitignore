@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+workspaces/
+apps/server/keys.json
+
+# 阶段一实验：二进制样本不入库（脚本与 JSON 结论保留）
+experiments/**/node_modules/
+experiments/**/*.jpg
+experiments/**/*.jpeg
+experiments/**/*.png
+experiments/**/shots/
+
+# 截图证据目录（大文件；需入库的单张用 git add -f 显式存证）
+gui-test-screenshots/
+Thumbs.db

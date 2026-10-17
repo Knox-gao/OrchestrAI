@@ -1,0 +1,24 @@
+{
+  "name": "agent-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "多 Agent 软件研发工作室 —— 像管理一家软件公司一样，组织 AI Agent 完成真实的软件交付",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @studio/app",
+    "server": "node apps/server/index.mjs",
+    "selftest": "node apps/server/selftest.mjs",
+    "test": "npm run test -w @studio/core",
+    "build": "npm run build -w @studio/app"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
+  }
+}
