@@ -1,0 +1,40 @@
+{
+ "screenshot": {
+  "desktopMs": 1772,
+  "mobileMs": 1566,
+  "pngBytes": 1589084
+ },
+ "probe": {
+  "marvel": {
+   "ms": 1221,
+   "metrics": {
+    "imgs": 19,
+    "failed": 1,
+    "overflowX": false,
+    "scrollW": 746,
+    "clientW": 746,
+    "buttons": 28,
+    "h": 483
+   },
+   "domLen": 7233
+  },
+  "badFixture": {
+   "ms": 1058,
+   "metrics": {
+    "imgs": 2,
+    "failed": 1,
+    "overflowX": true,
+    "scrollW": 2000,
+    "clientW": 746,
+    "buttons": 1,
+    "h": 468
+   },
+   "domLen": 1135
+  }
+ },
+ "verdict": {
+  "screenshotOk": true,
+  "probeParses": true,
+  "badFixtureDetected": true
+ }
+}

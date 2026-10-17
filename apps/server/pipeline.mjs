@@ -10,6 +10,7 @@ import { staticCheck } from './generator/quality.mjs';
 import { runNodeTests } from './runner.mjs';
 import { collectImages, queryCascade, bestMatch, extractEnglishTokens } from './scraper.mjs';
 import { visualAudit } from './visualaudit.mjs';
+import { loadAssets, saveAssets, assetEntry, reusableAsset } from './assets.mjs';
 import { getKeys } from './keys.mjs';
 import { placeholderCard } from './generator/png.mjs';
 import { findStyle, getStyleDef } from './generator/styles.mjs';
@@ -154,7 +155,17 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         }
         return null;
       };
+      // 图片资产锁定复用（阶段一）：按项目名注册表跨工作区复用已锁定图片，重生成不换图。
+      // 开关：ORCHESTRAI_IMAGE_LOCK=off 关闭（回滚通道）。
+      const lockOn = process.env.ORCHESTRAI_IMAGE_LOCK !== 'off';
+      const assetKey = projectTitle || spec.title || projectId;
+      const prevAssets = lockOn ? loadAssets(assetKey) : { version: 1, entries: [] };
+      let reuseCount = 0;
       const results = await mapPool(items, 2, async (it) => {
+        if (lockOn) {
+          const reused = reusableAsset(prevAssets, it.name);
+          if (reused) { reuseCount++; okCount++; return reused; }
+        }
         const got = await collectOne(it);
         done++;
         if (got) okCount++;
@@ -167,7 +178,8 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         const base = { title: it.name, sub: it.sub, desc: it.desc };
         if (got) return {
           ...base,
-          file: `images/img-${String(i + 1).padStart(2, '0')}.${got.ext}`,
+          // 锁定复用保留原文件名；新采集按序号命名
+          file: got.reused ? got.file : `images/img-${String(i + 1).padStart(2, '0')}.${got.ext}`,
           author: got.author.slice(0, 60), license: got.license.slice(0, 40), page: got.page,
           buf: got.buf,
         };
@@ -178,7 +190,20 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
           buf: placeholderCard(800, 600, spec.template.meta.accent, i),
         };
       });
-      spec.provider = `定向采集 ${okCount}/${items.length}`;
+      // 资产注册表落盘：真实网络照片记为锁定资产（来源工作区/许可/理由/时间/sha1 可追溯）；示意卡不入锁
+      if (lockOn) {
+        const fresh = items
+          .map((it, i) => (results[i] && !results[i].reused ? assetEntry(spec.images[i], {
+            provider: spec.provider ?? '',
+            reason: `对象「${it.name}」本轮采集（strict 择优/多级级联/维基兜底）`,
+            srcWs: path.basename(ws),
+          }) : null))
+          .filter(Boolean);
+        const reusedNames = new Set(items.filter((it, i) => results[i]?.reused).map((it) => it.name));
+        const kept = (prevAssets.entries ?? []).filter((e) => reusedNames.has(e.title));
+        saveAssets(assetKey, { version: 1, entries: [...kept, ...fresh] });
+      }
+      spec.provider = `定向采集 ${okCount}/${items.length}${reuseCount ? `（复用已锁定 ${reuseCount}）` : ''}`;
       spec.imageSource = okCount > 0 ? 'network' : 'placeholder';
       const totalBytes = spec.images.reduce((a, i) => a + i.buf.length, 0);
       emit(500, [

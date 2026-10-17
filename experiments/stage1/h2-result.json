@@ -1,0 +1,221 @@
+{
+ "runs": [
+  {
+   "label": "arch",
+   "run": 1,
+   "retries": 0,
+   "ms": 34018,
+   "tokens": {
+    "in": 493,
+    "out": 1527,
+    "total": 2020
+   },
+   "parseOk": true,
+   "missing": [],
+   "fieldRate": 1,
+   "invalid": [
+    "accent:#1A1A1A 近黑 + 细线分隔，辅以 #8A7355 黄铜点缀",
+    "accent:#C9A96A 黄铜金，用于数据数字、链接下划线与表单按钮"
+   ],
+   "diffDims": 6,
+   "diffDetail": {
+    "layoutStrategy": true,
+    "hero": true,
+    "density": true,
+    "imageUse": true,
+    "rhythm": true,
+    "motion": true
+   },
+   "strategies": [
+    "editorial",
+    "workbench"
+   ],
+   "names": [
+    "展厅动线",
+    "事务所工作台"
+   ]
+  },
+  {
+   "label": "arch",
+   "run": 2,
+   "retries": 0,
+   "ms": 30765,
+   "tokens": {
+    "in": 493,
+    "out": 1461,
+    "total": 1954
+   },
+   "parseOk": true,
+   "missing": [],
+   "fieldRate": 1,
+   "invalid": [
+    "accent:#C8A46B（黄铜色，呼应建筑五金与灯光）"
+   ],
+   "diffDims": 6,
+   "diffDetail": {
+    "layoutStrategy": true,
+    "hero": true,
+    "density": true,
+    "imageUse": true,
+    "rhythm": true,
+    "motion": true
+   },
+   "strategies": [
+    "editorial",
+    "showcase"
+   ],
+   "names": [
+    "美术馆白盒 · 编辑式叙事",
+    "暗色档案 · 作品集纵深"
+   ]
+  },
+  {
+   "label": "arch",
+   "run": 3,
+   "retries": 0,
+   "ms": 33726,
+   "tokens": {
+    "in": 493,
+    "out": 1521,
+    "total": 2014
+   },
+   "parseOk": true,
+   "missing": [],
+   "fieldRate": 1,
+   "invalid": [
+    "accent:#2B2B28 炭黑",
+    "accent:#C8A96A 黄铜金"
+   ],
+   "diffDims": 6,
+   "diffDetail": {
+    "layoutStrategy": true,
+    "hero": true,
+    "density": true,
+    "imageUse": true,
+    "rhythm": true,
+    "motion": true
+   },
+   "strategies": [
+    "editorial",
+    "workbench"
+   ],
+   "names": [
+    "方向一：石板档案馆（Editorial 编辑式宽幅叙事）",
+    "方向二：项目工作台（Workbench 数据密集工作台）"
+   ]
+  },
+  {
+   "label": "marvel",
+   "run": 1,
+   "retries": 0,
+   "ms": 25204,
+   "tokens": {
+    "in": 481,
+    "out": 1101,
+    "total": 1582
+   },
+   "parseOk": true,
+   "missing": [],
+   "fieldRate": 1,
+   "invalid": [
+    "accent:#E62429（漫威红）",
+    "accent:#1B3A6B（深蓝）"
+   ],
+   "diffDims": 6,
+   "diffDetail": {
+    "layoutStrategy": true,
+    "hero": true,
+    "density": true,
+    "imageUse": true,
+    "rhythm": true,
+    "motion": true
+   },
+   "strategies": [
+    "catalog",
+    "magazine"
+   ],
+   "names": [
+    "档案卡图鉴（catalog）",
+    "杂志特辑（magazine）"
+   ]
+  },
+  {
+   "label": "marvel",
+   "run": 2,
+   "retries": 0,
+   "ms": 37108,
+   "tokens": {
+    "in": 481,
+    "out": 1679,
+    "total": 2160
+   },
+   "parseOk": true,
+   "missing": [],
+   "fieldRate": 1,
+   "invalid": [],
+   "diffDims": 6,
+   "diffDetail": {
+    "layoutStrategy": true,
+    "hero": true,
+    "density": true,
+    "imageUse": true,
+    "rhythm": true,
+    "motion": true
+   },
+   "strategies": [
+    "catalog",
+    "magazine"
+   ],
+   "names": [
+    "宇宙档案室（Cosmic Archive）",
+    "英雄特刊杂志（Hero Issue Magazine）"
+   ]
+  },
+  {
+   "label": "marvel",
+   "run": 3,
+   "retries": 0,
+   "ms": 26983,
+   "tokens": {
+    "in": 481,
+    "out": 1272,
+    "total": 1753
+   },
+   "parseOk": true,
+   "missing": [],
+   "fieldRate": 1,
+   "invalid": [
+    "accent:#E62429 漫威红",
+    "accent:#7B2FF7 星云紫"
+   ],
+   "diffDims": 6,
+   "diffDetail": {
+    "layoutStrategy": true,
+    "hero": true,
+    "density": true,
+    "imageUse": true,
+    "rhythm": true,
+    "motion": true
+   },
+   "strategies": [
+    "workbench",
+    "stage"
+   ],
+   "names": [
+    "宇宙档案局",
+    "银河舞台"
+   ]
+  }
+ ],
+ "summary": {
+  "runs": 6,
+  "parseOk": 6,
+  "fieldCompleteRuns": 6,
+  "avgFieldRate": 1,
+  "invalidFieldRuns": 5,
+  "retryTotal": 0,
+  "avgMs": 31301,
+  "avgTokens": 1913.8333333333333,
+  "runsDiffGte4": 6
+ }
+}

@@ -1,0 +1,27 @@
+{
+ "metrics": {
+  "A": {
+   "pageH": 3591,
+   "heroH": 739,
+   "imgArea": 2317044,
+   "textLen": 311,
+   "fontFam": "Georgia, \"Songti SC\", ",
+   "gridCols": 12
+  },
+  "B": {
+   "pageH": 1011,
+   "heroH": 55,
+   "imgArea": 39936,
+   "textLen": 463,
+   "fontFam": "\"Segoe UI\", \"Microsoft",
+   "gridCols": 4
+  }
+ },
+ "diff": {
+  "首屏": "739px 沉浸图 vs 55px 紧凑顶栏",
+  "页面高度": "3591 vs 1011（A 叙事长页）",
+  "图片总面积": "2317044 vs 39936（A 图主导）",
+  "文本密度": "311 vs 463 字符（B 信息密集）",
+  "字体": "Georgia, \"Songti SC\",  vs \"Segoe UI\", \"Microsoft"
+ }
+}
