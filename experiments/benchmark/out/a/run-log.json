@@ -1,0 +1,819 @@
+{
+ "reqId": "a",
+ "name": "茧·生成艺术个展",
+ "calls": [
+  {
+   "step": "plan",
+   "ms": 46520,
+   "tokens": 2135
+  },
+  {
+   "step": "scene:scene-cocoon",
+   "ms": 50653,
+   "tokens": 4279,
+   "htmlLen": 3554,
+   "cssLen": 5151
+  },
+  {
+   "step": "scene:scene-field:retry",
+   "ms": 54580,
+   "tokens": 4294
+  },
+  {
+   "step": "scene:scene-field",
+   "ms": 54580,
+   "tokens": 4294
+  },
+  {
+   "step": "scene:scene-colony:retry",
+   "ms": 52910,
+   "tokens": 4304
+  },
+  {
+   "step": "scene:scene-colony",
+   "ms": 52910,
+   "tokens": 4304,
+   "htmlLen": 2093,
+   "cssLen": 3549,
+   "jsLen": 3372
+  },
+  {
+   "step": "scene:scene-cocoon3d:retry",
+   "ms": 61659,
+   "tokens": 4322
+  },
+  {
+   "step": "scene:scene-cocoon3d",
+   "ms": 61659,
+   "tokens": 4322
+  },
+  {
+   "step": "scene:scene-emerge:retry",
+   "ms": 49379,
+   "tokens": 4296
+  },
+  {
+   "step": "scene:scene-emerge",
+   "ms": 49379,
+   "tokens": 4296
+  },
+  {
+   "step": "critique:1",
+   "ms": 19421,
+   "tokens": 2249,
+   "issues": 0
+  },
+  {
+   "step": "critique:2",
+   "ms": 16475,
+   "tokens": 2050,
+   "issues": 0
+  }
+ ],
+ "rounds": [
+  {
+   "round": 1,
+   "probe": {
+    "sections": [
+     {
+      "cls": "sscene-cocoon-page",
+      "w": 731,
+      "h": 3321
+     },
+     {
+      "cls": "sscene-cocoon-badge",
+      "w": 75,
+      "h": 38
+     },
+     {
+      "cls": "sscene-cocoon-badge-label",
+      "w": 0,
+      "h": 0
+     },
+     {
+      "cls": "sscene-cocoon-badge-num",
+      "w": 45,
+      "h": 20
+     },
+     {
+      "cls": "sscene-cocoon-hero",
+      "w": 731,
+      "h": 483
+     },
+     {
+      "cls": "sscene-cocoon-hero-copy",
+      "w": 249,
+      "h": 225
+     },
+     {
+      "cls": "sscene-cocoon-title",
+      "w": 249,
+      "h": 179
+     },
+     {
+      "cls": "sscene-cocoon-title-en",
+      "w": 249,
+      "h": 36
+     },
+     {
+      "cls": "sscene-cocoon-sub",
+      "w": 249,
+      "h": 20
+     },
+     {
+      "cls": "sscene-cocoon-scrollhint",
+      "w": 146,
+      "h": 73
+     },
+     {
+      "cls": "sscene-cocoon-intro",
+      "w": 720,
+      "h": 360
+     },
+     {
+      "cls": "sscene-cocoon-intro-lead",
+      "w": 656,
+      "h": 43
+     },
+     {
+      "cls": "sscene-cocoon-intro-body",
+      "w": 656,
+      "h": 70
+     },
+     {
+      "cls": "sscene-cocoon-work",
+      "w": 731,
+      "h": 734
+     },
+     {
+      "cls": "sscene-cocoon-work-canvas-wrap",
+      "w": 731,
+      "h": 290
+     },
+     {
+      "cls": "sscene-cocoon-work-info",
+      "w": 731,
+      "h": 444
+     },
+     {
+      "cls": "sscene-cocoon-work-no",
+      "w": 675,
+      "h": 16
+     },
+     {
+      "cls": "sscene-cocoon-work-title",
+      "w": 675,
+      "h": 64
+     },
+     {
+      "cls": "sscene-cocoon-work-en",
+      "w": 675,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-work-desc",
+      "w": 510,
+      "h": 95
+     },
+     {
+      "cls": "sscene-cocoon-work-meta",
+      "w": 675,
+      "h": 27
+     },
+     {
+      "cls": "sscene-cocoon-work sscene-cocoon-work--f",
+      "w": 731,
+      "h": 703
+     },
+     {
+      "cls": "sscene-cocoon-work-canvas-wrap",
+      "w": 731,
+      "h": 290
+     },
+     {
+      "cls": "sscene-cocoon-work-info",
+      "w": 731,
+      "h": 412
+     },
+     {
+      "cls": "sscene-cocoon-work-no",
+      "w": 675,
+      "h": 16
+     },
+     {
+      "cls": "sscene-cocoon-work-title",
+      "w": 675,
+      "h": 64
+     },
+     {
+      "cls": "sscene-cocoon-work-en",
+      "w": 675,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-work-desc",
+      "w": 510,
+      "h": 63
+     },
+     {
+      "cls": "sscene-cocoon-work-meta",
+      "w": 675,
+      "h": 27
+     },
+     {
+      "cls": "sscene-cocoon-work",
+      "w": 731,
+      "h": 703
+     },
+     {
+      "cls": "sscene-cocoon-work-canvas-wrap",
+      "w": 731,
+      "h": 290
+     },
+     {
+      "cls": "sscene-cocoon-work-info",
+      "w": 731,
+      "h": 412
+     },
+     {
+      "cls": "sscene-cocoon-work-no",
+      "w": 675,
+      "h": 16
+     },
+     {
+      "cls": "sscene-cocoon-work-title",
+      "w": 675,
+      "h": 64
+     },
+     {
+      "cls": "sscene-cocoon-work-en",
+      "w": 675,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-work-desc",
+      "w": 510,
+      "h": 63
+     },
+     {
+      "cls": "sscene-cocoon-work-meta",
+      "w": 675,
+      "h": 27
+     },
+     {
+      "cls": "sscene-cocoon-outro",
+      "w": 731,
+      "h": 338
+     },
+     {
+      "cls": "sscene-cocoon-outro-serif",
+      "w": 463,
+      "h": 49
+     },
+     {
+      "cls": "sscene-cocoon-outro-mono",
+      "w": 319,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-outro-progress",
+      "w": 151,
+      "h": 19
+     },
+     {
+      "cls": "sscene-colony-root",
+      "w": 731,
+      "h": 843
+     },
+     {
+      "cls": "sscene-colony-head",
+      "w": 671,
+      "h": 76
+     },
+     {
+      "cls": "sscene-colony-kicker",
+      "w": 671,
+      "h": 15
+     },
+     {
+      "cls": "sscene-colony-title",
+      "w": 671,
+      "h": 55
+     },
+     {
+      "cls": "sscene-colony-en",
+      "w": 58,
+      "h": 24
+     },
+     {
+      "cls": "sscene-colony-body",
+      "w": 671,
+      "h": 627
+     },
+     {
+      "cls": "sscene-colony-text",
+      "w": 671,
+      "h": 221
+     },
+     {
+      "cls": "sscene-colony-statement",
+      "w": 671,
+      "h": 93
+     },
+     {
+      "cls": "sscene-colony-meta",
+      "w": 671,
+      "h": 33
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 671,
+      "h": 14
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 671,
+      "h": 14
+     },
+     {
+      "cls": "sscene-colony-envs",
+      "w": 671,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-env sscene-colony-env--bar",
+      "w": 120,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-env sscene-colony-env--tem",
+      "w": 120,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-env sscene-colony-env--fer",
+      "w": 120,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-dish-wrap",
+      "w": 671,
+      "h": 376
+     },
+     {
+      "cls": "sscene-colony-dish",
+      "w": 348,
+      "h": 348
+     },
+     {
+      "cls": "sscene-colony-hint",
+      "w": 225,
+      "h": 14
+     },
+     {
+      "cls": "sscene-colony-count",
+      "w": 671,
+      "h": 36
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 61,
+      "h": 17
+     },
+     {
+      "cls": "sscene-colony-num",
+      "w": 10,
+      "h": 17
+     },
+     {
+      "cls": "sscene-colony-dot",
+      "w": 15,
+      "h": 19
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 102,
+      "h": 17
+     },
+     {
+      "cls": "sscene-colony-num",
+      "w": 29,
+      "h": 17
+     }
+    ],
+    "h1Size": "89.52px",
+    "h2Count": 3,
+    "interactive": 3,
+    "canvas": 5,
+    "svg": 0,
+    "pageH": 4164,
+    "overflowX": false,
+    "imgs": 0,
+    "errors": []
+   }
+  },
+  {
+   "round": 2,
+   "probe": {
+    "sections": [
+     {
+      "cls": "sscene-cocoon-page",
+      "w": 731,
+      "h": 3321
+     },
+     {
+      "cls": "sscene-cocoon-badge",
+      "w": 75,
+      "h": 38
+     },
+     {
+      "cls": "sscene-cocoon-badge-label",
+      "w": 0,
+      "h": 0
+     },
+     {
+      "cls": "sscene-cocoon-badge-num",
+      "w": 45,
+      "h": 20
+     },
+     {
+      "cls": "sscene-cocoon-hero",
+      "w": 731,
+      "h": 483
+     },
+     {
+      "cls": "sscene-cocoon-hero-copy",
+      "w": 249,
+      "h": 225
+     },
+     {
+      "cls": "sscene-cocoon-title",
+      "w": 249,
+      "h": 179
+     },
+     {
+      "cls": "sscene-cocoon-title-en",
+      "w": 249,
+      "h": 36
+     },
+     {
+      "cls": "sscene-cocoon-sub",
+      "w": 249,
+      "h": 20
+     },
+     {
+      "cls": "sscene-cocoon-scrollhint",
+      "w": 146,
+      "h": 73
+     },
+     {
+      "cls": "sscene-cocoon-intro",
+      "w": 720,
+      "h": 360
+     },
+     {
+      "cls": "sscene-cocoon-intro-lead",
+      "w": 656,
+      "h": 43
+     },
+     {
+      "cls": "sscene-cocoon-intro-body",
+      "w": 656,
+      "h": 70
+     },
+     {
+      "cls": "sscene-cocoon-work",
+      "w": 731,
+      "h": 734
+     },
+     {
+      "cls": "sscene-cocoon-work-canvas-wrap",
+      "w": 731,
+      "h": 290
+     },
+     {
+      "cls": "sscene-cocoon-work-info",
+      "w": 731,
+      "h": 444
+     },
+     {
+      "cls": "sscene-cocoon-work-no",
+      "w": 675,
+      "h": 16
+     },
+     {
+      "cls": "sscene-cocoon-work-title",
+      "w": 675,
+      "h": 64
+     },
+     {
+      "cls": "sscene-cocoon-work-en",
+      "w": 675,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-work-desc",
+      "w": 510,
+      "h": 95
+     },
+     {
+      "cls": "sscene-cocoon-work-meta",
+      "w": 675,
+      "h": 27
+     },
+     {
+      "cls": "sscene-cocoon-work sscene-cocoon-work--f",
+      "w": 731,
+      "h": 703
+     },
+     {
+      "cls": "sscene-cocoon-work-canvas-wrap",
+      "w": 731,
+      "h": 290
+     },
+     {
+      "cls": "sscene-cocoon-work-info",
+      "w": 731,
+      "h": 412
+     },
+     {
+      "cls": "sscene-cocoon-work-no",
+      "w": 675,
+      "h": 16
+     },
+     {
+      "cls": "sscene-cocoon-work-title",
+      "w": 675,
+      "h": 64
+     },
+     {
+      "cls": "sscene-cocoon-work-en",
+      "w": 675,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-work-desc",
+      "w": 510,
+      "h": 63
+     },
+     {
+      "cls": "sscene-cocoon-work-meta",
+      "w": 675,
+      "h": 27
+     },
+     {
+      "cls": "sscene-cocoon-work",
+      "w": 731,
+      "h": 703
+     },
+     {
+      "cls": "sscene-cocoon-work-canvas-wrap",
+      "w": 731,
+      "h": 290
+     },
+     {
+      "cls": "sscene-cocoon-work-info",
+      "w": 731,
+      "h": 412
+     },
+     {
+      "cls": "sscene-cocoon-work-no",
+      "w": 675,
+      "h": 16
+     },
+     {
+      "cls": "sscene-cocoon-work-title",
+      "w": 675,
+      "h": 64
+     },
+     {
+      "cls": "sscene-cocoon-work-en",
+      "w": 675,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-work-desc",
+      "w": 510,
+      "h": 63
+     },
+     {
+      "cls": "sscene-cocoon-work-meta",
+      "w": 675,
+      "h": 27
+     },
+     {
+      "cls": "sscene-cocoon-outro",
+      "w": 731,
+      "h": 338
+     },
+     {
+      "cls": "sscene-cocoon-outro-serif",
+      "w": 463,
+      "h": 49
+     },
+     {
+      "cls": "sscene-cocoon-outro-mono",
+      "w": 319,
+      "h": 17
+     },
+     {
+      "cls": "sscene-cocoon-outro-progress",
+      "w": 151,
+      "h": 19
+     },
+     {
+      "cls": "sscene-colony-root",
+      "w": 731,
+      "h": 843
+     },
+     {
+      "cls": "sscene-colony-head",
+      "w": 671,
+      "h": 76
+     },
+     {
+      "cls": "sscene-colony-kicker",
+      "w": 671,
+      "h": 15
+     },
+     {
+      "cls": "sscene-colony-title",
+      "w": 671,
+      "h": 55
+     },
+     {
+      "cls": "sscene-colony-en",
+      "w": 58,
+      "h": 24
+     },
+     {
+      "cls": "sscene-colony-body",
+      "w": 671,
+      "h": 627
+     },
+     {
+      "cls": "sscene-colony-text",
+      "w": 671,
+      "h": 221
+     },
+     {
+      "cls": "sscene-colony-statement",
+      "w": 671,
+      "h": 93
+     },
+     {
+      "cls": "sscene-colony-meta",
+      "w": 671,
+      "h": 33
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 671,
+      "h": 14
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 671,
+      "h": 14
+     },
+     {
+      "cls": "sscene-colony-envs",
+      "w": 671,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-env sscene-colony-env--bar",
+      "w": 120,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-env sscene-colony-env--tem",
+      "w": 120,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-env sscene-colony-env--fer",
+      "w": 120,
+      "h": 44
+     },
+     {
+      "cls": "sscene-colony-dish-wrap",
+      "w": 671,
+      "h": 376
+     },
+     {
+      "cls": "sscene-colony-dish",
+      "w": 348,
+      "h": 348
+     },
+     {
+      "cls": "sscene-colony-hint",
+      "w": 225,
+      "h": 14
+     },
+     {
+      "cls": "sscene-colony-count",
+      "w": 671,
+      "h": 36
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 61,
+      "h": 17
+     },
+     {
+      "cls": "sscene-colony-num",
+      "w": 10,
+      "h": 17
+     },
+     {
+      "cls": "sscene-colony-dot",
+      "w": 15,
+      "h": 19
+     },
+     {
+      "cls": "sscene-colony-mono",
+      "w": 102,
+      "h": 17
+     },
+     {
+      "cls": "sscene-colony-num",
+      "w": 29,
+      "h": 17
+     }
+    ],
+    "h1Size": "89.52px",
+    "h2Count": 3,
+    "interactive": 3,
+    "canvas": 5,
+    "svg": 0,
+    "pageH": 4164,
+    "overflowX": false,
+    "imgs": 0,
+    "errors": []
+   }
+  }
+ ],
+ "humanInterventions": [],
+ "plan": {
+  "concept": "「破茧之前」——整个页面是一只正在缓慢孵化数字生命的茧：三件作品是茧内三个呼吸的器官，访客的每一次触碰都在参与孵化。",
+  "identity": "页面以丝质纤维线条 + 生物荧光流体为统一视觉母题；三件作品共享'有机程序化'美学但使用完全不同的生成算法（纤维噪点流场 / 元胞自动菌落 / WebGL 折光茧体），加上贯穿全站的'孵化进度'叙事，形成策展人过目即记的独立辨识度。",
+  "narrative": "弧线：静默的茧（入口氛围）→ 第一道裂缝：感知（噪声流场作品）→ 第二道裂缝：生长（元胞菌落作品）→ 第三道裂缝：蜕变（三维茧体作品）→ 破壳：邀约与联系。以'孵化'隐喻数字生命从算法中诞生，收束到策展邀约。",
+  "tech": {
+   "primary": "原生 Canvas 2D（两件作品）+ 裸 WebGL（一件作品）+ CSS/IntersectionObserver 驱动的全站动效，零依赖单文件",
+   "why": "Canvas 2D 足以承载流场与元胞两类算法且性能可靠；WebGL shader 提供 2D 无法实现的折光/体感质感，体现技术纵深；无外部库保证任何环境直接可运行，也呼应艺术家'手写算法'的创作姿态。"
+  },
+  "scenes": [
+   {
+    "id": "scene-cocoon",
+    "name": "茧 · 序幕",
+    "content": "全屏标题「茧 COCOON」与副题「破茧之前——数字生命孵化中」。底部滚动提示：'向下滚动，参与孵化'。",
+    "visual": "深色背景上，Canvas 绘制一枚由数百条贝塞尔丝线缠绕而成的茧形，丝线随时间极缓慢蠕动；中心透出微弱呼吸光晕（呼吸周期约 4 秒）。",
+    "interaction": "鼠标/手指划过时丝线产生涟漪式扰动并微微加速蠕动；页面监测访客滚动与交互次数，实际累计为全站可见的'孵化进度百分比'（显示于右上角），后续各幕裂开均依赖真实进度。",
+    "mobile": "茧居中缩放至视口 70%，触摸拖拽同样产生扰动；右上角进度徽标缩小为纯数字。"
+   },
+   {
+    "id": "scene-field",
+    "name": "第一道裂缝 · 《感知 (Perceive)》",
+    "content": "标题、创作说明（关于'粒子沿感知场巡游，每一次注视都是一次喂养'）、技术署名'perlin 流场 · 4000 粒子 · 每帧实时计算'。",
+    "visual": "Canvas 2D：数千尘埃状粒子沿 Perlin 噪声流场漂移，形成发光的神经丝状纹理，暖橙荧光色，丝线拖尾。作品的'裂缝框'由序幕丝线开裂效果衔接进入。",
+    "interaction": "指针位置成为一个'感知源'：粒子在指针周围改变流场方向、聚拢又散开，如生物对触碰的趋性；点击切换两种场模式（自由漂移 / 有序漩涡），说明文案同步更新描述当前模式。",
+    "mobile": "粒子数按设备像素比自动降至 1500；触摸即感知源；模式切换为作品下方按钮。"
+   },
+   {
+    "id": "scene-colony",
+    "name": "第二道裂缝 · 《生长 (Grow)》",
+    "content": "标题、创作说明（关于'规则极简，形态无穷：细胞只懂三条规则，却长成策展人也未见的图样'）、实时计数'第 N 代 · 活体细胞 M'。",
+    "visual": "Canvas 2D：类 Game of Life 的高分辨率元胞自动菌落，青绿荧光细胞在网格上生长、繁殖、凋亡，边缘细胞带柔和辉光；画幅呈圆形'培养皿'构图，与流场作品的横向撕裂构图形成对比。",
+    "interaction": "点击/触摸培养皿任意处播种细胞团，菌落从此处重新演化；提供三个'环境'按钮（贫瘠/温润/肥沃），改变存活规则阈值，观者可亲历形态剧变；代数与活细胞计数实时更新。",
+    "mobile": "培养皿全宽，触摸播种；环境按钮横排三个圆角按钮，触控目标 ≥44px。"
+   },
+   {
+    "id": "scene-cocoon3d",
+    "name": "第三道裂缝 · 《蜕变 (Molt)》",
+    "content": "标题、创作说明（关于'用一万个顶点纺出可被凝视的茧，光穿过它时，算法第一次有了体温'）、署名'GLSL · 折射 · 噪声形变'。",
+    "visual": "裸 WebGL：由 shader 驱动的旋转茧体（噪声位移球体），菲涅尔边缘光 + 假折射高光，紫粉冷色荧光，与两件 2D 作品形成材质差异；背景缀以极稀疏的星尘粒子。",
+    "interaction": "拖拽旋转视角（惯性衰减）；滚轮/双指捏合缩放；拖动一个'孵化温度'滑杆，shader 噪声强度与色温实时变化——推到最高时茧体表面出现裂纹状亮纹，暗示下一幕的破壳。",
+    "mobile": "单指拖拽旋转，捏合缩放，温度滑杆全宽置于作品下方，性能降级：降低网格细分。"
+   },
+   {
+    "id": "scene-emerge",
+    "name": "破壳 · 邀约",
+    "content": "若孵化进度 ≥ 70%（通过前三幕真实交互累计），茧完全裂开的动画揭示结尾：艺术家自述一句、联系与邀约入口（虚构但具体可信的邮箱 cocoon@studio.cn、展讯、隐藏第四件作品的说明'第四件作品只在你离开后继续运行'指页面 favicon 处微光彩蛋）。",
+    "visual": "两半丝壳向两侧分开坠落，中心升起一行手写气质的中文标题「生命已在算法中破壳」，后续为排版克制的联系区块。",
+    "interaction": "进度不足时显示'茧尚未准备好——回到前三件作品中触碰它'并提供锚点跳转；点击'预约洽谈'打开站内拟真的邀请函模态（可输入展览意向并生成一封预览文本），全部本地完成。",
+    "mobile": "纵向堆叠排版，模态全屏化，裂开动画降帧但不省略。"
+   }
+  ],
+  "palette": [
+   "#0A0A12",
+   "#F5EFE0",
+   "#FF7A3D",
+   "#3DF5C6",
+   "#B76CFF",
+   "#FFE8A3"
+  ],
+  "typography": "标题使用系统宋体（'Noto Serif SC', 'Songti SC', serif）营造手写与丝质感；正文用 'Noto Sans SC'/PingFang 等中文无衬线，字重对比 900/300；数字与技术署名使用等宽字体（'JetBrains Mono', monospace）呼应算法属性。",
+  "acceptanceNotes": "验收要点：①三件作品算法、构图、配色、交互均不同（流场橙/元胞青绿/WebGL 紫粉），非换色换皮；②每件均可交互且交互改变生成参数（非装饰性 hover）；③文案与视觉语义对应（感知↔感知源、生长↔播种演化、蜕变↔温度裂纹）；④全站孵化进度由真实交互累计，尾幕对未完成者有引导闭环；⑤移动端粒子降密度、网格降细分、触控目标合规，需在 375px 与桌面 1440px 双端检查无横向溢出；⑥无任何外部 JS/CSS 依赖，双击文件即可运行。"
+ }
+}

@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>汉字演化交互图谱</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;600;900&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+* { margin:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:#1a1613; color:#b8863b; font-family:'Noto Serif SC',Georgia,serif; overflow-x:hidden; }
+.mono { font-family:'IBM Plex Mono',monospace; }
+
+
+
+/* ========== s3 · 合：结语幕 ========== */
+.ss3-body {
+  margin: 0;
+  background-color: #f5f0e6; /* 宣纸白 */
+  color: #1a1613;
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", "SimSun", serif;
+  min-height: 100vh;
+}
+
+.ss3-stage {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "seal epigraph actions";
+  align-items: center;
+  gap: clamp(16px, 4vw, 64px);
+  padding: clamp(24px, 5vw, 80px);
+  box-sizing: border-box;
+  /* 纸上淡墨晕染质感 */
+  background-image:
+    radial-gradient(ellipse 60% 40% at 80% 10%, rgba(184,134,59,.06), transparent 70%),
+    radial-gradient(ellipse 50% 50% at 10% 90%, rgba(91,122,94,.05), transparent 70%);
+}
+
+/* ---------- 印谱 ---------- */
+.ss3-seal-row {
+  grid-area: seal;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 1.2vw, 14px);
+}
+
+.ss3-seal {
+  appearance: none;
+  border: 1px solid rgba(26,22,19,.22);
+  background: transparent;
+  width: clamp(56px, 6vw, 76px);
+  height: clamp(72px, 8vw, 96px);
+  padding: 8px 0 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: transform .35s cubic-bezier(.2,.9,.3,1.2), border-color .3s, background .3s;
+}
+.ss3-seal:hover, .ss3-seal:focus-visible {
+  transform: translateY(-3px);
+  border-color: #b8863b;
+  background: rgba(184,134,59,.07);
+  outline: none;
+}
+.ss3-seal.is-active {
+  border-color: #8c2f24;
+  background: rgba(140,47,36,.07);
+  transform: translateY(-3px);
+}
+
+.ss3-glyph { width: clamp(34px, 3.6vw, 46px); height: auto; }
+.ss3-stroke {
+  fill: none;
+  stroke: #1a1613;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ss3-thin { stroke-width: 2; opacity: .75; }
+.ss3-dot { fill: #1a1613; stroke: none; }
+
+.ss3-seal-name {
+  font-size: 12px;
+  letter-spacing: .3em;
+  margin-left: .3em;
+  color: rgba(26,22,19,.55);
+  font-weight: 400;
+}
+
+/* ---------- 竖排结语 ---------- */
+.ss3-epigraph {
+  grid-area: epigraph;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  justify-self: center;
+  height: min(72vh, 640px);
+  display: flex;
+  align-items: center;
+}
+
+.ss3-title {
+  font-size: clamp(30px, 4.2vw, 52px);
+  font-weight: 900; /* 幕名重墨 */
+  letter-spacing: .28em;
+  margin: 0;
+  color: #1a1613;
+  border-left: 1px solid rgba(26,22,19,.2);
+  padding-left: clamp(16px, 2vw, 32px);
+}
+.ss3-title-dot { color: #b8863b; font-weight: 400; }
+
+.ss3-line {
+  font-size: clamp(17px, 2vw, 24px);
+  letter-spacing: .34em;
+  margin: 0 0 0 clamp(14px, 1.8vw, 30px);
+  color: rgba(26,22,19,.82);
+  font-weight: 400;
+}
+.ss3-em { color: #8c2f24; letter-spacing: .4em; }
+
+.ss3-note {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-size: 12px;
+  line-height: 2.2;
+  letter-spacing: .18em;
+  color: rgba(26,22,19,.42); /* 注释轻灰 */
+  max-height: 100%;
+  margin: 0 0 0 clamp(14px, 1.8vw, 30px);
+  font-weight: 400;
+}
+
+/* ---------- 动作 ---------- */
+.ss3-actions {
+  grid-area: actions;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.ss3-btn {
+  appearance: none;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: .3em;
+  padding: 13px 22px 13px calc(22px + .3em);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background .25s, color .25s, border-color .25s, transform .2s;
+}
+.ss3-btn:active { transform: scale(.97); }
+
+.ss3-btn-primary {
+  background: #1a1613;
+  color: #f5f0e6;
+  border: 1px solid #1a1613;
+}
+.ss3-btn-primary:hover { background: #b8863b; border-color: #b8863b; }
+
+.ss3-btn {
+  background: transparent;
+  color: rgba(26,22,19,.7);
+  border: 1px solid rgba(26,22,19,.3);
+}
+.ss3-btn:hover { color: #8c2f24; border-color: #8c2f24; }
+.ss3-btn-primary:hover { color: #f5f0e6; }
+
+/* ---------- 提示 ---------- */
+.ss3-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translate(-50%, 16px);
+  background: #1a1613;
+  color: #e8e0cf;
+  font-size: 13px;
+  letter-spacing: .25em;
+  padding: 10px 22px 10px calc(22px + .25em);
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s, transform .3s;
+}
+.ss3-toast.is-show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- 移动端：竖排改横排两行，小字保持可点 ---------- */
+@media (max-width: 720px) {
+  .ss3-stage {
+    grid-template-columns: 1fr;
+    grid-template-areas: "epigraph" "seal" "actions";
+    justify-items: center;
+    gap: 28px;
+    padding: 40px 20px 56px;
+  }
+  .ss3-epigraph {
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+    height: auto;
+    text-align: center;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ss3-title {
+    border-left: none;
+    padding-left: 0;
+    border-bottom: 1px solid rgba(26,22,19,.2);
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    letter-spacing: .2em;
+  }
+  .ss3-line { margin: 0; letter-spacing: .24em; }
+  .ss3-note {
+    writing-mode: horizontal-tb;
+    text-orientation: mixed;
+    max-height: none;
+    margin: 10px 0 0;
+    line-height: 1.9;
+    max-width: 34em;
+  }
+  /* 六小字横列，可换行成两行 */
+  .ss3-seal-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 5 * 76px + 60px;
+    gap: 10px;
+  }
+  .ss3-seal { width: 64px; height: 82px; }
+  .ss3-actions { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+}
+</style></head><body>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>承·字源长廊</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;900&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="ss1" id="ss1-root">
+  <header class="ss1-head">
+    <p class="ss1-head-eyebrow">汉字演化 · 第一幕</p>
+    <h1 class="ss1-head-title">承 · 字源长廊</h1>
+    <p class="ss1-head-sub">观象于天地，取法于万物 —— 点选一印，溯其五千年之变</p>
+    <div class="ss1-head-rule" aria-hidden="true"></div>
+  </header>
+
+  <main class="ss1-gallery" id="ss1-gallery">
+    <div class="ss1-grid" id="ss1-grid" role="list" aria-label="六枚字源印章"></div>
+  </main>
+
+  <section class="ss1-stage" id="ss1-stage" hidden aria-live="polite">
+    <button class="ss1-back" id="ss1-back" type="button">← 返回长廊</button>
+    <div class="ss1-stage-inner">
+      <div class="ss1-stage-left">
+        <div class="ss1-glyph-frame">
+          <div class="ss1-glyph" id="ss1-glyph"></div>
+          <span class="ss1-glyph-eras" id="ss1-era"></span>
+        </div>
+      </div>
+      <div class="ss1-stage-right">
+        <p class="ss1-stage-eyebrow">字形演化</p>
+        <h2 class="ss1-stage-char" id="ss1-char"></h2>
+        <ol class="ss1-steps" id="ss1-steps"></ol>
+        <div class="ss1-note">
+          <p class="ss1-note-title" id="ss1-note-title"></p>
+          <p class="ss1-note-body" id="ss1-note-body"></p>
+        </div>
+        <div class="ss1-nav">
+          <button class="ss1-navbtn" id="ss1-prev" type="button">‹ 上一阶段</button>
+          <span class="ss1-count" id="ss1-count"></span>
+          <button class="ss1-navbtn" id="ss1-next" type="button">下一阶段 ›</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="ss1-foot">甲骨文 → 金文 → 小篆 → 隶书 → 楷书</footer>
+</div>
+</body>
+</html>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>合 · 你正在写下一笔</title>
+</head>
+<body class="ss3-body">
+<main class="ss3-stage">
+
+  <!-- 印谱：六个甲骨文小字 -->
+  <nav class="ss3-seal-row" aria-label="六字甲骨文印谱">
+    <button class="ss3-seal" data-char="日" aria-label="回到 日 的演化">
+      <svg viewBox="0 0 60 60" class="ss3-glyph">
+        <path class="ss3-stroke" d="M30 10 C42 10 48 19 48 30 C48 41 42 50 30 50 C18 50 12 41 12 30 C12 19 18 10 30 10 Z"/>
+        <path class="ss3-dot" d="M30 26 L31.5 30 L30 34 L28.5 30 Z"/>
+      </svg>
+      <span class="ss3-seal-name">日</span>
+    </button>
+    <button class="ss3-seal" data-char="月" aria-label="回到 月 的演化">
+      <svg viewBox="0 0 60 60" class="ss3-glyph">
+        <path class="ss3-stroke" d="M38 8 C24 14 16 24 16 32 C16 42 24 52 38 56 C30 48 26 40 26 32 C26 22 30 14 38 8 Z"/>
+        <path class="ss3-stroke ss3-thin" d="M33 24 C31 28 31 36 33 42"/>
+      </svg>
+      <span class="ss3-seal-name">月</span>
+    </button>
+    <button class="ss3-seal" data-char="山" aria-label="回到 山 的演化">
+      <svg viewBox="0 0 60 60" class="ss3-glyph">
+        <path class="ss3-stroke" d="M30 6 L30 52"/>
+        <path class="ss3-stroke" d="M13 22 L13 52"/>
+        <path class="ss3-stroke" d="M47 22 L47 52"/>
+        <path class="ss3-stroke" d="M8 52 L52 52"/>
+      </svg>
+      <span class="ss3-seal-name">山</span>
+    </button>
+    <button class="ss3-seal" data-char="水" aria-label="回到 水 的演化">
+      <svg viewBox="0 0 60 60" class="ss3-glyph">
+        <path class="ss3-stroke" d="M30 8 C26 20 34 30 30 40 C28 46 26 50 27 54"/>
+        <path class="ss3-stroke ss3-thin" d="M20 18 C16 24 14 28 12 30"/>
+        <path class="ss3-stroke ss3-thin" d="M40 18 C44 24 46 28 48 30"/>
+        <path class="ss3-stroke ss3-thin" d="M21 40 C18 44 16 47 15 49"/>
+        <path class="ss3-stroke ss3-thin" d="M39 40 C42 44 44 47 45 49"/>
+      </svg>
+      <span class="ss3-seal-name">水</span>
+    </button>
+    <button class="ss3-seal" data-char="火" aria-label="回到 火 的演化">
+      <svg viewBox="0 0 60 60" class="ss3-glyph">
+        <path class="ss3-stroke" d="M30 6 C33 16 38 20 38 30 C38 42 33 52 30 56 C27 52 22 42 22 30 C22 20 27 16 30 6 Z"/>
+        <path class="ss3-stroke ss3-thin" d="M12 32 C13 38 15 42 16 44"/>
+        <path class="ss3-stroke ss3-thin" d="M48 32 C47 38 45 42 44 44"/>
+      </svg>
+      <span class="ss3-seal-name">火</span>
+    </button>
+    <button class="ss3-seal" data-char="人" aria-label="回到 人 的演化">
+      <svg viewBox="0 0 60 60" class="ss3-glyph">
+        <path class="ss3-stroke" d="M36 6 C40 12 42 20 40 28 C38 36 32 46 26 54"/>
+        <path class="ss3-stroke ss3-thin" d="M38 26 C33 28 27 28 22 26"/>
+      </svg>
+      <span class="ss3-seal-name">人</span>
+    </button>
+  </nav>
+
+  <!-- 竖排结语 -->
+  <section class="ss3-epigraph">
+    <h1 class="ss3-title">合<span class="ss3-title-dot">·</span>你正在写下一笔</h1>
+    <p class="ss3-line">楷书不是终点——</p>
+    <p class="ss3-line">每一次书写，</p>
+    <p class="ss3-line ss3-em">都是演化的一笔。</p>
+    <p class="ss3-note">三千余年前，先民以刀刻日观天、以火取暖、以水为脉；今人执笔，仍在续写这条长河。点击上方任意一字，回到它最初的模样。</p>
+  </section>
+
+  <!-- 动作 -->
+  <footer class="ss3-actions">
+    <button class="ss3-btn ss3-btn-primary" id="ss3-shuffle">换个字再看</button>
+    <button class="ss3-btn" id="ss3-back">← 返回长廊</button>
+  </footer>
+
+  <!-- 当前选字提示 -->
+  <div class="ss3-toast" id="ss3-toast" role="status" aria-live="polite"></div>
+
+</main>
+</body>
+</html>
+<script type="module">
+
+
+
+
+</script></body></html>
