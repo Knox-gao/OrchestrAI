@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABYSS — 深海观测站 · 完整下潜体验</title>
+<style>
+/* ===== ABYSS 观测站：一次完整的下潜（五场景一作品）=====
+   S1 潜入开场（电影级：体积光束/焦散/海雪/定场字幕，滚动=下潜）
+   S2 微光过渡（压强排印：光消失时字距被压紧）
+   S3 观测舱（核心交互：WebGL 生物荧光流场，搅动+声呐）
+   S4 深渊档案（微光带生物数据带）
+   S5 海床（着陆+上浮 CTA） */
+:root { --ink:#dbe9f2; --dim:rgba(219,233,242,.55); --bio:#4de8b4; --glow:#7fd8ff; --line:rgba(219,233,242,.13); }
+* { margin:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:#02060c; color:var(--ink); font-family:Georgia,'Songti SC',serif; }
+section { position:relative; }
+canvas { display:block; }
+/* ---------- S1 潜入 ---------- */
+#s1 { height:230vh; }
+#s1 .sticky { position:sticky; top:0; height:100vh; overflow:hidden; }
+#s1 canvas { position:absolute; inset:0; width:100%; height:100%; }
+#s1 .vignette { position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 40%, transparent 44%, rgba(1,3,7,.6) 80%, rgba(0,1,3,.92) 100%); }
+#s1 .title { position:absolute; left:50%; top:15%; transform:translateX(-50%); text-align:center; pointer-events:none; }
+#s1 .kick { font:400 10px/1 ui-monospace,monospace; letter-spacing:.6em; color:var(--glow); margin-bottom:18px; }
+#s1 h1 { font-weight:300; font-size:clamp(40px,6.4vw,84px); letter-spacing:.5em; text-indent:.5em; text-shadow:0 2px 40px rgba(0,0,0,.6); }
+#s1 .sub { margin-top:14px; font:300 11.5px/1 ui-monospace,monospace; letter-spacing:.42em; color:var(--dim); }
+#s1 .cue { position:absolute; left:50%; bottom:38px; transform:translateX(-50%); font:400 10px/1 ui-monospace,monospace; letter-spacing:.44em; color:var(--dim); animation:bob 2.6s infinite; }
+@keyframes bob { 50% { transform:translate(-50%,8px); opacity:.5; } }
+/* 深度 HUD（贯穿全程的取景器） */
+#hud { position:fixed; left:24px; bottom:22px; z-index:20; font:400 10.5px/1.75 ui-monospace,monospace; letter-spacing:.2em; color:var(--dim); border-left:1px solid rgba(127,216,255,.4); padding-left:13px; pointer-events:none; mix-blend-mode:screen; }
+#hud b { color:var(--glow); font-weight:500; font-size:13px; }
+/* ---------- S2 微光过渡（压强排印 sticky） ---------- */
+#s2 { height:260vh; background:#02060c; }
+#s2 .sticky { position:sticky; top:0; height:100vh; display:grid; place-content:center; text-align:center; overflow:hidden; }
+#s2 .tag { font:400 10px/1 ui-monospace,monospace; letter-spacing:.5em; color:var(--bio); margin-bottom:4vh; }
+#s2 h2 { font-weight:300; font-size:clamp(34px,6vw,76px); transition:none; will-change:letter-spacing,font-weight; }
+#s2 p { margin-top:3.5vh; font-size:14px; color:var(--dim); }
+#s2 .pct { margin-top:2.5vh; font:400 11px/1 ui-monospace,monospace; letter-spacing:.3em; color:var(--glow); }
+/* ---------- S3 观测舱（WebGL 流场） ---------- */
+#s3 { height:200vh; }
+#s3 .sticky { position:sticky; top:0; height:100vh; overflow:hidden; display:flex; align-items:center; }
+#s3 .frame { position:relative; width:min(920px,86vw); height:min(600px,66vh); margin:0 auto; border:1px solid rgba(127,216,255,.4); background:#01080a; box-shadow:0 0 0 8px rgba(2,10,14,.8), 0 0 44px rgba(77,232,180,.14), 0 30px 90px rgba(0,0,0,.6); }
+#s3 canvas { width:100%; height:100%; }
+#s3 .frame-label { position:absolute; top:-30px; left:0; font:400 10px/1 ui-monospace,monospace; letter-spacing:.4em; color:var(--dim); }
+#s3 .frame-label i { color:var(--bio); font-style:normal; }
+#s3 aside { position:absolute; right:clamp(16px,4vw,56px); bottom:40px; max-width:280px; font:400 10.5px/2 ui-monospace,monospace; letter-spacing:.16em; color:var(--dim); text-align:right; pointer-events:none; }
+#s3 aside b { color:var(--bio); font-weight:500; }
+#s3 .hintbar { position:absolute; left:0; right:0; bottom:14px; text-align:center; font:400 10px/1 ui-monospace,monospace; letter-spacing:.4em; color:var(--dim); pointer-events:none; }
+/* ---------- S4 深渊档案 ---------- */
+#s4 { padding:16vh clamp(22px,7vw,110px) 12vh; background:linear-gradient(180deg,#02060c,#010407); margin-left:0; }
+#s4 .tag { font:400 10px/1 ui-monospace,monospace; letter-spacing:.5em; color:var(--bio); margin-bottom:3vh; }
+#s4 h2 { font-weight:500; font-size:clamp(26px,4vw,48px); letter-spacing:.12em; margin-bottom:6vh; }
+.record { display:grid; grid-template-columns:110px 1fr 220px; gap:clamp(14px,3vw,44px); padding:26px 0; border-top:1px solid var(--line); align-items:baseline; }
+.record:last-child { border-bottom:1px solid var(--line); }
+.record .d { font:400 12px/1 ui-monospace,monospace; color:var(--dim); letter-spacing:.14em; }
+.record h3 { font-weight:400; font-size:clamp(18px,2vw,26px); letter-spacing:.16em; }
+.record h3 small { font:300 10px/1 ui-monospace,monospace; letter-spacing:.24em; color:var(--dim); margin-left:12px; }
+.record p { margin-top:8px; font-size:13px; line-height:1.95; color:var(--dim); max-width:58ch; }
+.record .st { font:400 10px/2 ui-monospace,monospace; letter-spacing:.16em; color:var(--dim); text-align:right; }
+.record .st b { color:var(--bio); font-weight:500; }
+/* ---------- S5 海床 ---------- */
+#s5 { min-height:110vh; background:linear-gradient(180deg,#010407,#020507); display:grid; place-content:center; text-align:center; padding:20vh 22px; position:relative; overflow:hidden; }
+#s5 .floor { position:absolute; left:0; right:0; bottom:0; height:200px; background:radial-gradient(ellipse at 50% 100%, #0b1118 0%, transparent 72%); }
+#s5 .floor::after { content:''; position:absolute; left:8%; right:8%; bottom:0; height:64px;
+  background:linear-gradient(180deg, transparent, #060a0f 40%);
+  clip-path:polygon(0 100%, 4% 62%, 12% 78%, 22% 40%, 30% 66%, 43% 30%, 55% 58%, 66% 38%, 78% 70%, 88% 46%, 96% 68%, 100% 100%); }
+#s5 .rise { animation:riseGlow 3.2s ease-in-out infinite; }
+@keyframes riseGlow { 50% { box-shadow:0 0 44px rgba(77,232,180,.34); } }
+#s5 h2 { font-weight:300; font-size:clamp(30px,4.6vw,56px); letter-spacing:.4em; text-indent:.4em; }
+#s5 p { margin-top:3vh; font-size:13.5px; color:var(--dim); letter-spacing:.12em; }
+#s5 .rise { display:inline-block; margin-top:5vh; padding:16px 44px; border:1px solid var(--bio); color:var(--bio); font:400 12px/1 ui-monospace,monospace; letter-spacing:.4em; text-decoration:none; transition:all .2s; }
+#s5 .rise:hover { background:rgba(77,232,180,.12); box-shadow:0 0 34px rgba(77,232,180,.25); }
+#s5 .fin { margin-top:7vh; font:400 9.5px/1.9 ui-monospace,monospace; letter-spacing:.3em; color:rgba(219,233,242,.32); }
+@media (max-width:760px) {
+  .record { grid-template-columns:1fr; gap:8px; }
+  .record .st { text-align: left; }
+  #s3 aside { position:static; margin-top:12px; text-align:left; }
+  #s3 .frame { height:56vh; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #s1 .cue { animation:none; }
+  * { scroll-behavior:auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- S1 潜入开场 -->
+<section id="s1">
+  <div class="sticky">
+    <canvas id="dive"></canvas>
+    <div class="vignette"></div>
+    <div class="title">
+      <div class="kick">ABYSS OBSERVATORY — DIVE 07</div>
+      <h1>深 海 之 下</h1>
+      <div class="sub">BELOW THE DEEP — 一次完整的下潜</div>
+    </div>
+    <div class="cue">向下滚动 · 开始下潜 ↓</div>
+  </div>
+</section>
+
+<!-- S2 微光过渡：光在消失，字被压紧 -->
+<section id="s2">
+  <div class="sticky">
+    <div class="tag">TWILIGHT — 200 M → 1000 M</div>
+    <h2 id="pressTitle">光 在 消 失</h2>
+    <p id="pressNote">每两百米，天光被夺走一分，排印被压紧一分。</p>
+    <div class="pct" id="lightPct">LIGHT 100%</div>
+  </div>
+</section>
+
+<!-- S3 观测舱：生物荧光流场 -->
+<section id="s3">
+  <div class="sticky">
+    <div class="frame">
+      <div class="frame-label">OBSERVATION BAY — <i>LIVE FEED · 仿夜光藻 Noctiluca</i></div>
+      <canvas id="flow"></canvas>
+      <div class="hintbar">移动指针搅动水流 · 扰动使它们发光</div>
+    </div>
+    <aside>
+      观测舱外 <b>14,000</b> 个生物光点<br>
+      流场 <b>GPU 实时积分</b><br>
+      搅动能量 <b id="fe2">LOW</b><br>
+      采样频率 60 Hz
+    </aside>
+  </div>
+</section>
+
+<!-- S4 深渊档案 -->
+<section id="s4">
+  <div class="tag">ARCHIVE — MIDNIGHT ZONE · 1000–4000 M</div>
+  <h2>深渊档案</h2>
+  <div class="record">
+    <div class="d">— 1000 M</div>
+    <div><h3>仿夜光藻<small>NOCTILUCA</small></h3><p>单细胞浮游生物，受扰动时化学发光——海面的蓝色星河即它们的应激反应。观测舱里你搅动的那片光，就是它们的语言。</p></div>
+    <div class="st">发光 <b>应激式</b><br>体长 <b>0.5–1 mm</b></div>
+  </div>
+  <div class="record">
+    <div class="d">— 1400 M</div>
+    <div><h3>深水灯笼鱼<small>ANGLERFISH</small></h3><p>头顶悬一盏共生菌灯，在无光层以光为饵。声呐脉冲扫过时它短暂现形——那是它一天中最亮的时刻。</p></div>
+    <div class="st">发光 <b>共生菌</b><br>体长 <b>~18 cm</b></div>
+  </div>
+  <div class="record">
+    <div class="d">— 2100 M</div>
+    <div><h3>冥河水母<small>PELAGIA NOCTILUCA</small></h3><p>伞体随水流脉动，触手长逾十米。它的紫红色在深处并不显眼——直到你的声呐把它点亮。</p></div>
+    <div class="st">发光 <b>蓝色蛋白</b><br>伞径 <b>~40 cm</b></div>
+  </div>
+  <div class="record">
+    <div class="d">— 3800 M</div>
+    <div><h3>小头乌鲗<small>VAMPYROT</small></h3><p>鳍如披纱，遇光以腕网覆眼。发现于观测站第七次下潜的胶片记录。</p></div>
+    <div class="st">发光 <b>触手尖端</b><br>体长 <b>~13 cm</b></div>
+  </div>
+</section>
+
+<!-- S5 海床 -->
+<section id="s5">
+  <div class="floor"></div>
+  <div>
+    <h2>海 床 · 4000 M</h2>
+    <p>下潜结束——你带回了四处生物信号与一整层微光。</p>
+    <a class="rise" href="#" onclick="scrollTo({top:0,behavior:'smooth'});return false;">↑ 上浮回水面</a>
+    <div class="fin">ABYSS OBSERVATORY · ORCHESTRAI SHOWCASE PROTOTYPE · 示例数据（海洋常识口径）</div>
+  </div>
+</section>
+
+<div id="hud">DEPTH <b id="hDepth">0</b> M<br>PRESS <b id="hPress">1.0</b> ATM<br>LIGHT <b id="hLight">100</b>%<br>ZONE <b id="hZone">SURFACE</b></div>
+
+<script type="module">
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* ============ 全程深度模型：滚动进度 → 深度 ============ */
+const hud = { d: document.getElementById('hDepth'), p: document.getElementById('hPress'), l: document.getElementById('hLight'), z: document.getElementById('hZone') };
+let progress = 0; // 0-1 全程
+function updateProgress() {
+  const total = document.body.scrollHeight - innerHeight;
+  progress = Math.min(1, scrollY / total);
+  const depth = progress * 4000;
+  hud.d.textContent = Math.round(depth);
+  hud.p.textContent = (1 + depth / 10).toFixed(1);
+  const light = Math.max(0, 100 * Math.exp(-depth / 180));
+  hud.l.textContent = light < 0.1 ? '0.0' : light.toFixed(1);
+  hud.z.textContent = depth < 200 ? 'SUNLIGHT' : depth < 1000 ? 'TWILIGHT' : depth < 3800 ? 'MIDNIGHT' : 'ABYSSAL';
+}
+addEventListener('scroll', updateProgress, { passive: true });
+updateProgress();
+
+/* ============ S1 潜入 canvas（电影级：光束/焦散/海雪，滚动控制深度） ============ */
+const cv1 = document.getElementById('dive'), ctx1 = cv1.getContext('2d');
+let W = 0, H = 0, dpr = Math.min(devicePixelRatio || 1, 2);
+function resize() { W = innerWidth; H = innerHeight;
+  for (const c of [cv1, cvC]) { c.width = W * dpr; c.height = H * dpr; }
+  ctx1.setTransform(dpr, 0, 0, dpr, 0, 0); }
+const snow = Array.from({ length: 150 }, (_, i) => {
+  const a = Math.sin(i * 12.9898) * 43758.5453, b = Math.sin(i * 78.233) * 12345.6789;
+  return { x: (a - Math.floor(a)) * 2000, y: (b - Math.floor(b)) * 1200, z: 0.25 + ((a + b) % 1 + 1) % 1 * 0.75, r: 0.4 + ((b - Math.floor(b)) * 1.4) };
+});
+let sonarPings = [];
+const bioSils = [{ x: .3, y: .58, s: 15 }, { x: .7, y: .4, s: 20 }];
+function drawDive(t) {
+  const depth = progress * 1500; // S1 内视觉深度
+  const lightPct = Math.max(0, Math.exp(-depth / 260));
+  const g = ctx1.createLinearGradient(0, 0, 0, H);
+  const dk = Math.min(1, depth / 1100);
+  const band = depth > 1000 ? 0 : depth > 200 ? 0.45 : 1;
+  g.addColorStop(0, `rgb(${3 + 9 * band * (1 - dk * 0.5)},${11 + 22 * band * (1 - dk * 0.5)},${26 + 38 * band})`);
+  g.addColorStop(1, '#01040a');
+  ctx1.fillStyle = g; ctx1.fillRect(0, 0, W, H);
+  // 光束
+  if (lightPct > 0.05) {
+    ctx1.save(); ctx1.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 5; i++) {
+      const bx = W * (0.12 + i * 0.2) + Math.sin(t / 4200 + i * 1.7) * 50;
+      const sway = Math.sin(t / 3600 + i) * 80;
+      const gr = ctx1.createLinearGradient(bx, -80, bx + sway, H);
+      gr.addColorStop(0, `rgba(120,190,235,${0.15 * lightPct})`);
+      gr.addColorStop(.6, `rgba(90,160,215,${0.06 * lightPct})`);
+      gr.addColorStop(1, 'rgba(60,120,180,0)');
+      ctx1.fillStyle = gr;
+      ctx1.beginPath();
+      ctx1.moveTo(bx - 36 - i * 12, -60); ctx1.lineTo(bx + 36 + i * 12, -60);
+      ctx1.lineTo(bx + sway + 140 + i * 50, H + 40); ctx1.lineTo(bx + sway - 140 - i * 50, H + 40);
+      ctx1.closePath(); ctx1.fill();
+    }
+    ctx1.restore();
+  }
+  // 焦散（浅层）
+  if (depth < 500 && !reduced) {
+    ctx1.save(); ctx1.globalCompositeOperation = 'screen'; ctx1.globalAlpha = 0.4 * (1 - depth / 500);
+    ctx1.strokeStyle = 'rgba(150,215,250,.09)'; ctx1.lineWidth = 1;
+    for (let y = 0; y < H * 0.45; y += 28) { ctx1.beginPath();
+      for (let x = 0; x <= W; x += 20) ctx1.lineTo(x, y + Math.sin(x / 60 + t / 900 + y / 40) * 7);
+      ctx1.stroke(); }
+    ctx1.restore();
+  }
+  // 海雪
+  for (const s of snow) {
+    const px = ((s.x) % 2000 + 2000) % 2000 - 200;
+    if (px < -4 || px > W + 4) continue;
+    const py = ((s.y + t * 0.008 * s.z) % 1200 + 1200) % 1200;
+    if (py > H) continue;
+    ctx1.fillStyle = `rgba(205,225,240,${0.1 + s.z * 0.26})`;
+    ctx1.beginPath(); ctx1.arc(px, py, s.r * s.z, 0, 6.2832); ctx1.fill();
+  }
+  // 声呐环（点击 S1 发射）
+  sonarPings = sonarPings.filter((p) => p.r < 2200);
+  for (const p of sonarPings) {
+    if (p.r === 0) { ctx1.fillStyle = 'rgba(180,235,255,.9)'; ctx1.beginPath(); ctx1.arc(p.x, p.y, 3, 0, 6.2832); ctx1.fill(); }
+    p.r += 8;
+    const a = Math.max(0, 0.45 * (1 - p.r / 2200));
+    ctx1.strokeStyle = `rgba(127,216,255,${a})`; ctx1.lineWidth = 1.5;
+    ctx1.beginPath(); ctx1.arc(p.x, p.y, p.r, 0, 6.2832); ctx1.stroke();
+  }
+  // 生物剪影（深度>600 淡入）
+  if (depth > 600) {
+    const vis = Math.min(1, (depth - 600) / 400);
+    for (const b of bioSils) {
+      const bx = b.x * W, by = b.y * H + Math.sin(t / 1900 + b.x * 9) * 12;
+      ctx1.save(); ctx1.globalAlpha = vis * 0.8; ctx1.translate(bx, by); ctx1.scale(b.s / 16, b.s / 16);
+      ctx1.fillStyle = 'rgba(6,14,22,.9)';
+      ctx1.beginPath(); ctx1.moveTo(-16, 0); ctx1.quadraticCurveTo(-6, -12, 12, -4); ctx1.quadraticCurveTo(22, 0, 12, 6); ctx1.quadraticCurveTo(-6, 12, -16, 0); ctx1.fill();
+      const lg = ctx1.createRadialGradient(-2, -16, 0, -2, -16, 12);
+      lg.addColorStop(0, `rgba(158,255,222,${vis * (0.4 + 0.3 * Math.sin(t / 500))})`); lg.addColorStop(1, 'rgba(158,255,222,0)');
+      ctx1.fillStyle = lg; ctx1.beginPath(); ctx1.arc(-2, -16, 12, 0, 6.2832); ctx1.fill();
+      ctx1.restore();
+    }
+  }
+  requestAnimationFrame(drawDive);
+}
+
+/* ============ S2 压强排印（滚动驱动字距/字重压缩） ============ */
+const s2 = document.getElementById('s2'), pressTitle = document.getElementById('pressTitle'), pressNote = document.getElementById('pressNote'), pctEl = document.getElementById('lightPct');
+function updateS2() {
+  const r = s2.getBoundingClientRect();
+  const f = Math.min(1, Math.max(0, (-r.top) / (r.height - innerHeight))); // S2 内进度
+  pressTitle.style.letterSpacing = (0.34 - f * 0.3) + 'em';
+  pressTitle.style.fontWeight = String(Math.round(200 + (f < 0.5 ? f * 240 : 120 + (f - 0.5) * 760)));
+  pressTitle.textContent = f < 0.25 ? '光 在 消 失' : f < 0.58 ? '字 被 压紧' : '字字相抵';
+  pressNote.style.letterSpacing = (0.14 - f * 0.12) + 'em';
+  const light = Math.max(0.1, 100 * Math.exp(-(200 + f * 800) / 180));
+  pctEl.textContent = 'LIGHT ' + (light < 1 ? light.toFixed(1) : Math.round(light)) + '%';
+}
+
+/* ============ S3 观测舱 WebGL（滚入才启动，滚出暂停） ============ */
+const cvC = document.getElementById('flow');
+const gl = cvC.getContext('webgl', { antialias: false });
+let flowRunning = false, glOK = !!gl;
+if (glOK) {
+  const VS2 = `attribute vec3 aSeed; uniform float uT; uniform vec2 uMouse; uniform vec2 uRes; uniform float uEnergy; varying float vGlow;
+  vec2 flow(vec2 p, float t) { return vec2(sin(p.y*2.1+t*.21)+cos(p.x*1.7-t*.13), sin(p.x*2.6-t*.17)+cos(p.y*2.2+t*.11)) * 22.0; }
+  void main() {
+    vec2 p = vec2(aSeed.x*uRes.x, aSeed.y*uRes.y);
+    float life = fract(aSeed.z + uT*(0.010+aSeed.z*0.012));
+    for (int i=0;i<4;i++) p += flow(p*0.004, uT)*0.016;
+    vec2 d = p - uMouse; float dist = length(d);
+    float stir = exp(-dist*0.011)*uEnergy;
+    p += normalize(d+0.001)*stir*90.0 + vec2(-d.y,d.x)*stir*0.5;
+    p = mod(p, uRes);
+    float flick = 0.35+0.65*pow(sin(life*6.2832+aSeed.z*40.)*0.5+0.5, 3.0);
+    vGlow = clamp(stir*2.4+flick*0.42, 0.06, 1.0);
+    gl_Position = vec4((p/uRes)*2.0-1.0, 0.0, 1.0);
+    gl_PointSize = (2.0+aSeed.z*2.6)*(1.0+vGlow*1.8)*uRes.y/900.0*1.8;
+  }`;
+  const FS2 = `precision mediump float; varying float vGlow;
+  void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); float core=smoothstep(0.5,0.05,d);
+    vec3 col=mix(vec3(0.24,0.55,0.5)*0.5, vec3(0.46,1.0,0.80), min(1.0, vGlow*1.15));
+    gl_FragColor=vec4(col, core*(0.25+vGlow*0.75)); if(gl_FragColor.a<0.02) discard; }`;
+  const sh = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+  const pr = gl.createProgram();
+  gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS2)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS2));
+  gl.linkProgram(pr); gl.useProgram(pr);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+  const N2 = 14000, seeds = new Float32Array(N2 * 3);
+  for (let i = 0; i < N2 * 3; i++) seeds[i] = Math.random();
+  const b2 = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b2); gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+  const a2 = gl.getAttribLocation(pr, 'aSeed'); gl.enableVertexAttribArray(a2); gl.vertexAttribPointer(a2, 3, gl.FLOAT, false, 0, 0);
+  const u2 = { t: gl.getUniformLocation(pr, 'uT'), m: gl.getUniformLocation(pr, 'uMouse'), r: gl.getUniformLocation(pr, 'uRes'), e: gl.getUniformLocation(pr, 'uEnergy') };
+  let mx = -9999, my = -9999, en = 0, tEn = 0, last = 0;
+  addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; tEn = 1; last = performance.now(); });
+  const fe2 = document.getElementById('fe2');
+  let cw = 0, ch = 0;
+  const sizeFlow = () => { const r = cvC.getBoundingClientRect(); cw = r.width; ch = r.height;
+    cvC.width = cw * dpr; cvC.height = ch * dpr; gl.viewport(0, 0, cvC.width, cvC.height); };
+  addEventListener('resize', sizeFlow); sizeFlow();
+  let t0f = performance.now();
+  (function flowFrame(ts) {
+    if (!flowRunning) { requestAnimationFrame(flowFrame); return; }  // 滚出暂停（性能/发热）
+    sizeFlow();
+    en += (tEn - en) * 0.035;
+    if (ts - last > 4200) tEn = Math.max(0, tEn - 0.012);
+    const rect = cvC.getBoundingClientRect();
+    gl.uniform1f(u2.t, reduced ? 20 : (ts - t0f) / 1000);
+    gl.uniform2f(u2.m, mx - rect.left, my - rect.top);
+    gl.uniform2f(u2.r, cw, ch);
+    gl.uniform1f(u2.e, en);
+    gl.clearColor(0.004, 0.031, 0.039, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.POINTS, 0, N2);
+    fe2.textContent = en > 0.66 ? 'HIGH' : en > 0.33 ? 'MED' : 'LOW';
+    requestAnimationFrame(flowFrame);
+  })(t0f);
+}
+
+/* ============ 统一调度 ============ */
+function tick(t) {
+  updateS2();
+  requestAnimationFrame(drawDive);  // 只启动一次
+  requestAnimationFrame(tick);
+  return;
+}
+// S1 canvas 常驻（有 sticky 剪裁）；S3 观测舱滚入启动
+const io = new IntersectionObserver((es) => { for (const e of es) if (e.target.id === 's3') flowRunning = e.isIntersecting; }, { threshold: 0.05 });
+io.observe(document.getElementById('s3'));
+document.getElementById('dive').addEventListener('click', (e) => { sonarPings.push({ x: e.clientX, y: e.clientY, r: 0 }); });
+resize(); addEventListener('resize', resize);
+requestAnimationFrame(function main(t) { drawDive(t); updateS2(); requestAnimationFrame(main); });
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABYSS · 压强排印 — 深海观测站（Experimental Editorial）</title>
+<style>
+/* 概念：压强即排印——越深，字距被压得越紧、字重被压得越重、行被压得越密；颜色从天光蓝压成无光黑 */
+:root { --ink:#e8f4f7; --dim:rgba(232,244,247,.55); --bio:#57e8c0; --line:rgba(232,244,247,.14); }
+* { margin:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:#020508; color:var(--ink); font-family:Georgia,'Songti SC',serif; }
+/* 深度标尺（左缘固定，指针随滚动下降） */
+.ruler { position:fixed; left:0; top:0; bottom:0; width:74px; border-right:1px solid var(--line); z-index:9;
+  display:flex; flex-direction:column; justify-content:space-between; padding:26px 0; background:linear-gradient(180deg,rgba(2,5,8,.2),rgba(2,5,8,.85)); }
+.ruler .m { font:400 9px/1 ui-monospace,monospace; letter-spacing:.12em; color:var(--dim); text-align:right; padding-right:14px; }
+.ruler .m.click { cursor:pointer; padding:6px 14px 6px 0; }
+.ruler .m.click:hover { color:var(--bio); }
+.ruler .needle { position:absolute; right:-1px; width:22px; height:2px; background:var(--bio); box-shadow:0 0 12px var(--bio); transition:top .1s linear; }
+main { margin-left:74px; }
+/* 层：每层排印按深度"被压紧" */
+.zone { min-height:100vh; display:grid; align-content:center; padding:10vh clamp(24px,7vw,110px); position:relative; }
+.zone .tag { font:400 10px/1 ui-monospace,monospace; letter-spacing:.5em; color:var(--bio); margin-bottom:3vh; }
+.zone .tag.white { color:var(--dim); }
+/* 逐层压强排印（核心设计变量：letter-spacing / font-weight / line-height / 字号 同步压缩） */
+.z1 h2 { font-weight:200; font-size:clamp(44px,9vw,120px); letter-spacing:.34em; line-height:1.28; }
+.z1 p { font-weight:300; font-size:15px; letter-spacing:.14em; line-height:2.4; }
+.z2 h2 { font-weight:300; font-size:clamp(38px,7.6vw,100px); letter-spacing:.2em; line-height:1.18; }
+.z2 p { font-weight:400; font-size:14px; letter-spacing:.09em; line-height:2.0; }
+.z3 h2 { font-weight:500; font-size:clamp(32px,6.2vw,80px); letter-spacing:.1em; line-height:1.05; }
+.z3 p { font-weight:500; font-size:13px; letter-spacing:.05em; line-height:1.66; }
+.z4 h2 { font-weight:700; font-size:clamp(26px,4.9vw,62px); letter-spacing:.02em; line-height:0.98; }
+.z4 p { font-weight:600; font-size:12.5px; letter-spacing:.01em; line-height:1.42; }
+/* 层背景随深度变暗（微光带在 1000m） */
+.z1 { background:linear-gradient(180deg,#0a2233,#071722); }
+.z2 { background:linear-gradient(180deg,#071722,#041018); }
+.z3 { background:linear-gradient(180deg,#041018,#020a10); }
+.z4 { background:linear-gradient(180deg,#020a10,#010407); }
+/* 非对称排版：标题与正文错位 */
+.zone .asym { display:grid; grid-template-columns:minmax(0,7fr) minmax(0,3fr); gap:clamp(20px,4vw,64px); align-items:end; }
+.zone .asym .side { font:400 10.5px/2 ui-monospace,monospace; color:var(--dim); letter-spacing:.18em; border-left:1px solid var(--line); padding-left:16px; }
+/* 微光带生物（1000m 层的动态光点行内闪烁） */
+.glow-dots { display:inline-flex; gap:10px; align-items:center; margin-top:2.4vh; }
+.glow-dots i { width:5px; height:5px; border-radius:50%; background:var(--bio); animation:blink var(--d,3s) infinite; box-shadow:0 0 10px var(--bio); }
+@keyframes blink { 0%,100% { opacity:.15; } 50% { opacity:1; } }
+/* 深度大数字（每层右下压角） */
+.depth-mark { position:absolute; right:clamp(20px,5vw,70px); bottom:6vh; font:200 clamp(60px,11vw,150px)/1 Georgia,serif; color:transparent;
+  -webkit-text-stroke:1px rgba(232,244,247,.16); pointer-events:none; }
+footer { margin-left:74px; padding:26px 30px; font:400 9.5px/1.8 ui-monospace,monospace; color:var(--dim); letter-spacing:.2em; }
+@media (max-width:760px) {
+  .ruler { width:46px; } main, footer { margin-left:46px; }
+  .zone .asym { grid-template-columns:1fr; }
+  .depth-mark { font-size:56px; }
+}
+@media (prefers-reduced-motion:reduce) { .glow-dots i { animation:none; opacity:.7; } .ruler .needle { transition:none; } }
+</style>
+</head>
+<body>
+<nav class="ruler" id="ruler">
+  <div class="m">0 M</div>
+  <div class="m click" data-z="z1">200</div>
+  <div class="m click" data-z="z2">1000</div>
+  <div class="m click" data-z="z3">4000</div>
+  <div class="m click" data-z="z4">10909</div>
+  <div class="needle" id="needle"></div>
+</nav>
+<main>
+  <section class="zone z1" id="z1" data-d="200">
+    <div class="tag">SUNLIGHT ZONE · 0–200 M</div>
+    <div class="asym">
+      <div>
+        <h2>天 光 仍 在<br>字 句 从 容</h2>
+        <p>上层海的句子是舒展的——光把每个字照得清楚，行与行之间留得出呼吸。下潜开始后，每两百米夺走一分天光，也压紧一分排印。</p>
+      </div>
+      <div class="side">LIGHT 100%→1%<br>字距 0.34em 起步<br>随下潜逐层压缩</div>
+    </div>
+    <div class="depth-mark">200</div>
+  </section>
+  <section class="zone z2" id="z2" data-d="1000">
+    <div class="tag">TWILIGHT ZONE · 200–1000 M</div>
+    <div class="asym">
+      <div>
+        <h2>微 光 带：字被压紧</h2>
+        <p>这里只剩百分之一的天光。排印开始收紧——字距收拢、字重加粗，像水压真实地压在版面上。生物荧光成为唯一的高光色。</p>
+        <div class="glow-dots">
+          <i style="--d:2.2s"></i><i style="--d:3.1s"></i><i style="--d:2.7s"></i><i style="--d:4s"></i>
+          <span style="font:400 10px/1 ui-monospace,monospace; letter-spacing:.3em; color:var(--dim); margin-left:6px">NOCTILUCA 闪烁中</span>
+        </div>
+      </div>
+      <div class="side">LIGHT ~1%<br>字距 0.2em<br>字重 300→400</div>
+    </div>
+    <div class="depth-mark">1000</div>
+  </section>
+  <section class="zone z3" id="z3" data-d="4000">
+    <div class="tag">MIDNIGHT ZONE · 1000–4000 M</div>
+    <div class="asym">
+      <div>
+        <h2>午夜带:字距近无</h2>
+        <p>无光层。句子被压到贴紧,阅读需要主动施力——这就是四百个大气压下的版面:每个字都在顶住上方的整片海。</p>
+      </div>
+      <div class="side">LIGHT 0%<br>字距 0.1em<br>字重 500</div>
+    </div>
+    <div class="depth-mark">4000</div>
+  </section>
+  <section class="zone z4" id="z4" data-d="10909">
+    <div class="tag">HADAL ZONE · 6000–10909 M</div>
+    <div class="asym">
+      <div>
+        <h2>深渊:字字相抵</h2>
+        <p>马里亚纳之底。一千一百个大气压把排印压成实体——字与字几乎相抵,行距薄如沉积,信息以最密的状态封存在海床。</p>
+      </div>
+      <div class="side">PRESS 1100 ATM<br>字距 0.02em<br>字重 700</div>
+    </div>
+    <div class="depth-mark">10909</div>
+  </section>
+</main>
+<footer>ABYSS OBSERVATORY · PRESSURE TYPOGRAPHY — 压强即排印 · 示例数据（海洋常识层带划分）</footer>
+<script>
+// 标尺指针随滚动下潜 + 点击跳层
+const needle = document.getElementById('needle');
+const zones = [...document.querySelectorAll('.zone')];
+function update() {
+  const sc = scrollY, wh = innerHeight;
+  const total = document.body.scrollHeight - wh;
+  const f = Math.min(1, sc / total);
+  needle.style.top = (f * (innerHeight - 80) + 26) + 'px';
+}
+addEventListener('scroll', update, { passive: true });
+update();
+for (const m of document.querySelectorAll('.m.click')) {
+  m.addEventListener('click', () => document.getElementById(m.dataset.z)?.scrollIntoView({ behavior: 'smooth' }));
+}
+</script>
+</body>
+</html>

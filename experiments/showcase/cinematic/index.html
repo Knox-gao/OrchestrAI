@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABYSS · 下潜 — 深海观测站（Cinematic）</title>
+<style>
+:root { --abyss:#02060c; --glow:#7fd8ff; --bio:#66f2c8; --ink:#dbe9f2; --dim:rgba(219,233,242,.55); }
+* { margin:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; background:var(--abyss); font-family:Georgia,'Songti SC',serif; color:var(--ink); }
+#stage { position:fixed; inset:0; display:block; cursor:crosshair; }
+/* 镜头暗角（电影感） */
+.vignette { position:fixed; inset:0; pointer-events:none; z-index:3;
+  background:radial-gradient(ellipse at 50% 42%, transparent 46%, rgba(1,3,7,.55) 78%, rgba(0,1,3,.9) 100%); }
+/* 标题：随下潜渐入的定场字幕 */
+.title { position:fixed; left:50%; top:16%; transform:translateX(-50%); text-align:center; z-index:4; pointer-events:none; opacity:0; animation:fadein 2.6s 1.2s ease forwards; }
+.title .kick { font:400 10px/1 ui-monospace,monospace; letter-spacing:.6em; color:var(--glow); margin-bottom:18px; }
+.title h1 { font-weight:300; font-size:clamp(40px,6.5vw,84px); letter-spacing:.5em; text-indent:.5em; text-shadow:0 2px 40px rgba(0,0,0,.6); }
+.title .sub { margin-top:14px; font:300 12px/1 ui-monospace,monospace; letter-spacing:.42em; color:var(--dim); }
+@keyframes fadein { to { opacity:1; } }
+/* 深度计 HUD（电影取景器感） */
+.hud { position:fixed; z-index:4; font:400 10.5px/1.7 ui-monospace,monospace; letter-spacing:.2em; color:var(--dim); pointer-events:none; }
+.hud.bl { left:26px; bottom:24px; border-left:1px solid rgba(127,216,255,.4); padding-left:14px; }
+.hud.br { right:26px; bottom:24px; text-align:right; border-right:1px solid rgba(127,216,255,.4); padding-right:14px; }
+.hud b { color:var(--glow); font-weight:500; font-size:13px; }
+.hud .bio-on { color:var(--bio); }
+/* 声呐提示 */
+.ping-hint { position:fixed; left:50%; bottom:34px; transform:translateX(-50%); z-index:4; font:400 10px/1 ui-monospace,monospace; letter-spacing:.4em; color:var(--dim); animation:pulse 3s infinite; pointer-events:none; }
+@keyframes pulse { 50% { opacity:.4; } }
+@media (max-width:760px) { .hud.br { display:none; } .title { top:12%; } }
+@media (prefers-reduced-motion:reduce) { .title { animation:none; opacity:1; } .ping-hint { animation:none; } }
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div class="vignette"></div>
+<div class="title">
+  <div class="kick">ABYSS OBSERVATORY — DIVE 07</div>
+  <h1>深 海 之 下</h1>
+  <div class="sub">BELOW THE DEEP — 200 M · TWILIGHT ZONE</div>
+</div>
+<div class="hud bl">DEPTH <b id="depth">200</b> M<br>PRESS <b id="press">20.6</b> ATM<br>LIGHT <b id="light">1.2%</b></div>
+<div class="hud br">SONAR <b>ACTIVE</b><br>BIO SIGNALS <b id="bios">0</b><br><span class="bio-on">◆ 生物荧光目标</span></div>
+<div class="ping-hint">点击画面发射声呐脉冲</div>
+<script type="module">
+const cv = document.getElementById('stage'), ctx = cv.getContext('2d');
+let W, H, dpr = Math.min(devicePixelRatio || 1, 2);
+const resize = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
+resize(); addEventListener('resize', resize);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let t = 0, depth = 200, targetDepth = 220;
+let camX = 0, camY = 0, tCamX = 0, tCamY = 0;
+
+// 海雪（漂浮颗粒，三层视差）
+const snow = Array.from({ length: 170 }, (_, i) => {
+  const a = Math.sin(i * 12.9898) * 43758.5453, b = Math.sin(i * 78.233) * 12345.6789;
+  return { x: (a - Math.floor(a)) * 2000, y: (b - Math.floor(b)) * 1200, z: 0.25 + ((a + b) % 1 + 1) % 1 * 0.75, r: 0.4 + ((b - Math.floor(b)) * 1.4) };
+});
+// 生物目标（声呐照亮的深海生物剪影锚点）
+const bios = [
+  { x: .26, y: .62, r: 16, lit: 0, kind: 'angler' },   // 灯笼鱼
+  { x: .68, y: .44, r: 22, lit: 0, kind: 'jelly' },    // 水母群
+  { x: .52, y: .78, r: 13, lit: 0, kind: 'squid' },    // 小鱿
+];
+let echoes = 0;
+// 声呐脉冲
+let pings = [];
+
+function drawAngler(x, y, s, glow) {
+  // 灯笼鱼剪影 + 钓灯
+  ctx.save(); ctx.translate(x, y); ctx.scale(s / 16, s / 16);
+  ctx.fillStyle = `rgba(6,14,22,${0.6 + glow * 0.25})`;
+  ctx.beginPath(); ctx.moveTo(-16, 0); ctx.quadraticCurveTo(-6, -12, 12, -4); ctx.quadraticCurveTo(22, 0, 12, 6); ctx.quadraticCurveTo(-6, 12, -16, 0); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-15, -2); ctx.lineTo(-30, -12 + Math.sin(t / 300) * 4); ctx.lineTo(-16, 4); ctx.fill(); // 尾
+  // 钓灯
+  const lg = ctx.createRadialGradient(-2, -16, 0, -2, -16, 14);
+  lg.addColorStop(0, `rgba(158,255,222,${.5 + glow * .5})`); lg.addColorStop(1, 'rgba(158,255,222,0)');
+  ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(-2, -16, 14, 0, 6.2832); ctx.fill();
+  ctx.fillStyle = `rgba(200,255,235,${.6 + glow * .4})`; ctx.beginPath(); ctx.arc(-2, -16, 1.8, 0, 6.2832); ctx.fill();
+  ctx.restore();
+}
+function drawJelly(x, y, s, glow) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s / 22, s / 22);
+  const p = Math.sin(t / 700) * 0.12;
+  const bell = ctx.createRadialGradient(0, -6, 2, 0, 0, 24);
+  bell.addColorStop(0, `rgba(160,140,255,${.22 + glow * .5})`); bell.addColorStop(1, 'rgba(160,140,255,0)');
+  ctx.fillStyle = bell;
+  ctx.beginPath(); ctx.ellipse(0, 0, 22 * (1 + p), 16 * (1 - p), 0, 0, 6.2832); ctx.fill();
+  ctx.strokeStyle = `rgba(190,175,255,${.25 + glow * .55})`; ctx.lineWidth = 1;
+  for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(i * 5, 8);
+    ctx.quadraticCurveTo(i * 5 + Math.sin(t / 500 + i) * 6, 26, i * 4 + Math.sin(t / 400 + i) * 8, 44); ctx.stroke(); }
+  ctx.restore();
+}
+function drawSquid(x, y, s, glow) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s / 13, s / 13);
+  ctx.fillStyle = `rgba(120,80,140,${.3 + glow * .5})`;
+  ctx.beginPath(); ctx.ellipse(0, 0, 13, 5, -0.4, 0, 6.2832); ctx.fill();
+  ctx.strokeStyle = `rgba(160,110,190,${.2 + glow * .5})`; ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-11, i * 2 - 4);
+    ctx.quadraticCurveTo(-22, i * 3 - 4 + Math.sin(t / 300 + i) * 4, -30, i * 4 - 8 + Math.sin(t / 250 + i) * 6); ctx.stroke(); }
+  ctx.restore();
+}
+
+function frame(ts) {
+  t = ts;
+  if (!reduced) { depth += (targetDepth - depth) * 0.006; targetDepth += 0.012; }
+  camX += (tCamX - camX) * 0.05; camY += (tCamY - camY) * 0.05;
+  const lightPct = Math.max(0.1, 1.6 * Math.exp(-depth / 90));
+  // 水体渐变（随深度变暗变蓝黑）
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  const dk = Math.min(1, depth / 1200);
+  g.addColorStop(0, `rgb(${3 + 9 * (1 - dk)},${11 + 22 * (1 - dk)},${26 + 38 * (1 - dk)})`);
+  g.addColorStop(1, '#01040a');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // 体积光束（天光穿透，随深度衰减、缓慢摆动）——电影纵深
+  if (lightPct > 0.06) {
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    for (let i = 0; i < 5; i++) {
+      const bx = W * (0.12 + i * 0.2) + Math.sin(t / 4200 + i * 1.7) * 60 + camX * (0.3 + i * 0.06);
+      const sway = Math.sin(t / 3600 + i) * 90;
+      const wTop = 40 + i * 14, wBot = 150 + i * 60;
+      const gr = ctx.createLinearGradient(bx, -80, bx + sway, H);
+      gr.addColorStop(0, `rgba(120,190,235,${0.16 * lightPct})`);
+      gr.addColorStop(.55, `rgba(90,160,215,${0.07 * lightPct})`);
+      gr.addColorStop(1, 'rgba(60,120,180,0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.moveTo(bx - wTop, -60); ctx.lineTo(bx + wTop, -60);
+      ctx.lineTo(bx + sway + wBot, H + 40); ctx.lineTo(bx + sway - wBot, H + 40);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  // 焦散网纹（上层水面折射光斑，深度>400 消失）
+  if (depth < 420 && !reduced) {
+    ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = 0.5 * (1 - depth / 420);
+    ctx.strokeStyle = 'rgba(150,215,250,.10)'; ctx.lineWidth = 1;
+    for (let y = 0; y < H * 0.5; y += 26) { ctx.beginPath();
+      for (let x = 0; x <= W; x += 18) ctx.lineTo(x, y + Math.sin(x / 60 + t / 900 + y / 40) * 7 + Math.sin(x / 23 - t / 1400) * 4);
+      ctx.stroke(); }
+    ctx.restore();
+  }
+  // 海雪（三层视差 + 缓慢下沉）
+  for (const s of snow) {
+    const px = ((s.x - camX * s.z * 40) % 2000 + 2000) % 2000 - 200;
+    if (px < -4 || px > W + 4) continue;
+    const py = ((s.y + t * 0.008 * s.z + camY * s.z * 20) % 1200 + 1200) % 1200;
+    if (py > H) continue;
+    ctx.fillStyle = `rgba(205,225,240,${0.12 + s.z * 0.3})`;
+    ctx.beginPath(); ctx.arc(px, py, s.r * s.z, 0, 6.2832); ctx.fill();
+  }
+  // 声呐脉冲（扩散环，照亮经过的生物）
+  pings = pings.filter((p) => p.r < 2600);
+  for (const p of pings) {
+    if (!reduced) p.r += 9;
+    const a = Math.max(0, 0.5 * (1 - p.r / 2600));
+    ctx.strokeStyle = `rgba(127,216,255,${a})`; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.stroke();
+    ctx.strokeStyle = `rgba(127,216,255,${a * 0.5})`;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 0.86, 0, 6.2832); ctx.stroke();
+  }
+  // 生物（声呐波前经过时点亮，随后缓慢衰减）
+  let litCount = 0;
+  for (const b of bios) {
+    const bx = b.x * W + camX * 30, by = b.y * H + Math.sin(t / 1900 + b.x * 9) * 14 + camY * 16;
+    for (const p of pings) if (Math.hypot(bx - p.x, by - p.y) < p.r + 30) b.lit = 1;
+    if (b.lit > 0.02) litCount++;
+    if (b.kind === 'angler') drawAngler(bx, by, b.r, b.lit);
+    else if (b.kind === 'jelly') drawJelly(bx, by, b.r, b.lit);
+    else drawSquid(bx, by, b.r, b.lit);
+    if (b.lit > 0.55) { ctx.font = '300 10px ui-monospace,monospace'; ctx.fillStyle = `rgba(102,242,200,${b.lit})`; ctx.textAlign = 'center';
+      ctx.fillText(b.kind === 'angler' ? '◆ ANGLERFISH' : b.kind === 'jelly' ? '◆ PELAGIA' : '◆ SQUID', bx, by - b.r * 2.6); }
+    b.lit *= 0.9975;
+  }
+  // HUD 数据
+  document.getElementById('depth').textContent = Math.round(depth);
+  document.getElementById('press').textContent = (1 + depth / 10).toFixed(1);
+  document.getElementById('light').textContent = lightPct.toFixed(1);
+  document.getElementById('bios').textContent = litCount;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+// 交互：点击=声呐；移动=镜头视差
+cv.addEventListener('click', (e) => { pings.push({ x: e.clientX, y: e.clientY, r: 0 }); echoes++; });
+addEventListener('mousemove', (e) => {
+  tCamX = (e.clientX / W - 0.5) * 1.4;
+  tCamY = (e.clientY / H - 0.5) * 1.0;
+});
+</script>
+</body>
+</html>

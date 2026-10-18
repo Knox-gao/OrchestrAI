@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ABYSS · 荧光流场 — 深海观测站（Generative）</title>
+<style>
+:root { --ink:#d8f3ea; --dim:rgba(216,243,234,.6); --bio:#4de8b4; }
+* { margin:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; background:#01080a; font-family:Georgia,'Songti SC',serif; color:var(--ink); }
+canvas { position:fixed; inset:0; display:block; }
+.fallback { position:fixed; inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; gap:12px; font:400 12px/1.9 ui-monospace,monospace; letter-spacing:.2em; color:var(--dim); }
+.title { position:fixed; left:clamp(22px,5vw,72px); bottom:clamp(26px,8vh,72px); z-index:3; pointer-events:none; }
+.title .kick { font:400 10px/1 ui-monospace,monospace; letter-spacing:.5em; color:var(--bio); margin-bottom:16px; }
+.title h1 { font-weight:300; font-size:clamp(36px,5.6vw,72px); letter-spacing:.34em; line-height:1.15; text-shadow:0 2px 34px rgba(1,8,10,.8); }
+.title .sub { margin-top:14px; font:300 11.5px/1.9 ui-monospace,monospace; letter-spacing:.3em; color:var(--dim); }
+.hud { position:fixed; top:24px; right:26px; z-index:3; text-align:right; font:400 10.5px/1.8 ui-monospace,monospace; letter-spacing:.2em; color:var(--dim); pointer-events:none; }
+.hud b { color:var(--bio); font-weight:500; }
+@media (prefers-reduced-motion:reduce) { .title .kick, .title h1 { text-shadow:none; } }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="fallback" id="fb">当前环境不支持 WebGL<br>请启用硬件加速后重试</div>
+<div class="title">
+  <div class="kick">ABYSS OBSERVATORY — BIOLUMINESCENT FLOW</div>
+  <h1>荧光 流场</h1>
+  <div class="sub">移动指针搅动水流 —— 浮游生物因扰动而发光</div>
+</div>
+<div class="hud">PARTICLES <b id="pc">–</b><br>FLOW ENERGY <b id="fe">–</b><br>SPECIES <b>NOCTILUCA · 仿夜光藻</b></div>
+<script>
+// 原生 WebGL 点粒子流场（零依赖）：生物荧光浮游生物，指针=流场扰动源
+const cv = document.getElementById('gl');
+const gl = cv.getContext('webgl', { antialias: false, alpha: false });
+if (!gl) { document.getElementById('fb').style.display = 'flex'; throw new Error('no webgl'); }
+let W, H, dpr = Math.min(devicePixelRatio || 1, 1.75);
+const resize = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; gl.viewport(0, 0, cv.width, cv.height); };
+resize(); addEventListener('resize', resize);
+
+const N = 14000;
+const VS = `
+attribute vec3 aSeed;          // x0（0-1 归一化）, y0, 相位
+uniform float uT;
+uniform vec2 uMouse;            // 像素
+uniform vec2 uRes;
+uniform float uEnergy;
+varying float vGlow;
+// 流场：两组旋转场叠加（模拟深海缓流+涡）
+vec2 flow(vec2 p, float t) {
+  float a = sin(p.y * 2.1 + t * 0.21) + cos(p.x * 1.7 - t * 0.13);
+  float b = sin(p.x * 2.6 - t * 0.17) + cos(p.y * 2.2 + t * 0.11);
+  return vec2(a, b) * 22.0;
+}
+void main() {
+  vec2 p = vec2(aSeed.x * uRes.x, aSeed.y * uRes.y);
+  float life = fract(aSeed.z + uT * (0.010 + aSeed.z * 0.012));   // 个体周期
+  // 沿流场积分（4 步欧拉近似，GPU 便宜）
+  for (int i = 0; i < 4; i++) p += flow(p * 0.004, uT) * 0.016;
+  // 指针扰动：排斥+切向漩涡（搅动）
+  vec2 d = p - uMouse;
+  float dist = length(d);
+  float stir = exp(-dist * 0.011) * uEnergy;
+  p += normalize(d + 0.001) * stir * 90.0 + vec2(-d.y, d.x) * stir * 0.5;
+  // 边界回绕
+  p = mod(p, uRes);
+  // 发光：被搅动 + 个体周期闪烁
+  float flick = 0.35 + 0.65 * pow(sin(life * 6.2832 + aSeed.z * 40.0) * 0.5 + 0.5, 3.0);
+  vGlow = clamp(stir * 2.4 + flick * 0.42, 0.06, 1.0);
+  gl_Position = vec4((p / uRes) * 2.0 - 1.0, 0.0, 1.0);
+  gl_PointSize = (1.4 + aSeed.z * 2.2) * (1.0 + vGlow * 1.8) * uRes.y / 900.0 * 1.6;
+}`;
+const FS = `
+precision mediump float;
+varying float vGlow;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float d = length(c);
+  float core = smoothstep(0.5, 0.05, d);
+  vec3 dim = vec3(0.24, 0.55, 0.5);
+  vec3 lit = vec3(0.42, 1.0, 0.78);      // 夜光藻青绿
+  vec3 col = mix(dim * 0.35, lit, vGlow);
+  gl_FragColor = vec4(col, core * (0.25 + vGlow * 0.75));
+  if (gl_FragColor.a < 0.02) discard;
+}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+const prog = gl.createProgram();
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { document.getElementById('fb').style.display = 'flex'; throw new Error(gl.getProgramInfoLog(prog)); }
+gl.useProgram(prog);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE);   // 加色混合=发光叠加
+const seeds = new Float32Array(N * 3);
+for (let i = 0; i < N; i++) { seeds[i * 3] = Math.random(); seeds[i * 3 + 1] = Math.random(); seeds[i * 3 + 2] = Math.random(); }
+const buf = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'aSeed');
+gl.enableVertexAttribArray(loc);
+gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 0, 0);
+const uT = gl.getUniformLocation(prog, 'uT');
+const uMouse = gl.getUniformLocation(prog, 'uMouse');
+const uRes = gl.getUniformLocation(prog, 'uRes');
+const uEnergy = gl.getUniformLocation(prog, 'uEnergy');
+document.getElementById('pc').textContent = N.toLocaleString();
+let mx = -9999, my = -9999, energy = 0, tEnergy = 0, lastMove = 0;
+addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; tEnergy = 1; lastMove = performance.now(); });
+addEventListener('pointerleave', () => { tEnergy = 0; });
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let t0 = performance.now();
+(function frame(ts) {
+  energy += (tEnergy - energy) * 0.04;
+  if (ts - lastMove > 2600) tEnergy = Math.max(0, tEnergy - 0.02);
+  gl.uniform1f(uT, reduced ? 20 : (ts - t0) / 1000);
+  gl.uniform2f(uMouse, mx, my);
+  gl.uniform2f(uRes, W, H);
+  gl.uniform1f(uEnergy, energy);
+  gl.clearColor(0.004, 0.031, 0.039, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.POINTS, 0, N);
+  document.getElementById('fe').textContent = energy > 0.66 ? 'HIGH' : energy > 0.33 ? 'MED' : 'LOW';
+  requestAnimationFrame(frame);
+})(t0);
+</script>
+</body>
+</html>
