@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>潮汐露营·重设计版</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;600;900&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+* { margin:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:#0a0f14; color:#e8e4dc; font-family:'Noto Serif SC',Georgia,serif; overflow-x:hidden; }
+.t-hero{position:relative;min-height:92vh;background:#0B1E2D;color:#F2E9DC;display:flex;align-items:center;overflow:hidden}
+.t-hero-canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.6}
+.t-hero-inner{position:relative;z-index:2;max-width:760px;margin:0 auto;padding:96px 24px 64px;text-align:center}
+.t-hero-kicker{font-size:14px;letter-spacing:.35em;color:#FF6B4A;margin-bottom:20px;text-transform:uppercase}
+.t-hero-title{font-size:clamp(40px,7vw,64px);line-height:1.15;font-weight:800;margin:0 0 24px}
+.t-hero-sub{font-size:17px;line-height:1.8;opacity:.85;max-width:560px;margin:0 auto 36px}
+.t-hero-cta{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.t-btn{display:inline-block;padding:16px 36px;border-radius:999px;font-size:17px;font-weight:700;text-decoration:none;transition:transform .2s,box-shadow .2s}
+.t-btn-primary{background:#FF6B4A;color:#0B1E2D;box-shadow:0 8px 24px rgba(255,107,74,.35)}
+.t-btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,107,74,.5)}
+.t-btn-ghost{color:#F2E9DC;border:1px solid rgba(242,233,220,.4)}
+.t-btn-ghost:hover{border-color:#F2E9DC}
+.t-hero-meta{display:flex;justify-content:center;gap:48px;list-style:none;padding:0;margin:0;font-size:14px;opacity:.8}
+.t-hero-meta strong{display:block;font-size:24px;color:#FF6B4A}
+.t-camps{background:#0B1E2D;color:#F2E9DC;padding:96px 24px}
+.t-sec-head{max-width:680px;margin:0 auto 48px;text-align:center}
+.t-h2{font-size:clamp(28px,4vw,40px);font-weight:800;margin:0 0 16px}
+.t-sec-sub{font-size:17px;line-height:1.7;opacity:.75;margin:0}
+.t-camp-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.t-camp{border:1px solid rgba(242,233,220,.15);border-radius:20px;padding:28px;cursor:pointer;transition:border-color .2s,transform .2s,background .2s;background:rgba(242,233,220,.03)}
+.t-camp:hover{transform:translateY(-4px);border-color:rgba(255,107,74,.6)}
+.t-camp.active{border-color:#FF6B4A;background:rgba(255,107,74,.08)}
+.t-camp-tag{display:inline-block;font-size:12px;letter-spacing:.2em;color:#FF6B4A;margin-bottom:12px}
+.t-camp h3{font-size:24px;font-weight:700;margin:0 0 6px}
+.t-camp-loc{font-size:14px;opacity:.6;margin:0 0 18px}
+.t-camp-feats{list-style:none;padding:0;margin:0 0 20px;font-size:14px;line-height:2;opacity:.85}
+.t-camp-feats li::before{content:'· ';color:#FF6B4A;font-weight:700}
+.t-camp-foot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid rgba(242,233,220,.12);padding-top:16px}
+.t-camp-price{font-size:24px;font-weight:800;color:#FF6B4A}
+.t-camp-price small{font-size:14px;font-weight:400;opacity:.7;color:#F2E9DC}
+.t-camp-pick{font-size:14px;font-weight:700}
+.t-camp.active .t-camp-pick{color:#FF6B4A}
+.t-book{background:linear-gradient(#0B1E2D,#12303F);color:#F2E9DC;padding:96px 24px}
+.t-book-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1.2fr;gap:48px;align-items:start}
+@media(max-width:860px){.t-book-grid{grid-template-columns:1fr}}
+.t-cal-wrap{background:rgba(242,233,220,.04);border:1px solid rgba(242,233,220,.15);border-radius:20px;padding:24px}
+.t-cal-label{font-size:14px;margin-bottom:16px;opacity:.8}
+.t-cal{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.t-cal-day{border:1px solid rgba(242,233,220,.18);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .15s;background:transparent;color:#F2E9DC;text-align:left}
+.t-cal-day:hover{border-color:#FF6B4A}
+.t-cal-day.selected{background:#FF6B4A;color:#0B1E2D;border-color:#FF6B4A}
+.t-cal-day .d1{font-size:17px;font-weight:700;display:block}
+.t-cal-day .d2{font-size:12px;opacity:.75}
+.t-cal-day.soldout{opacity:.3;pointer-events:none;text-decoration:line-through}
+.t-form{background:rgba(242,233,220,.04);border:1px solid rgba(242,233,220,.15);border-radius:20px;padding:28px}
+.t-step{display:flex;align-items:center;gap:10px;margin:22px 0 12px}
+.t-step:first-child{margin-top:0}
+.t-step-no{width:24px;height:24px;border-radius:50%;background:#FF6B4A;color:#0B1E2D;font-size:13px;font-weight:800;display:grid;place-items:center}
+.t-step-t{font-size:17px;font-weight:700}
+.t-field{font-size:14px;background:rgba(242,233,220,.06);border-radius:10px;padding:12px 14px;opacity:.75}
+.t-field.set{color:#FF6B4A;opacity:1;font-weight:700}
+.t-row{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.t-label{font-size:14px;opacity:.85;display:block;margin-bottom:12px;flex:1;min-width:140px}
+.t-input{display:block;width:100%;margin-top:6px;padding:12px 14px;border-radius:10px;border:1px solid rgba(242,233,220,.25);background:rgba(11,30,45,.5);color:#F2E9DC;font-size:16px;box-sizing:border-box}
+.t-input:focus{outline:none;border-color:#FF6B4A}
+.t-gear{border:none;padding:0;margin:0 0 8px}
+.t-check{display:flex;align-items:center;gap:10px;font-size:14px;padding:8px 0;cursor:pointer}
+.t-check input{accent-color:#FF6B4A;width:16px;height:16px}
+.t-submit{width:100%;border:none;cursor:pointer;margin-top:16px;font-family:inherit}
+.t-note{font-size:13px;opacity:.55;margin:14px 0 0}
+</style></head><body>
+<!-- 幕1：首屏 Hero + CTA -->
+<section class="t-hero" id="scene1">
+  <canvas class="t-hero-canvas" id="heroCanvas"></canvas>
+  <div class="t-hero-inner">
+    <p class="t-hero-kicker">周末两日 · 3 个营地 · 在线订位</p>
+    <h1 class="t-hero-title">周五出发，<br>周日潮落前回家。</h1>
+    <p class="t-hero-sub">潮汐露营 · 海边 / 森林 / 山谷三处小众营地，专为城市青年周末出行打造。选营地 → 选周末 → 提交意向，三步完成预订。</p>
+    <div class="t-hero-cta">
+      <a class="t-btn t-btn-primary" href="#scene2" id="heroCta">立即预订周末营位</a>
+      <a class="t-btn t-btn-ghost" href="#scene2">先看看三个营地 ↓</a>
+    </div>
+    <ul class="t-hero-meta">
+      <li><strong>3</strong>个营地</li>
+      <li><strong>¥128</strong>起 / 晚</li>
+      <li><strong>0</strong>元取消（前3天）</li>
+    </ul>
+  </div>
+</section>
+<!-- 幕2：三营地横向对比选择 -->
+<section class="t-camps" id="scene2">
+  <div class="t-sec-head">
+    <h2 class="t-h2">选一个营地，占一个周末</h2>
+    <p class="t-sec-sub">点击卡片即可锁定营地，进入日历选期。三处设施与价格一目了然。</p>
+  </div>
+  <div class="t-camp-grid" id="campGrid"></div>
+</section>
+<!-- 幕3：周末日历 + 预订表单（同屏左右布局） -->
+<section class="t-book" id="scene3">
+  <div class="t-sec-head">
+    <h2 class="t-h2">选周末，填一张表，就出发</h2>
+    <p class="t-sec-sub">请先在上方选择营地，再点选下方任一周末营位。</p>
+  </div>
+  <div class="t-book-grid">
+    <div class="t-cal-wrap">
+      <div class="t-cal-label">未来 8 个周末 · <span id="calCampName">未选营地</span></div>
+      <div class="t-cal" id="calGrid"></div>
+    </div>
+    <form class="t-form" id="bookForm">
+      <div class="t-step"><span class="t-step-no">1</span><span class="t-step-t">营地</span></div>
+      <div class="t-field" id="fCamp">尚未选择，请回到上方卡片点选</div>
+      <div class="t-step"><span class="t-step-no">2</span><span class="t-step-t">日期</span></div>
+      <div class="t-field" id="fDate">尚未选择周末</div>
+      <div class="t-step"><span class="t-step-no">3</span><span class="t-step-t">人数与装备</span></div>
+      <div class="t-row">
+        <label class="t-label">人数
+          <input type="number" id="ppl" min="1" max="8" value="2" class="t-input">
+        </label>
+        <label class="t-label">姓名
+          <input type="text" id="uname" required placeholder="怎么称呼你" class="t-input">
+        </label>
+      </div>
+      <div class="t-row">
+        <label class="t-label">手机
+          <input type="tel" id="utel" required placeholder="11 位手机号" class="t-input">
+        </label>
+      </div>
+      <fieldset class="t-gear">
+        <legend class="t-label">装备租借（可选，按件/两晚计）</legend>
+        <label class="t-check"><input type="checkbox" value="帐篷 2人 · ¥180"> 帐篷 2人 · ¥180</label>
+        <label class="t-check"><input type="checkbox" value="睡袋 ×2 · ¥120"> 睡袋 ×2 · ¥120</label>
+        <label class="t-check"><input type="checkbox" value="焚火台套装 · ¥90"> 焚火台套装 · ¥90</label>
+        <label class="t-check"><input type="checkbox" value="营地灯串 · ¥40"> 营地灯串 · ¥40</label>
+      </fieldset>
+      <button type="submit" class="t-btn t-btn-primary t-submit" id="submitBtn">确认预订意向 →</button>
+      <p class="t-note">提交后营地管家将在 2 小时内电话确认档期。</p>
+    </form>
+  </div>
+</section>
+<script type="module">
+// 幕1：Canvas 潮汐波浪背景（自适应缓冲尺寸，修复拉伸模糊）
+(function(){
+  const cv = document.getElementById('heroCanvas');
+  const ctx = cv.getContext('2d');
+  function resize(){ cv.width = cv.clientWidth * devicePixelRatio; cv.height = cv.clientHeight * devicePixelRatio; }
+  resize(); window.addEventListener('resize', resize);
+  let t = 0;
+  (function draw(){
+    t += 0.008;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    const H = cv.height, W = cv.width;
+    [[0.62,'rgba(255,107,74,0.10)'],[0.72,'rgba(30,95,116,0.35)'],[0.84,'rgba(30,95,116,0.55)']].forEach(function(l,i){
+      ctx.beginPath(); ctx.moveTo(0,H);
+      for(let x=0;x<=W;x+=8){
+        const y = H*l[0] + Math.sin(x*0.004/devicePixelRatio + t*(1+i*0.4) + i)*H*0.03;
+        ctx.lineTo(x,y);
+      }
+      ctx.lineTo(W,H); ctx.closePath(); ctx.fillStyle=l[1]; ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  })();
+})();
+// 幕2：营地数据 + 选中态（写入全局状态）
+const TIDE = { camp: null, date: null };
+const CAMPS = [
+  {id:'sea',  tag:'SEASIDE', name:'听浪营地 · 海边', loc:'广东 · 双月湾东岸', price:158,
+   feats:['直线海景营位 12 处','公共天幕 + 冲淡水','夜间赶海向导','可携宠']},
+  {id:'forest',tag:'FOREST', name:'苔原营地 · 森林', loc:'浙江 · 莫干山北麓', price:128,
+   feats:'杉林环抱营位 18 处|溪水降温区|柴火灶与烧烤台|星空无光害'.split('|')},
+  {id:'valley',tag:'VALLEY', name:'云隙营地 · 山谷', loc:'四川 · 彭州龙门山', price:178,
+   feats:'悬崖观景平台|高山冷泉泡池|桨板瑜伽课程|帐篷已搭好可选'}
+];
+(function(){
+  const grid = document.getElementById('campGrid');
+  CAMPS.forEach(function(c){
+    const el = document.createElement('article');
+    el.className = 't-camp'; el.dataset.id = c.id;
+    el.innerHTML =
+      '<span class="t-camp-tag">'+c.tag+'</span>'+
+      '<h3>'+c.name+'</h3>'+
+      '<p class="t-camp-loc">'+c.loc+'</p>'+
+      '<ul class="t-camp-feats">'+c.feats.map(function(f){return '<li>'+f+'</li>'}).join('')+'</ul>'+
+      '<div class="t-camp-foot"><span class="t-camp-price">¥'+c.price+'<small> /晚</small></span><span class="t-camp-pick">选择 →</span></div>';
+    el.addEventListener('click', function(){
+      document.querySelectorAll('.t-camp').forEach(function(x){x.classList.remove('active')});
+      el.classList.add('active');
+      TIDE.camp = c;
+      document.getElementById('scene3').scrollIntoView({behavior:'smooth'});
+    });
+    grid.appendChild(el);
+  });
+})();
+</script></body></html>

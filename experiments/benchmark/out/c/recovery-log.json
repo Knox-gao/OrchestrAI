@@ -1,0 +1,305 @@
+{
+ "calls": [
+  {
+   "step": "diagnosis",
+   "ms": 39139,
+   "tokens": 3381,
+   "issues": 9
+  },
+  {
+   "step": "redesign",
+   "ms": 56982,
+   "tokens": 4955
+  },
+  {
+   "step": "critique2",
+   "ms": 11758,
+   "tokens": 1568,
+   "issues": 6
+  }
+ ],
+ "rounds": [],
+ "probe": {
+  "focus": [
+   {
+    "tag": "DIV",
+    "cls": "ss4-inner",
+    "w": 731,
+    "h": 766,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(30, 95, 116)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "pos": "static",
+    "display": "block"
+   },
+   {
+    "tag": "DIV",
+    "cls": "ss4-grid",
+    "w": 731,
+    "h": 685,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(30, 95, 116)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "pos": "static",
+    "display": "block"
+   },
+   {
+    "tag": "DIV",
+    "cls": "ss2-track",
+    "w": 656,
+    "h": 636,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(11, 30, 45)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "pos": "static",
+    "display": "grid"
+   },
+   {
+    "tag": "CANVAS",
+    "cls": "ss1-canvas",
+    "w": 731,
+    "h": 483,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(242, 233, 220)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "pos": "absolute",
+    "display": "block"
+   },
+   {
+    "tag": "DIV",
+    "cls": "ss1-veil",
+    "w": 731,
+    "h": 483,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(242, 233, 220)",
+    "bg": "rgb(242, 233, 220)",
+    "pos": "absolute",
+    "display": "block"
+   },
+   {
+    "tag": "ASIDE",
+    "cls": "ss4-sheet",
+    "w": 731,
+    "h": 420,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(30, 95, 116)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "pos": "static",
+    "display": "block"
+   },
+   {
+    "tag": "DIV",
+    "cls": "ss1-hero",
+    "w": 731,
+    "h": 341,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(242, 233, 220)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "pos": "relative",
+    "display": "block"
+   },
+   {
+    "tag": "DIV",
+    "cls": "ss4-drawer",
+    "w": 731,
+    "h": 326,
+    "fontSize": "16px",
+    "fontWeight": "400",
+    "color": "rgb(30, 95, 116)",
+    "bg": "rgba(0, 0, 0, 0)",
+    "pos": "static",
+    "display": "block"
+   }
+  ],
+  "sections": [
+   {
+    "idx": 0,
+    "cls": "ss1",
+    "h": 483,
+    "children": [
+     {
+      "cls": "ss1-canvas",
+      "w": 731,
+      "h": 483
+     },
+     {
+      "cls": "ss1-veil",
+      "w": 731,
+      "h": 483
+     },
+     {
+      "cls": "ss1-nav",
+      "w": 731,
+      "h": 82
+     },
+     {
+      "cls": "ss1-hero",
+      "w": 731,
+      "h": 341
+     },
+     {
+      "cls": "ss1-tide-hint",
+      "w": 731,
+      "h": 92
+     }
+    ]
+   },
+   {
+    "idx": 1,
+    "cls": "ss1-next",
+    "h": 290,
+    "children": []
+   },
+   {
+    "idx": 2,
+    "cls": "ss2",
+    "h": 957,
+    "children": [
+     {
+      "cls": "ss2-head",
+      "w": 656,
+      "h": 117
+     },
+     {
+      "cls": "ss2-track",
+      "w": 656,
+      "h": 636
+     },
+     {
+      "cls": "ss2-nav",
+      "w": 656,
+      "h": 33
+     }
+    ]
+   },
+   {
+    "idx": 3,
+    "cls": "ss3-sec",
+    "h": 672,
+    "children": [
+     {
+      "cls": "ss3-head",
+      "w": 640,
+      "h": 125
+     },
+     {
+      "cls": "ss3-legend",
+      "w": 642,
+      "h": 31
+     },
+     {
+      "cls": "ss3-quick",
+      "w": 642,
+      "h": 44
+     },
+     {
+      "cls": "ss3-cal-wrap",
+      "w": 642,
+      "h": 44
+     },
+     {
+      "cls": "ss3-weekbar",
+      "w": 642,
+      "h": 25
+     }
+    ]
+   },
+   {
+    "idx": 4,
+    "cls": "ss4-sec",
+    "h": 1416,
+    "children": [
+     {
+      "cls": "ss4-inner",
+      "w": 731,
+      "h": 766
+     },
+     {
+      "cls": "ss4-drawer",
+      "w": 731,
+      "h": 326
+     },
+     {
+      "cls": "ss4-flip-wrap",
+      "w": 731,
+      "h": 324
+     }
+    ]
+   }
+  ],
+  "typography": {
+   "h1": {
+    "text": "\n      城市是常水位，\n      周末是涨潮。\n  ",
+    "size": "59.68px",
+    "weight": "900",
+    "ls": "3.5808px"
+   },
+   "h2Count": 3,
+   "h2Sizes": [
+    "41.03px",
+    "44.76px",
+    "24px"
+   ],
+   "pCount": 21,
+   "pSizes": [
+    "13px",
+    "12.48px"
+   ]
+  },
+  "forms": [
+   {
+    "action": "file:///D:/app%E7%9A%84%E8%87%AA%E5%8A%A8%E7%94%9F%E6%88%90/experiments/benchmark/out/c/_probe.html",
+    "inputs": 6,
+    "buttons": 2,
+    "fieldNames": [
+     "checkbox",
+     "checkbox",
+     "checkbox",
+     "checkbox",
+     "text",
+     "tel"
+    ]
+   }
+  ],
+  "clickable": 22,
+  "canvas": [
+   {
+    "w": 300,
+    "h": 150,
+    "cw": 731
+   }
+  ],
+  "svg": 4,
+  "overflowX": false,
+  "pageH": 3817,
+  "consoleErrors": [
+   "Uncaught TypeError: Cannot set property clientWidth of #&lt;Element&gt; which has only a getter"
+  ]
+ },
+ "integrity": {
+  "hasDoctype": true,
+  "hasViewport": true,
+  "hasStyle": true,
+  "hasScript": true,
+  "sectionCount": 3,
+  "hasJS": true,
+  "hasCanvas": true,
+  "hasSVG": false,
+  "hasForm": true,
+  "hasInput": true,
+  "hasButton": true,
+  "jsIIFECount": 0,
+  "cssRuleCount": 79,
+  "ok": true,
+  "issues": [
+   "JS IIFE 仅 0（交互可能未实现）"
+  ]
+ }
+}

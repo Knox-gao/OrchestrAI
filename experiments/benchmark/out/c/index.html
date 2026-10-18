@@ -1,754 +1,232 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>潮汐露营·周末营地预订</title>
+<title>潮汐露营·重设计版</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;600;900&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
 * { margin:0; box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { background:#0B1E2D; color:#1E5F74; font-family:'Noto Serif SC',Georgia,serif; overflow-x:hidden; }
-.mono { font-family:'IBM Plex Mono',monospace; }
-/* ============ ss1 · 潮起 ============ */
-.ss1{
-  --ink:#0B1E2D; --deep:#1E5F74; --foam:#63B7AF;
-  --paper:#F2E9DC; --sun:#E9B44C; --coral:#C14953;
-  position:relative; min-height:100vh; overflow:hidden;
-  background:var(--ink); color:var(--paper);
-  font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif;
-}
-.ss1-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;}
-.ss1-veil{position:absolute;inset:0;background:var(--paper);opacity:0;pointer-events:none;
-  mix-blend-mode:soft-light;transition:opacity .1s linear;}
+body { background:#0a0f14; color:#e8e4dc; font-family:'Noto Serif SC',Georgia,serif; overflow-x:hidden; }
+.t-hero{position:relative;min-height:92vh;background:#0B1E2D;color:#F2E9DC;display:flex;align-items:center;overflow:hidden}
+.t-hero-canvas{position:absolute;inset:0;width:100%;height:100%;opacity:.6}
+.t-hero-inner{position:relative;z-index:2;max-width:760px;margin:0 auto;padding:96px 24px 64px;text-align:center}
+.t-hero-kicker{font-size:14px;letter-spacing:.35em;color:#FF6B4A;margin-bottom:20px;text-transform:uppercase}
+.t-hero-title{font-size:clamp(40px,7vw,64px);line-height:1.15;font-weight:800;margin:0 0 24px}
+.t-hero-sub{font-size:17px;line-height:1.8;opacity:.85;max-width:560px;margin:0 auto 36px}
+.t-hero-cta{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:40px}
+.t-btn{display:inline-block;padding:16px 36px;border-radius:999px;font-size:17px;font-weight:700;text-decoration:none;transition:transform .2s,box-shadow .2s}
+.t-btn-primary{background:#FF6B4A;color:#0B1E2D;box-shadow:0 8px 24px rgba(255,107,74,.35)}
+.t-btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(255,107,74,.5)}
+.t-btn-ghost{color:#F2E9DC;border:1px solid rgba(242,233,220,.4)}
+.t-btn-ghost:hover{border-color:#F2E9DC}
+.t-hero-meta{display:flex;justify-content:center;gap:48px;list-style:none;padding:0;margin:0;font-size:14px;opacity:.8}
+.t-hero-meta strong{display:block;font-size:24px;color:#FF6B4A}
+.t-camps{background:#0B1E2D;color:#F2E9DC;padding:96px 24px}
+.t-sec-head{max-width:680px;margin:0 auto 48px;text-align:center}
+.t-h2{font-size:clamp(28px,4vw,40px);font-weight:800;margin:0 0 16px}
+.t-sec-sub{font-size:17px;line-height:1.7;opacity:.75;margin:0}
+.t-camp-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.t-camp{border:1px solid rgba(242,233,220,.15);border-radius:20px;padding:28px;cursor:pointer;transition:border-color .2s,transform .2s,background .2s;background:rgba(242,233,220,.03)}
+.t-camp:hover{transform:translateY(-4px);border-color:rgba(255,107,74,.6)}
+.t-camp.active{border-color:#FF6B4A;background:rgba(255,107,74,.08)}
+.t-camp-tag{display:inline-block;font-size:12px;letter-spacing:.2em;color:#FF6B4A;margin-bottom:12px}
+.t-camp h3{font-size:24px;font-weight:700;margin:0 0 6px}
+.t-camp-loc{font-size:14px;opacity:.6;margin:0 0 18px}
+.t-camp-feats{list-style:none;padding:0;margin:0 0 20px;font-size:14px;line-height:2;opacity:.85}
+.t-camp-feats li::before{content:'· ';color:#FF6B4A;font-weight:700}
+.t-camp-foot{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid rgba(242,233,220,.12);padding-top:16px}
+.t-camp-price{font-size:24px;font-weight:800;color:#FF6B4A}
+.t-camp-price small{font-size:14px;font-weight:400;opacity:.7;color:#F2E9DC}
+.t-camp-pick{font-size:14px;font-weight:700}
+.t-camp.active .t-camp-pick{color:#FF6B4A}
+.t-book{background:linear-gradient(#0B1E2D,#12303F);color:#F2E9DC;padding:96px 24px}
+.t-book-grid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1.2fr;gap:48px;align-items:start}
+@media(max-width:860px){.t-book-grid{grid-template-columns:1fr}}
+.t-cal-wrap{background:rgba(242,233,220,.04);border:1px solid rgba(242,233,220,.15);border-radius:20px;padding:24px}
+.t-cal-label{font-size:14px;margin-bottom:16px;opacity:.8}
+.t-cal{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.t-cal-day{border:1px solid rgba(242,233,220,.18);border-radius:14px;padding:14px 16px;cursor:pointer;transition:all .15s;background:transparent;color:#F2E9DC;text-align:left}
+.t-cal-day:hover{border-color:#FF6B4A}
+.t-cal-day.selected{background:#FF6B4A;color:#0B1E2D;border-color:#FF6B4A}
+.t-cal-day .d1{font-size:17px;font-weight:700;display:block}
+.t-cal-day .d2{font-size:12px;opacity:.75}
+.t-cal-day.soldout{opacity:.3;pointer-events:none;text-decoration:line-through}
+.t-form{background:rgba(242,233,220,.04);border:1px solid rgba(242,233,220,.15);border-radius:20px;padding:28px}
+.t-step{display:flex;align-items:center;gap:10px;margin:22px 0 12px}
+.t-step:first-child{margin-top:0}
+.t-step-no{width:24px;height:24px;border-radius:50%;background:#FF6B4A;color:#0B1E2D;font-size:13px;font-weight:800;display:grid;place-items:center}
+.t-step-t{font-size:17px;font-weight:700}
+.t-field{font-size:14px;background:rgba(242,233,220,.06);border-radius:10px;padding:12px 14px;opacity:.75}
+.t-field.set{color:#FF6B4A;opacity:1;font-weight:700}
+.t-row{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.t-label{font-size:14px;opacity:.85;display:block;margin-bottom:12px;flex:1;min-width:140px}
+.t-input{display:block;width:100%;margin-top:6px;padding:12px 14px;border-radius:10px;border:1px solid rgba(242,233,220,.25);background:rgba(11,30,45,.5);color:#F2E9DC;font-size:16px;box-sizing:border-box}
+.t-input:focus{outline:none;border-color:#FF6B4A}
+.t-gear{border:none;padding:0;margin:0 0 8px}
+.t-check{display:flex;align-items:center;gap:10px;font-size:14px;padding:8px 0;cursor:pointer}
+.t-check input{accent-color:#FF6B4A;width:16px;height:16px}
+.t-submit{width:100%;border:none;cursor:pointer;margin-top:16px;font-family:inherit}
+.t-note{font-size:13px;opacity:.55;margin:14px 0 0}
+/* 覆盖修复：常见布局与样式问题 */
+* { box-sizing: border-box; }
 
-/* ---- 导航 ---- */
-.ss1-nav{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:center;
-  padding:clamp(16px,3vw,32px) clamp(20px,5vw,64px);}
-.ss1-logo{font-family:'Noto Serif SC','Songti SC',serif;font-weight:900;font-size:clamp(18px,2vw,24px);
-  letter-spacing:.12em;color:var(--paper);}
-.ss1-logo span{display:block;font-family:inherit;font-weight:400;font-size:.42em;
-  letter-spacing:.5em;color:var(--foam);opacity:.85;}
-.ss1-menu{display:flex;gap:clamp(16px,3vw,40px);}
-.ss1-menu a{color:var(--paper);text-decoration:none;font-size:14px;letter-spacing:.3em;
-  padding-bottom:4px;border-bottom:1px solid transparent;transition:.25s;}
-.ss1-menu a:hover{color:var(--sun);border-bottom-color:var(--sun);}
-
-/* ---- 主视觉文案 ---- */
-.ss1-hero{position:relative;z-index:3;text-align:center;
-  padding:clamp(40px,10vh,110px) 20px 0;}
-.ss1-kicker{font-size:13px;letter-spacing:.55em;color:var(--foam);margin:0 0 clamp(14px,3vh,26px);}
-.ss1-title{font-family:'Noto Serif SC','Songti SC',serif;font-weight:900;
-  font-size:clamp(38px,8vw,104px);line-height:1.22;margin:0;letter-spacing:.06em;
-  text-shadow:0 2px 30px rgba(11,30,45,.6);}
-.ss1-line{display:block;}
-.ss1-line-accent{color:var(--sun);}
-.ss1-sub{margin:clamp(18px,3vh,30px) auto 0;max-width:34em;
-  font-size:clamp(13px,1.5vw,16px);line-height:1.9;color:var(--paper);opacity:.82;
-  font-variant-numeric:tabular-nums;}
-.ss1-cta{margin-top:clamp(26px,5vh,44px);cursor:pointer;
-  font:600 clamp(15px,1.6vw,18px)/1 -apple-system,"PingFang SC",sans-serif;letter-spacing:.35em;
-  color:var(--ink);background:var(--sun);border:none;
-  padding:clamp(15px,2.4vh,22px) clamp(30px,4vw,54px);
-  display:inline-flex;align-items:center;gap:.8em;
-  box-shadow:0 8px 34px rgba(233,180,76,.32);
-  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s;}
-.ss1-cta:hover{transform:translateY(-3px);box-shadow:0 14px 44px rgba(233,180,76,.5);}
-.ss1-cta:active{transform:translateY(0) scale(.98);}
-.ss1-cta-arrow{transition:transform .25s;letter-spacing:0;}
-.ss1-cta:hover .ss1-cta-arrow{transform:translateX(5px);}
-
-/* ---- 水文滚动提示 ---- */
-.ss1-tide-hint{position:absolute;z-index:3;left:0;right:0;bottom:clamp(18px,4vh,36px);
-  display:flex;flex-direction:column;align-items:center;gap:8px;
-  font-size:12px;letter-spacing:.35em;color:var(--foam);}
-.ss1-tide-hint svg{animation:ss1Sink 2.2s ease-in-out infinite;}
-.ss1-tide-level{letter-spacing:.15em;font-variant-numeric:tabular-nums;opacity:.7;}
-.ss1-tide-level b{color:var(--sun);font-weight:600;}
-@keyframes ss1Sink{0%,100%{transform:translateY(0);opacity:.9}50%{transform:translateY(9px);opacity:.4}}
-
-.ss1-next{height:60vh;background:var(--deep);}
-
-@media (max-width:640px){
-  .ss1-menu{gap:14px;}
-  .ss1-menu a{font-size:12px;letter-spacing:.18em;}
-  .ss1-title{letter-spacing:.03em;}
-}
-.ss2 {
-  --ink: #0B1E2D;
-  --deep: #1E5F74;
-  --mist: #63B7AF;
-  --paper: #F2E9DC;
-  --sun: #E9B44C;
-  --coral: #C14953;
-  position: relative;
-  min-height: 100vh;
-  background: var(--paper);
-  color: var(--ink);
-  padding: clamp(3rem, 7vw, 5.5rem) clamp(1.25rem, 5vw, 5rem);
-  overflow: hidden;
-  font-family: "PingFang SC", "Helvetica Neue", sans-serif;
-}
-.ss2-head { max-width: 60rem; margin-bottom: 2.5rem; }
-.ss2-kicker {
-  font-size: .75rem; letter-spacing: .5em; text-transform: uppercase;
-  color: var(--deep); margin-bottom: .75rem;
-}
-.ss2-title {
-  font-family: "Noto Serif SC", "Songti SC", serif;
-  font-weight: 900; font-size: clamp(2.2rem, 5.5vw, 4rem);
-  line-height: 1.1; margin: 0 0 .9rem;
-}
-.ss2-sub { color: #4a5a63; max-width: 34em; font-size: .95rem; line-height: 1.9; }
-
-/* ---- 横向轨道 ---- */
-.ss2-track {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(300px, 380px);
-  gap: clamp(1rem, 2.5vw, 2rem);
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding-bottom: 1rem;
-  scrollbar-width: none;
-}
-.ss2-track::-webkit-scrollbar { display: none; }
-.ss2-card {
-  scroll-snap-align: center;
-  position: relative;
-  min-height: 620px;
-  border-radius: 6px;
-  padding: 2.2rem 1.8rem 2rem;
-  overflow: hidden;
-  display: flex; flex-direction: column;
-  isolation: isolate;
-  box-shadow: 0 20px 50px -24px rgba(11,30,45,.45);
-  transition: transform .5s cubic-bezier(.2,.8,.2,1);
-}
-.ss2-card:hover { transform: translateY(-6px); }
-.ss2-card--sea { background: var(--deep); color: var(--paper); }
-.ss2-card--forest { background: var(--ink); color: var(--paper); }
-.ss2-card--valley { background: var(--mist); color: var(--ink); }
-
-/* ---- 程序化纹理 ---- */
-.ss2-tex { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; opacity: .9; }
-.ss2-card--sea .ss2-tex { opacity: .35; }
-.ss2-card--forest .ss2-tex { opacity: .5; }
-.ss2-card--valley .ss2-tex { opacity: .4; }
-
-/* ---- 巨型倾斜编号 ---- */
-.ss2-num {
-  position: absolute; top: -1.5rem; right: -.5rem;
-  font-size: clamp(7rem, 12vw, 10rem);
-  font-weight: 800; line-height: 1;
-  transform: rotate(-8deg);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -.04em;
-  opacity: .16; pointer-events: none;
-  font-family: "Helvetica Neue", sans-serif;
-}
-.ss2-num--sea { color: var(--paper); }
-.ss2-num--forest { color: var(--mist); }
-.ss2-num--valley { color: var(--ink); }
-
-/* ---- 竖排站名 ---- */
-.ss2-station {
-  position: absolute; left: 1.6rem; top: 2rem;
-  writing-mode: vertical-rl;
-  display: flex; gap: .7rem; align-items: center;
-}
-.ss2-vname {
-  font-family: "Noto Serif SC", "Songti SC", serif;
-  font-size: clamp(1.6rem, 3vw, 2.1rem); font-weight: 900;
-  letter-spacing: .3em;
-  border-left: 3px solid var(--sun);
-  padding-left: .55rem;
-}
-.ss2-vmeta { font-size: .7rem; letter-spacing: .4em; opacity: .65; }
-
-.ss2-data { margin: 4.5rem 0 0; }
-.ss2-coord {
-  display: flex; justify-content: space-between;
-  font-size: .7rem; letter-spacing: .12em; opacity: .7;
-  font-variant-numeric: tabular-nums;
-  border-top: 1px dashed currentColor;
-  padding-top: .6rem;
-}
-.ss2-alt { font-size: .85rem; margin: .5rem 0 .15rem; font-variant-numeric: tabular-nums; }
-.ss2-alt b { font-size: 1.35rem; font-weight: 700; margin: 0 .15em; }
-.ss2-weather {
-  font-size: .78rem; line-height: 1.7; opacity: .85;
-  border-left: 2px solid var(--sun); padding-left: .6rem;
-  min-height: 2.6em; font-variant-numeric: tabular-nums;
+/* 修复 undefined 引用导致的样式丢失，使用回退值 */
+:root {
+  --primary-color: #3b82f6;
+  --text-color: #1f2937;
+  --bg-color: #ffffff;
 }
 
-.ss2-fac {
-  list-style: none; margin: auto 0 1.2rem; padding: 0;
-  display: grid; grid-template-columns: 1fr 1fr; gap: .55rem .9rem;
-  font-size: .82rem;
-}
-.ss2-fac li::before { content: "· "; color: var(--sun); font-weight: 700; }
-
-.ss2-price {
-  font-variant-numeric: tabular-nums;
-  font-size: .85rem; letter-spacing: .05em; margin: 0 0 .9rem;
-}
-.ss2-price b { font-size: 2rem; font-weight: 800; margin: 0 .1em; }
-
-.ss2-cta {
-  align-self: flex-start;
-  border: 1.5px solid currentColor;
-  background: transparent; color: inherit;
-  font: inherit; font-size: .88rem; letter-spacing: .15em;
-  padding: .8rem 1.5rem; border-radius: 3px;
-  cursor: pointer;
-  transition: background .25s, color .25s, transform .15s;
-}
-.ss2-cta:hover { background: var(--sun); border-color: var(--sun); color: var(--ink); }
-.ss2-cta:active { transform: scale(.97); }
-.ss2-card--sea .ss2-cta:hover { background: var(--sun); }
-.ss2-card--valley .ss2-cta:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-
-/* ---- 切档指示 ---- */
-.ss2-nav { display: flex; gap: .6rem; margin-top: 1.6rem; }
-.ss2-dot {
-  border: 1px solid var(--deep); background: transparent; color: var(--deep);
-  font: inherit; font-size: .75rem; letter-spacing: .3em;
-  padding: .45rem 1rem .45rem 1.3rem; border-radius: 99px; cursor: pointer;
-  opacity: .55; transition: all .3s;
-}
-.ss2-dot.is-on { background: var(--deep); color: var(--paper); opacity: 1; }
-
-/* ---- 移动端：全屏档案页 ---- */
-@media (max-width: 640px) {
-  .ss2 { padding: 3rem 0 2rem; }
-  .ss2-head { padding: 0 1.25rem; }
-  .ss2-track {
-    grid-auto-columns: 100%;
-    gap: 0; padding-bottom: 0;
-    scroll-padding: 0;
-  }
-  .ss2-card {
-    min-height: 76vh; border-radius: 0;
-    padding: 4.2rem 1.5rem 1.8rem;
-  }
-  .ss2-tex { opacity: .18; }
-  .ss2-num { font-size: 6rem; top: -.5rem; }
-  .ss2-station { left: 1.2rem; }
-}
-.ss3-sec{
-  --ink:#0B1E2D; --deep:#1E5F74; --mist:#63B7AF;
-  --paper:#F2E9DC; --sun:#E9B44C; --coral:#C14953;
-  min-height:100vh; background:var(--ink); color:var(--paper);
-  padding:96px clamp(20px,6vw,120px); position:relative; overflow:hidden;
-  font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif;
-}
-.ss3-sec::before{
-  content:""; position:absolute; inset:0; pointer-events:none;
-  background:radial-gradient(1200px 500px at 80% -10%, rgba(99,183,175,.12), transparent 60%);
-}
-.ss3-head{position:relative; max-width:640px}
-.ss3-eyebrow{color:var(--sun); letter-spacing:.4em; font-size:12px; margin:0 0 14px}
-.ss3-title{
-  font-family:'Noto Serif SC','Songti SC',serif; font-weight:600;
-  font-size:clamp(38px,6vw,64px); margin:0 0 16px; line-height:1.1;
-}
-.ss3-sub{color:rgba(242,233,220,.65); font-size:15px; line-height:1.9; margin:0}
-
-.ss3-legend{display:flex; gap:10px; flex-wrap:wrap; margin:28px 0 20px}
-.ss3-tag{
-  font-size:12px; padding:6px 12px; border-radius:99px; letter-spacing:.05em;
-  font-variant-numeric:tabular-nums; border:1px solid rgba(242,233,220,.18);
-}
-.ss3-tag--open{background:rgba(30,95,116,.5); color:var(--mist)}
-.ss3-tag--disc{background:rgba(233,180,76,.15); color:var(--sun); border-color:rgba(233,180,76,.35)}
-.ss3-tag--full{color:rgba(242,233,220,.4)}
-
-.ss3-quick{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:26px}
-.ss3-quick-label{font-size:13px; color:rgba(242,233,220,.5); margin-right:4px}
-.ss3-chip{
-  cursor:pointer; border:1px solid rgba(99,183,175,.45); background:transparent;
-  color:var(--mist); padding:11px 18px; border-radius:99px; font-size:14px;
-  font-variant-numeric:tabular-nums; transition:.25s; min-height:44px;
-}
-.ss3-chip:hover{background:var(--mist); color:var(--ink)}
-.ss3-chip.is-on{background:var(--sun); border-color:var(--sun); color:var(--ink)}
-
-.ss3-cal-wrap{display:flex; align-items:center; gap:16px; margin:14px 0 12px}
-.ss3-month{
-  font-family:'Noto Serif SC','Songti SC',serif; font-size:clamp(18px,2.4vw,24px);
-  color:var(--paper); flex:1; text-align:center;
-}
-.ss3-nav{
-  width:44px; height:44px; border-radius:50%; cursor:pointer; font-size:22px;
-  border:1px solid rgba(242,233,220,.25); background:transparent; color:var(--paper);
-  transition:.25s; line-height:1;
-}
-.ss3-nav:hover{background:var(--deep); border-color:var(--deep)}
-
-.ss3-weekbar{
-  display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-bottom:8px;
-}
-.ss3-weekbar span{text-align:center; font-size:12px; color:rgba(242,233,220,.45); padding:4px 0}
-.ss3-weekbar .ss3-wknd{color:var(--sun)}
-
-.ss3-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; position:relative}
-.ss3-cell{
-  position:relative; border:1px solid rgba(242,233,220,.1); border-radius:12px;
-  background:rgba(242,233,220,.03); padding:10px 8px 8px; min-height:88px;
-  cursor:pointer; text-align:left; color:var(--paper); font-family:inherit;
-  display:flex; flex-direction:column; gap:4px; transition:border-color .25s, background .25s, transform .25s;
-}
-.ss3-cell:hover:not(.is-full){border-color:var(--mist); transform:translateY(-2px)}
-.ss3-cell .d{font-size:15px; font-variant-numeric:tabular-nums; line-height:1}
-.ss3-cell .w{font-size:11px; color:rgba(242,233,220,.45); font-variant-numeric:tabular-nums}
-.ss3-cell .p{font-size:12px; color:var(--sun); font-variant-numeric:tabular-nums; margin-top:auto}
-.ss3-cell .p small{color:rgba(242,233,220,.4); font-size:10px}
-.ss3-cell.is-disc .p{color:var(--mist)}
-.ss3-cell.is-full{cursor:not-allowed; opacity:.35}
-.ss3-cell.is-full .tide{stroke:rgba(242,233,220,.6)}
-
-/* 微型涨潮图形：波高=剩余量 */
-.ss3-tide{width:100%; height:20px; display:block}
-.ss3-tide path{fill:none; stroke:var(--mist); stroke-width:2; stroke-linecap:round}
-
-.ss3-cell.is-in{background:var(--deep); border-color:var(--deep)}
-.ss3-cell.is-in .w,.ss3-cell.is-in .p small{color:rgba(242,233,220,.7)}
-.ss3-cell.is-edge{background:var(--sun); border-color:var(--sun)}
-.ss3-cell.is-edge .d,.ss3-cell.is-edge .w,.ss3-cell.is-edge .p,
-.ss3-cell.is-edge .p small{color:var(--ink)}
-.ss3-cell.is-edge .ss3-tide path{stroke:var(--ink)}
-
-.ss3-ripple{
-  position:absolute; width:12px; height:12px; border-radius:50%;
-  border:2px solid var(--sun); pointer-events:none; opacity:0; z-index:5;
-}
-@keyframes ss3Wave{
-  0%{opacity:.9; transform:translate(-50%,-50%) scale(.5)}
-  100%{opacity:0; transform:translate(-50%,-50%) scale(6)}
-}
-.ss3-ripple.is-go{animation:ss3Wave .8s ease-out}
-
-.ss3-pick-info{
-  margin-top:26px; padding:20px 22px; border-radius:14px;
-  background:rgba(30,95,116,.25); border:1px solid rgba(99,183,175,.25);
-  display:flex; align-items:center; gap:18px; flex-wrap:wrap;
-}
-.ss3-pick-date{font-family:'Noto Serif SC','Songti SC',serif; font-size:17px}
-.ss3-pick-meta{color:rgba(242,233,220,.65); font-size:13px; font-variant-numeric:tabular-nums; flex:1}
-.ss3-go{
-  cursor:pointer; border:none; border-radius:99px; padding:14px 28px; min-height:44px;
-  background:var(--coral); color:var(--paper); font-size:15px; letter-spacing:.08em;
-  transition:.25s; font-family:inherit;
-}
-.ss3-go:disabled{background:rgba(242,233,220,.12); color:rgba(242,233,220,.4); cursor:not-allowed}
-.ss3-go:not(:disabled):hover{background:#d55a64; transform:translateY(-1px)}
-
-@media (max-width:680px){
-  .ss3-grid{display:flex; overflow-x:auto; scroll-snap-type:x mandatory; gap:8px; padding-bottom:8px}
-  .ss3-cell{flex:0 0 64px; min-height:110px; scroll-snap-align:start}
-  .ss3-weekbar{display:none}
-  .ss3-month{font-size:16px}
+body {
+  margin: 0;
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
 }
 
+img, video { max-width: 100%; height: auto; display: block; }
+
+/* 修复元素溢出与 flex 布局常见问题 */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+  overflow-x: hidden;
+}
+
+/* 修复移动端点击高亮与滚动问题 */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 修复 fixed 元素在移动端的问题 */
+.fixed-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  transform: translateZ(0);
+}
 </style></head><body>
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>潮汐露营 · 潮起</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="ss1.css">
-</head>
-<body>
-<section class="ss1" id="s1">
-  <canvas class="ss1-canvas" id="ss1Canvas" aria-hidden="true"></canvas>
-  <div class="ss1-veil" id="ss1Veil" aria-hidden="true"></div>
-
-  <header class="ss1-nav">
-    <div class="ss1-logo">潮汐露营<span>TIDE&nbsp;CAMP</span></div>
-    <nav class="ss1-menu">
-      <a href="#" data-goto="s2">营地</a>
-      <a href="#" data-goto="s3">择日</a>
-      <a href="#" data-goto="s4">预订</a>
-    </nav>
-  </header>
-
-  <div class="ss1-hero">
-    <p class="ss1-kicker">小众露营地 · 每逢周末涨潮</p>
-    <h1 class="ss1-title">
-      <span class="ss1-line">城市是常水位，</span>
-      <span class="ss1-line ss1-line-accent">周末是涨潮。</span>
-    </h1>
-    <p class="ss1-sub">三个营地 · 海边 / 森林 / 山谷 —— 水位正在上涨，请及时登岸。</p>
-    <button class="ss1-cta" id="ss1Go">开始选营地<span class="ss1-cta-arrow">→</span></button>
-  </div>
-
-  <div class="ss1-tide-hint">
-    <svg width="14" height="42" viewBox="0 0 14 42" fill="none" aria-hidden="true">
-      <path d="M7 0 V34 M2 29 L7 35 L12 29" stroke="#E9B44C" stroke-width="1.5" stroke-linecap="round"/>
-    </svg>
-    <span>顺流而下 · 滚动查看</span>
-    <span class="ss1-tide-level">当前水位 <b id="ss1Level">0.0</b>m</span>
+<!-- 幕1：首屏 Hero + CTA -->
+<section class="t-hero" id="scene1">
+  <canvas class="t-hero-canvas" id="heroCanvas"></canvas>
+  <div class="t-hero-inner">
+    <p class="t-hero-kicker">周末两日 · 3 个营地 · 在线订位</p>
+    <h1 class="t-hero-title">周五出发，<br>周日潮落前回家。</h1>
+    <p class="t-hero-sub">潮汐露营 · 海边 / 森林 / 山谷三处小众营地，专为城市青年周末出行打造。选营地 → 选周末 → 提交意向，三步完成预订。</p>
+    <div class="t-hero-cta">
+      <a class="t-btn t-btn-primary" href="#scene2" id="heroCta">立即预订周末营位</a>
+      <a class="t-btn t-btn-ghost" href="#scene2">先看看三个营地 ↓</a>
+    </div>
+    <ul class="t-hero-meta">
+      <li><strong>3</strong>个营地</li>
+      <li><strong>¥128</strong>起 / 晚</li>
+      <li><strong>0</strong>元取消（前3天）</li>
+    </ul>
   </div>
 </section>
-
-<section class="ss1-next" id="s2-anchor"></section>
-
-<script src="ss1.js"></script>
-</body>
-</html>
-<section class="ss2" id="s2">
-  <div class="ss2-head">
-    <p class="ss2-kicker">潮汐露营 · 站点档案</p>
-    <h2 class="ss2-title">潮间 · 三营地</h2>
-    <p class="ss2-sub">沿水而设的三座营地，如同三处水文观测站——各有潮位、各有气象。</p>
+<!-- 幕2：三营地横向对比选择 -->
+<section class="t-camps" id="scene2">
+  <div class="t-sec-head">
+    <h2 class="t-h2">选一个营地，占一个周末</h2>
+    <p class="t-sec-sub">点击卡片即可锁定营地，进入日历选期。三处设施与价格一目了然。</p>
   </div>
-
-  <div class="ss2-track" id="ss2Track">
-    <!-- 01 后浪营地 -->
-    <article class="ss2-card ss2-card--sea" data-camp="后浪营地" data-terrain="海边" data-price="328" data-unit="席">
-      <svg class="ss2-tex ss2-tex--wave" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
-      <span class="ss2-num ss2-num--sea">01</span>
-      <div class="ss2-station">
-        <span class="ss2-vname">后浪营地</span>
-        <span class="ss2-vmeta">海边 · 观潮位</span>
-      </div>
-      <div class="ss2-data">
-        <p class="ss2-coord"><span>北纬 21.42°</span><span>东经 109.83°</span></p>
-        <p class="ss2-alt">海拔 <b>4 m</b></p>
-        <p class="ss2-weather" id="ss2w0">生成中…</p>
-      </div>
-      <ul class="ss2-fac">
-        <li>帐篷平台 12 席</li>
-        <li>海景天幕</li>
-        <li>冲浪板租借</li>
-        <li>淡水淋浴</li>
-      </ul>
-      <p class="ss2-price">¥<b>328</b>/席 起</p>
-      <button class="ss2-cta" data-cta>选这个，看日期 →</button>
-    </article>
-
-    <!-- 02 苔痕营地 -->
-    <article class="ss2-card ss2-card--forest" data-camp="苔痕营地" data-terrain="森林" data-price="458" data-unit="栋">
-      <svg class="ss2-tex ss2-tex--contour" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
-      <span class="ss2-num ss2-num--forest">02</span>
-      <div class="ss2-station">
-        <span class="ss2-vname">苔痕营地</span>
-        <span class="ss2-vmeta">森林 · 观林线</span>
-      </div>
-      <div class="ss2-data">
-        <p class="ss2-coord"><span>北纬 24.61°</span><span>东经 113.05°</span></p>
-        <p class="ss2-alt">海拔 <b>860 m</b></p>
-        <p class="ss2-weather" id="ss2w1">生成中…</p>
-      </div>
-      <ul class="ss2-fac">
-        <li>树屋 6 栋</li>
-        <li>篝火圈</li>
-        <li>溪流步道</li>
-        <li>森林浴室</li>
-      </ul>
-      <p class="ss2-price">¥<b>458</b>/栋 起</p>
-      <button class="ss2-cta" data-cta>选这个，看日期 →</button>
-    </article>
-
-    <!-- 03 云线营地 -->
-    <article class="ss2-card ss2-card--valley" data-camp="云线营地" data-terrain="山谷" data-price="388" data-unit="顶">
-      <svg class="ss2-tex ss2-tex--star" viewBox="0 0 400 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
-      <span class="ss2-num ss2-num--valley">03</span>
-      <div class="ss2-station">
-        <span class="ss2-vname">云线营地</span>
-        <span class="ss2-vmeta">山谷 · 观云量</span>
-      </div>
-      <div class="ss2-data">
-        <p class="ss2-coord"><span>北纬 27.80°</span><span>东经 102.27°</span></p>
-        <p class="ss2-alt">海拔 <b>2,140 m</b></p>
-        <p class="ss2-weather" id="ss2w2">生成中…</p>
-      </div>
-      <ul class="ss2-fac">
-        <li>星空球形帐 10 顶</li>
-        <li>日出栈道</li>
-        <li>手冲咖啡站</li>
-        <li>防潮地台</li>
-      </ul>
-      <p class="ss2-price">¥<b>388</b>/顶 起</p>
-      <button class="ss2-cta" data-cta>选这个，看日期 →</button>
-    </article>
-  </div>
-
-  <nav class="ss2-nav" aria-label="营地切换">
-    <button class="ss2-dot is-on" data-go="0" aria-label="后浪营地">后浪</button>
-    <button class="ss2-dot" data-go="1" aria-label="苔痕营地">苔痕</button>
-    <button class="ss2-dot" data-go="2" aria-label="云线营地">云线</button>
-  </nav>
+  <div class="t-camp-grid" id="campGrid"></div>
 </section>
-<section class="ss3-sec" id="s3">
-  <div class="ss3-head">
-    <p class="ss3-eyebrow">择日 · TIDE CALENDAR</p>
-    <h2 class="ss3-title">潮汐日历</h2>
-    <p class="ss3-sub">当前营地 · 未来 6 周。涨潮即满席，落潮尚有余位——循着潮汐，择一日入野。</p>
+<!-- 幕3：周末日历 + 预订表单（同屏左右布局） -->
+<section class="t-book" id="scene3">
+  <div class="t-sec-head">
+    <h2 class="t-h2">选周末，填一张表，就出发</h2>
+    <p class="t-sec-sub">请先在上方选择营地，再点选下方任一周末营位。</p>
   </div>
-
-  <div class="ss3-legend">
-    <span class="ss3-tag ss3-tag--open">周末可订</span>
-    <span class="ss3-tag ss3-tag--disc">平日 −15%</span>
-    <span class="ss3-tag ss3-tag--full">已满 · 退潮不可追</span>
-  </div>
-
-  <div class="ss3-quick">
-    <span class="ss3-quick-label">快捷档</span>
-    <button class="ss3-chip" data-quick="3-sat">3 人 · 周六</button>
-    <button class="ss3-chip" data-quick="2-sun">2 人 · 周日</button>
-    <button class="ss3-chip" data-quick="4-fri">4 人 · 周五</button>
-  </div>
-
-  <div class="ss3-cal-wrap">
-    <button class="ss3-nav" id="ss3Prev" aria-label="上一周">‹</button>
-    <div class="ss3-month" id="ss3MonthName"></div>
-    <button class="ss3-nav" id="ss3Next" aria-label="下一周">›</button>
-  </div>
-
-  <div class="ss3-weekbar" id="ss3Weekbar">
-    <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span class="ss3-wknd">六</span><span class="ss3-wknd">日</span>
-  </div>
-
-  <div class="ss3-grid" id="ss3Grid"></div>
-
-  <div class="ss3-pick-info" id="ss3PickInfo">
-    <div class="ss3-pick-date" id="ss3PickDate">尚未选择 · 请点选入住与离店日期</div>
-    <div class="ss3-pick-meta" id="ss3PickMeta"></div>
-    <button class="ss3-go" id="ss3Go" disabled>确认档期 · 填写预订</button>
-  </div>
-
-  <div class="ss3-ripple" id="ss3Ripple"></div>
-</section>
-<section class="ss4-sec" id="s4">
-  <div class="ss4-inner">
-    <header class="ss4-head">
-      <span class="ss4-eyebrow">第四幕 · 落锚</span>
-      <h2 class="ss4-title">预订意向</h2>
-      <p class="ss4-sub">选择人数与装备，水位报价单将随你的决定缓缓上涨。</p>
-    </header>
-
-    <div class="ss4-grid">
-      <!-- 左：表单 -->
-      <form class="ss4-form" id="ss4Form" novalidate>
-        <fieldset class="ss4-block">
-          <legend>出行人数</legend>
-          <div class="ss4-stepper">
-            <button type="button" class="ss4-step-btn" id="ss4Minus" aria-label="减少人数">−</button>
-            <div class="ss4-count"><span id="ss4Count">2</span><small>人</small></div>
-            <button type="button" class="ss4-step-btn" id="ss4Plus" aria-label="增加人数">＋</button>
-          </div>
-        </fieldset>
-
-        <fieldset class="ss4-block">
-          <legend>装备租借 <em>按人次 · 按晚计价</em></legend>
-          <div class="ss4-gear" id="ss4Gear">
-            <label class="ss4-gear-item">
-              <input type="checkbox" value="tent" data-name="帐篷" data-price="60">
-              <span class="ss4-gear-box"><i>⛺</i><b>帐篷</b><span class="ss4-num">¥60/晚</span></span>
-            </label>
-            <label class="ss4-gear-item">
-              <input type="checkbox" value="bag" data-name="睡袋" data-price="35">
-              <span class="ss4-gear-box"><i>🛏️</i><b>睡袋</b><span class="ss4-num">¥35/晚</span></span>
-            </label>
-            <label class="ss4-gear-item">
-              <input type="checkbox" value="mat" data-name="防潮垫" data-price="20">
-              <span class="ss4-gear-box"><i>🟫</i><b>防潮垫</b><span class="ss4-num">¥20/晚</span></span>
-            </label>
-            <label class="ss4-gear-item">
-              <input type="checkbox" value="lamp" data-name="营地灯" data-price="15">
-              <span class="ss4-gear-box"><i>🏮</i><b>营地灯</b><span class="ss4-num">¥15/晚</span></span>
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset class="ss4-block">
-          <legend>联系方式</legend>
-          <div class="ss4-fields">
-            <div class="ss4-field">
-              <label for="ss4Name">姓名</label>
-              <input type="text" id="ss4Name" placeholder="请输入真实姓名" autocomplete="name">
-              <span class="ss4-err" id="ss4NameErr">请填写姓名</span>
-            </div>
-            <div class="ss4-field">
-              <label for="ss4Phone">手机号</label>
-              <input type="tel" id="ss4Phone" maxlength="11" placeholder="11 位手机号" autocomplete="tel">
-              <span class="ss4-err" id="ss4PhoneErr">请填写正确的 11 位手机号</span>
-            </div>
-          </div>
-        </fieldset>
-      </form>
-
-      <!-- 右：水位报价单（桌面） -->
-      <aside class="ss4-sheet" id="ss4Sheet">
-        <div class="ss4-sheet-head">
-          <h3>水位报价单</h3>
-          <span class="ss4-tide-tag" id="ss4TideTag">低潮位</span>
-        </div>
-        <div class="ss4-water" aria-hidden="true">
-          <div class="ss4-water-fill" id="ss4WaterFill"></div>
-          <div class="ss4-water-wave"></div>
-        </div>
-        <dl class="ss4-list">
-          <div class="ss4-row"><dt>营地</dt><dd id="ss4Rc">潮汐营地 · 海岸站</dd></div>
-          <div class="ss4-row"><dt>日期</dt><dd class="ss4-num" id="ss4Rd">—</dd></div>
-          <div class="ss4-row"><dt>晚数</dt><dd class="ss4-num"><span id="ss4Rn">0</span> 晚</dd></div>
-          <div class="ss4-row"><dt>人数</dt><dd class="ss4-num"><span id="ss4Rp">2</span> 人</dd></div>
-          <div class="ss4-row ss4-row-sep"><dt>营位小计</dt><dd class="ss4-num">¥<span id="ss4Rsub">0</span></dd></div>
-          <div class="ss4-row"><dt>装备费</dt><dd class="ss4-num">¥<span id="ss4Rgear">0</span></dd></div>
-        </dl>
-        <div class="ss4-total">
-          <span>预估总价</span>
-          <strong class="ss4-num">¥<span id="ss4Rtotal">0</span></strong>
-        </div>
-        <div class="ss4-progress">
-          <div class="ss4-progress-bar" id="ss4ProgressBar"></div>
-          <span id="ss4ProgressTxt">完成度 0%</span>
-        </div>
-        <button type="button" class="ss4-submit" id="ss4Submit">
-          <span class="ss4-submit-water" id="ss4SubmitWater"></span>
-          <span class="ss4-submit-label">涨潮 · 提交预订</span>
-        </button>
-        <p class="ss4-note">提交意向后我们将以短信确认档期，未付款前不锁定营位。</p>
-      </aside>
+  <div class="t-book-grid">
+    <div class="t-cal-wrap">
+      <div class="t-cal-label">未来 8 个周末 · <span id="calCampName">未选营地</span></div>
+      <div class="t-cal" id="calGrid"></div>
     </div>
-  </div>
-
-  <!-- 移动端：底部汇总抽屉 -->
-  <div class="ss4-drawer" id="ss4Drawer">
-    <button class="ss4-drawer-bar" id="ss4DrawerToggle" type="button" aria-label="展开汇总">
-      <span class="ss4-drawer-grip"></span>
-      <span class="ss4-drawer-quick">预估总价 <b class="ss4-num">¥<span id="ss4DTotal">0</span></b> · <span id="ss4DDays">0</span> 晚 <span id="ss4DTools">详见报价单 ▾</span></span>
-    </button>
-    <div class="ss4-drawer-body">
-      <dl class="ss4-list ss4-list-m">
-        <div class="ss4-row"><dt>营地</dt><dd id="ss4Dc">潮汐营地 · 海岸站</dd></div>
-        <div class="ss4-row"><dt>日期</dt><dd class="ss4-num" id="ss4Dd">—</dd></div>
-        <div class="ss4-row"><dt>晚数 / 人数</dt><dd class="ss4-num"><span id="ss4Dn">0</span> 晚 · <span id="ss4Dp">2</span> 人</dd></div>
-        <div class="ss4-row"><dt>营位小计</dt><dd class="ss4-num">¥<span id="ss4Dsub">0</span></dd></div>
-        <div class="ss4-row"><dt>装备费</dt><dd class="ss4-num">¥<span id="ss4Dgear">0</span></dd></div>
-        <div class="ss4-row ss4-total"><dt>预估总价</dt><dd class="ss4-num">¥<span id="ss4Dtotal2">0</span></dd></div>
-      </dl>
-      <button type="button" class="ss4-submit" id="ss4SubmitM">
-        <span class="ss4-submit-water" id="ss4SubmitWaterM"></span>
-        <span class="ss4-submit-label">涨潮 · 提交预订</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- 翻转确认卡 -->
-  <div class="ss4-flip-wrap" id="ss4Flip" aria-hidden="true">
-    <div class="ss4-flip-inner">
-      <div class="ss4-ticket">
-        <div class="ss4-ticket-top">
-          <span class="ss4-ticket-logo">潮汐露营 TIDE CAMP</span>
-          <span class="ss4-ticket-no">登船证 BOARDING</span>
-        </div>
-        <div class="ss4-ticket-no-big ss4-num" id="ss4TicketNo">TS-0000</div>
-        <dl class="ss4-ticket-grid">
-          <div><dt>营地</dt><dd id="ss4Tc">—</dd></div>
-          <div><dt>日期</dt><dd class="ss4-num" id="ss4Td">—</dd></div>
-          <div><dt>人数</dt><dd class="ss4-num" id="ss4Tp">—</dd></div>
-          <div><dt>晚数</dt><dd class="ss4-num" id="ss4Tn">—</dd></div>
-        </dl>
-        <div class="ss4-ticket-gear">
-          <dt>装备清单</dt>
-          <dd id="ss4Tg">无租借装备</dd>
-        </div>
-        <p class="ss4-ticket-tip">📸 请保存本页截图，入住时向营地管家出示即可登船。</p>
-        <button type="button" class="ss4-again" id="ss4Again">重新预订 ↺</button>
+    <form class="t-form" id="bookForm">
+      <div class="t-step"><span class="t-step-no">1</span><span class="t-step-t">营地</span></div>
+      <div class="t-field" id="fCamp">尚未选择，请回到上方卡片点选</div>
+      <div class="t-step"><span class="t-step-no">2</span><span class="t-step-t">日期</span></div>
+      <div class="t-field" id="fDate">尚未选择周末</div>
+      <div class="t-step"><span class="t-step-no">3</span><span class="t-step-t">人数与装备</span></div>
+      <div class="t-row">
+        <label class="t-label">人数
+          <input type="number" id="ppl" min="1" max="8" value="2" class="t-input">
+        </label>
+        <label class="t-label">姓名
+          <input type="text" id="uname" required placeholder="怎么称呼你" class="t-input">
+        </label>
       </div>
-    </div>
+      <div class="t-row">
+        <label class="t-label">手机
+          <input type="tel" id="utel" required placeholder="11 位手机号" class="t-input">
+        </label>
+      </div>
+      <fieldset class="t-gear">
+        <legend class="t-label">装备租借（可选，按件/两晚计）</legend>
+        <label class="t-check"><input type="checkbox" value="帐篷 2人 · ¥180"> 帐篷 2人 · ¥180</label>
+        <label class="t-check"><input type="checkbox" value="睡袋 ×2 · ¥120"> 睡袋 ×2 · ¥120</label>
+        <label class="t-check"><input type="checkbox" value="焚火台套装 · ¥90"> 焚火台套装 · ¥90</label>
+        <label class="t-check"><input type="checkbox" value="营地灯串 · ¥40"> 营地灯串 · ¥40</label>
+      </fieldset>
+      <button type="submit" class="t-btn t-btn-primary t-submit" id="submitBtn">确认预订意向 →</button>
+      <p class="t-note">提交后营地管家将在 2 小时内电话确认档期。</p>
+    </form>
   </div>
 </section>
 <script type="module">
-(() => {
-  const cvs = document.getElementById('ss1Canvas');
-  const veil = document.getElementById('ss1Veil');
-  const levelEl = document.getElementById('ss1Level');
-  const ctx = cvs.getContext('2d');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isMobile = matchMedia('(max-width: 640px)');
-
-  let W = 0, H = 0, dpr = 1;
-  let scrollY = 0, t = 0;
-  const foams = [];
-
-  function resize() {
-    dpr = Math.min(devicePixelRatio || 1, 2);
-    W = cvs.clientWidth = cvs.parentElement.clientWidth;
-    H = cvs.parentElement.clientHeight;
-    cvs.width = W * dpr; cvs.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  addEventListener('resize', resize); resize();
-
-  for (let i = 0; i < 70; i++) foams.push({
-    x: Math.random(), y: Math.random(),
-    r: .8 + Math.random() * 2.4, s: .2 + Math.random() * .7, o: .1 + Math.random() * .35
-  });
-
-  addEventListener('scroll', () => { scrollY = window.scrollY; }, { passive: true });
-
-  function drawWave(base, amp, len, speed, color, alpha, width) {
-    ctx.beginPath();
-    for (let x = -10; x <= W + 10; x += 6) {
-      const y = base + Math.sin(x / len + t * speed) * amp
-                    + Math.sin(x / (len * .43) - t * speed * 1.6) * amp * .35;
-      x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.strokeStyle = color; ctx.globalAlpha = alpha;
-    ctx.lineWidth = width; ctx.stroke(); ctx.globalAlpha = 1;
-  }
-
-  function frame() {
-    t += reduce ? 0 : .016;
-
-    // 滚动驱动的振幅与亮度
-    const p = Math.min(scrollY / (innerHeight * .9), 1);
-    const amp = (isMobile.matches ? 10 : 20) * (1 + p * 1.6);
-    const base1 = H * (.62 - p * .08);
-    const base2 = H * (.78 - p * .06);
-
-    ctx.clearRect(0, 0, W, H);
-    // 背景水位渐变
-    const g = ctx.createLinearGradient(0, base1 - 120, 0, H);
-    g.addColorStop(0, '#0B1E2D'); g.addColorStop(1, '#1E5F74');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-    if (isMobile.matches) {
-      drawWave(base1, amp * 1.3, 90, 1.1, '#63B7AF', .9, 2.5);
-    } else {
-      drawWave(base1, amp, 110, 1.0, '#63B7AF', .95, 2.5);           // 涨潮线 →
-      drawWave(base2, amp * 1.2, 140, -0.8, '#E9B44C', .55, 2);      // 退潮线 ←
-    }
-
-    // 泡沫粒子
-    for (const f of foams) {
-      f.y -= .0006 * f.s * (1 + p);
-      if (f.y < 0) { f.y = 1; f.x = Math.random(); }
-      ctx.globalAlpha = f.o * (1 - p * .4);
-      ctx.fillStyle = '#F2E9DC';
-      ctx.beginPath();
-      ctx.arc(f.x * W, f.y * H, f.r, 0, 7);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-
-    veil.style.opacity = (p * .5).toFixed(3);
-    levelEl.textContent = (p * 3.2).toFixed(1);
-    requestAnimationFrame(frame);
-  }
-  frame();
-
-  // 点击直达 s2
-  const go = () => document.getElementById('s2-anchor')
-    .scrollIntoView({ behavior: 'smooth' });
-  document.getElementById('ss1Go').addEventListener('click', go);
-  document.querySelectorAll('.ss1-menu a').forEach(a =>
-    a.addEventListener('click', e => { e.preventDefault(); go(); }));
+// 幕1：Canvas 潮汐波浪背景（自适应缓冲尺寸，修复拉伸模糊）
+(function(){
+  const cv = document.getElementById('heroCanvas');
+  const ctx = cv.getContext('2d');
+  function resize(){ cv.width = cv.clientWidth * devicePixelRatio; cv.height = cv.clientHeight * devicePixelRatio; }
+  resize(); window.addEventListener('resize', resize);
+  let t = 0;
+  (function draw(){
+    t += 0.008;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    const H = cv.height, W = cv.width;
+    [[0.62,'rgba(255,107,74,0.10)'],[0.72,'rgba(30,95,116,0.35)'],[0.84,'rgba(30,95,116,0.55)']].forEach(function(l,i){
+      ctx.beginPath(); ctx.moveTo(0,H);
+      for(let x=0;x<=W;x+=8){
+        const y = H*l[0] + Math.sin(x*0.004/devicePixelRatio + t*(1+i*0.4) + i)*H*0.03;
+        ctx.lineTo(x,y);
+      }
+      ctx.lineTo(W,H); ctx.closePath(); ctx.fillStyle=l[1]; ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  })();
 })();
-
-
-
+// 幕2：营地数据 + 选中态（写入全局状态）
+const TIDE = { camp: null, date: null };
+const CAMPS = [
+  {id:'sea',  tag:'SEASIDE', name:'听浪营地 · 海边', loc:'广东 · 双月湾东岸', price:158,
+   feats:['直线海景营位 12 处','公共天幕 + 冲淡水','夜间赶海向导','可携宠']},
+  {id:'forest',tag:'FOREST', name:'苔原营地 · 森林', loc:'浙江 · 莫干山北麓', price:128,
+   feats:'杉林环抱营位 18 处|溪水降温区|柴火灶与烧烤台|星空无光害'.split('|')},
+  {id:'valley',tag:'VALLEY', name:'云隙营地 · 山谷', loc:'四川 · 彭州龙门山', price:178,
+   feats:'悬崖观景平台|高山冷泉泡池|桨板瑜伽课程|帐篷已搭好可选'}
+];
+(function(){
+  const grid = document.getElementById('campGrid');
+  CAMPS.forEach(function(c){
+    const el = document.createElement('article');
+    el.className = 't-camp'; el.dataset.id = c.id;
+    el.innerHTML =
+      '<span class="t-camp-tag">'+c.tag+'</span>'+
+      '<h3>'+c.name+'</h3>'+
+      '<p class="t-camp-loc">'+c.loc+'</p>'+
+      '<ul class="t-camp-feats">'+c.feats.map(function(f){return '<li>'+f+'</li>'}).join('')+'</ul>'+
+      '<div class="t-camp-foot"><span class="t-camp-price">¥'+c.price+'<small> /晚</small></span><span class="t-camp-pick">选择 →</span></div>';
+    el.addEventListener('click', function(){
+      document.querySelectorAll('.t-camp').forEach(function(x){x.classList.remove('active')});
+      el.classList.add('active');
+      TIDE.camp = c;
+      document.getElementById('scene3').scrollIntoView({behavior:'smooth'});
+    });
+    grid.appendChild(el);
+  });
+})();
 </script></body></html>
