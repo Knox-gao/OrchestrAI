@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>silkroad</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+:root { --accent: #2B1D12; }
+* { margin:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body { background:#05070a; color:#dbe9f2; font-family:Georgia,'Songti SC',serif; overflow-x:hidden; }
+a { -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} *{animation-duration:.01s !important} }
+.sc-cine { height: 210vh; } .sc-cine .cine-sticky { position:sticky; top:0; height:100vh; overflow:hidden; }
+.sc-cine canvas { position:absolute; inset:0; width:100%; height:100%; }
+.cine-vig { position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse at 50% 40%, transparent 44%, rgba(0,1,3,.62) 80%, rgba(0,1,3,.94) 100%); }
+.cine-title { position:absolute; left:50%; top:16%; transform:translateX(-50%); text-align:center; pointer-events:none; width:92%; }
+.cine-title .kick { font:400 10px/1 ui-monospace,monospace; letter-spacing:.6em; color:#C8992E; margin-bottom:18px; }
+.cine-title h1 { font-weight:300; font-size:clamp(38px,6vw,80px); letter-spacing:.5em; text-indent:.5em; color:#E8D9B5; margin:0; }
+.cine-title .sub { margin-top:14px; font:300 11.5px/1 ui-monospace,monospace; letter-spacing:.4em; color:rgba(230,239,245,.55); }
+.cine-cue { position:absolute; left:50%; bottom:36px; transform:translateX(-50%); font:400 10px/1 ui-monospace,monospace; letter-spacing:.44em; color:rgba(230,239,245,.5); animation:cineBob 2.6s infinite; }
+@keyframes cineBob { 50% { transform:translate(-50%,8px); opacity:.5; } }
+@media (prefers-reduced-motion:reduce){ .cine-cue{animation:none} }
+.tr { position:relative; height:150vh; }
+.#tr-s1-s2 .dp { position:sticky; top:0; height:100vh; display:grid; place-items:center; background:#1A110A; }
+.#tr-s1-s2 .dp span { font:300 clamp(15px,2vw,24px)/2 ui-monospace,monospace; letter-spacing:.6em; color:rgba(220,235,245,.7); transform:scale(.86); filter:blur(8px); opacity:0; will-change:transform,filter,opacity; }
+.sc-press { height: 250vh; } .sc-press .press-sticky { position:sticky; top:0; height:100vh; display:grid; place-content:center; text-align:center; }
+.press-tag { font:400 10px/1 ui-monospace,monospace; letter-spacing:.5em; color:#C8992E; margin-bottom:4vh; }
+.press-h { font-weight:200; font-size:clamp(32px,5.6vw,72px); letter-spacing:0.5emem; margin:0; }
+.press-p { margin-top:3.4vh; font-size:14px; color:rgba(220,235,240,.6); }
+.press-meta { margin-top:2.4vh; font:400 11px/1 ui-monospace,monospace; letter-spacing:.3em; color:#C8992E; }
+.tr { position:relative; height:150vh; }
+.#tr-s2-s3 { overflow:hidden; background:transparent; }
+.#tr-s2-s3 .lf { position:sticky; top:0; height:100vh; display:grid; place-items:center; }
+.#tr-s2-s3 .lf span { font:700 clamp(200px,46vw,560px)/1 Georgia,serif; color:#C8992E; opacity:.07; transform:scale(.4); will-change:transform,opacity; }
+.sc-flow { height: 190vh; } .sc-flow .flow-sticky { position:sticky; top:0; height:100vh; display:flex; align-items:center; overflow:hidden; }
+.flow-frame { position:relative; width:min(880px,84vw); height:min(560px,62vh); margin:0 auto; border:1px solid rgba(127,216,255,.35); background:#1A110A; box-shadow:0 0 0 8px rgba(2,10,14,.8), 0 0 40px 200,153,4622, 0 30px 90px rgba(0,0,0,.6); }
+.flow-frame canvas { width:100%; height:100%; }
+.flow-label { position:absolute; top:-28px; left:0; font:400 10px/1 ui-monospace,monospace; letter-spacing:.4em; color:rgba(220,235,240,.55); }
+.flow-hint { position:absolute; left:0; right:0; bottom:12px; text-align:center; font:400 10px/1 ui-monospace,monospace; letter-spacing:.4em; color:rgba(220,235,240,.5); pointer-events:none; }
+.flow-side { position:absolute; right:clamp(16px,4vw,52px); bottom:38px; max-width:260px; font:400 10.5px/2 ui-monospace,monospace; letter-spacing:.16em; color:rgba(220,235,240,.6); text-align:right; }
+@media (max-width:760px){ .flow-frame{height:54vh} .flow-side{position:static;margin-top:12px;text-align:left} }
+.tr { position:relative; height:150vh; }
+.#tr-s3-s4 .ink { position:sticky; top:0; height:100vh; background:#2B1D12; clip-path:circle(0% at 50% 55%); will-change:clip-path; }
+.#tr-s3-s4 .ink::after { content:'落账'; position:absolute; inset:0; display:grid; place-content:center; font:300 clamp(28px,4.4vw,58px)/1 Georgia,serif; letter-spacing:.5em; color:rgba(235,242,246,.85); }
+.sc-close { min-height:100vh; display:grid; place-content:center; text-align:center; padding:18vh 22px; position:relative; overflow:hidden; background:linear-gradient(180deg,transparent,#02050 7); background:linear-gradient(180deg,transparent,rgba(0,0,0,.3)); }
+.close-floor { position:absolute; left:0; right:0; bottom:0; height:190px; background:radial-gradient(ellipse at 50% 100%, rgba(10,16,22,.8) 0%, transparent 72%); }
+.close-floor::after { content:''; position:absolute; left:8%; right:8%; bottom:0; height:60px; background:linear-gradient(180deg, transparent, rgba(4,8,12,.9) 40%); clip-path:polygon(0 100%,4% 62%,12% 78%,22% 40%,30% 66%,43% 30%,55% 58%,66% 38%,78% 70%,88% 46%,96% 68%,100% 100%); }
+.sc-close h2 { font-weight:300; font-size:clamp(30px,4.6vw,54px); letter-spacing:.4em; text-indent:.4em; color:#E8D9B5; margin:0; }
+.sc-close p { margin-top:3vh; font-size:13.5px; color:rgba(219,233,242,.6); letter-spacing:.12em; }
+.close-cta { display:inline-block; margin-top:5vh; padding:16px 44px; border:1px solid #C8992E; color:#C8992E; text-decoration:none; font:400 12px/1 ui-monospace,monospace; letter-spacing:.4em; animation:closeGlow 3.2s infinite; }
+@keyframes closeGlow { 50% { box-shadow:0 0 40px #C8992E55; } }
+.close-fin { margin-top:7vh; font:400 9.5px/1.9 ui-monospace,monospace; letter-spacing:.3em; color:rgba(219,233,242,.3); }
+@media (prefers-reduced-motion:reduce){ .close-cta{animation:none} }
+</style>
+</head>
+<body>
+<script>
+/* 评审钩子：?motion=force 强制启用动画（覆盖系统 reduced-motion，供转场/动效审查） */
+if (location.search.includes('motion=force')) {
+  const _mm = window.matchMedia.bind(window);
+  window.matchMedia = (q) => /prefers-reduced-motion/.test(q)
+    ? { matches: false, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } }
+    : _mm(q);
+}
+</script>
+<section class="sc-s1 sc-cine" id="s1"><div class="cine-sticky"><canvas class="cine-cv"></canvas>
+  <div class="cine-vig"></div>
+  <div class="cine-title"><div class="kick">SILK ROAD LEDGER · 公元前138年—公元14世纪</div><h1>丝路驼队数据志</h1><div class="sub">一千五百年的商路，记成一本账</div></div>
+  <div class="cine-cue">向下滚动 ↓</div></div></section>
+<div class="tr" id="tr-s1-s2"><div class="dp"><span>启程</span></div></div>
+<section class="sc-s2 sc-press" id="s2"><div class="press-sticky">
+  <div class="press-tag">ROUTE LEDGER · 干线商路账</div><h2 class="press-h"></h2>
+  <p class="press-p">合计逾九千公里，单程八个月起，关口即定价权。</p><div class="press-meta"></div></div></section>
+<div class="tr" id="tr-s2-s3"><div class="lf"><span>货</span></div></div>
+<section class="sc-s3 sc-flow" id="s3"><div class="flow-sticky"><div class="flow-frame">
+  <div class="flow-label">CARGO FLOW · 货品商流（可搅动）</div><canvas class="flow-cv"></canvas>
+  <div class="flow-hint">拖动搅动商流</div></div>
+  <aside class="flow-side"></aside></div></section>
+<div class="tr" id="tr-s3-s4"><div class="ink"></div></div>
+<section class="sc-s4 sc-close" id="s4"><div class="close-floor"></div><div class="close-body">
+  <h2>这本账，还没有记完</h2><p>完整《丝路驼队数据志》含12条支线、36处关口的原始数据册，留下邮箱第一时间送达。</p>
+  <a class="close-cta" href="#" onclick="scrollTo({top:0,behavior:'smooth'});return false;">订阅完整数据册</a>
+  <div class="close-fin">OrchestrAI · 数据志系列 第肆号 · 数据经史学顾问核校</div></div></section>
+<script type="module">
+
+(() => {
+  const cv = document.querySelector('.cine-cv');
+  const ctx = cv.getContext('2d');
+  const BEAM = '#C8992E', DUST = '#E8D9B5';
+  const BGT = '#2B1D12', BGB = '#120B06';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W, H, dpr = Math.min(devicePixelRatio || 1, 2);
+  const resize = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
+  resize(); addEventListener('resize', resize);
+  const snow = Array.from({ length: 150 }, (_, i) => { const a = Math.sin(i*12.9898)*43758.5453, b = Math.sin(i*78.233)*12345.6789;
+    return { x:(a-Math.floor(a))*2000, y:(b-Math.floor(b))*1200, z:.25+((a+b)%1+1)%1*.75, r:.4+(b-Math.floor(b))*1.4 }; });
+  (function frame(t) {
+    const sc = cv.closest('.sc-cine').getBoundingClientRect();
+    const depth = Math.max(0, -sc.top) / 8;
+    const light = Math.max(0, Math.exp(-depth / 240));
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0, BGT); g.addColorStop(1, BGB);
+    ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+    if (light > .05) { ctx.save(); ctx.globalCompositeOperation = 'screen';
+      for (let i = 0; i < 5; i++) { const bx = W*(.12+i*.2)+Math.sin(t/4200+i*1.7)*50, sw = Math.sin(t/3600+i)*80;
+        const gr = ctx.createLinearGradient(bx,-80,bx+sw,H);
+        gr.addColorStop(0, 'rgba(120,190,235,'+(0.15*light)+')'); gr.addColorStop(.6,'rgba(90,160,215,'+(0.06*light)+')'); gr.addColorStop(1,'rgba(60,120,180,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(bx-36-i*12,-60); ctx.lineTo(bx+36+i*12,-60);
+        ctx.lineTo(bx+sw+140+i*50,H+40); ctx.lineTo(bx+sw-140-i*50,H+40); ctx.closePath(); ctx.fill(); }
+      ctx.restore(); }
+    for (const s of snow) { const px = s.x % 2000 - 200; if (px < -4 || px > W+4) continue;
+      const py = (s.y + (reduced ? 0 : t*.008*s.z)) % 1200; if (py > H) continue;
+      ctx.fillStyle = DUST + (0.1+s.z*.26) + ')'; ctx.beginPath(); ctx.arc(px,py,s.r*s.z,0,6.2832); ctx.fill(); }
+    requestAnimationFrame(frame);
+  })(0);
+})();
+(() => { const z = document.querySelector('#tr-s1-s2 .dp span');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function upd() { const r = z.closest('.tr').getBoundingClientRect(); const f = reduced ? 1 : Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+    z.style.transform = 'scale(' + (.86 + f * .14) + ')'; z.style.filter = 'blur(' + (8 - f * 8) + 'px)'; z.style.opacity = String(f); }
+  addEventListener('scroll', upd, { passive: true }); upd(); })();
+
+(() => {
+  const sec = document.getElementById('s2');
+  const h = sec.querySelector('.press-h'), meta = sec.querySelector('.press-meta');
+  const stages = ["长安—敦煌 一千九百公里 驼行约九十日","敦煌—撒马尔罕 两千九百公里 过玉门·葱岭两关","撒马尔罕—君士坦丁堡 四千二百公里 冬季封山须停行"];
+  const FROM = {"spacing":"0.5em","weight":200}, TO = {"spacing":"0.02em","weight":800};
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function upd() { const r = sec.getBoundingClientRect();
+    const f = reduced ? 1 : Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+    h.style.letterSpacing = (FROM.spacing - f*(FROM.spacing-TO.spacing)) + 'em';
+    h.style.fontWeight = String(Math.round(FROM.weight + f*(TO.weight-FROM.weight)));
+    h.textContent = stages[Math.min(stages.length - 1, Math.floor(f * stages.length))] ?? stages[0];
+    meta.textContent = '数据依据：斯坦因考察路线与《汉书·西域传》里程换算 ' + Math.round(f*100) + '%';
+  }
+  addEventListener('scroll', upd, { passive: true }); upd();
+})();
+(() => { const z = document.querySelector('#tr-s2-s3 .lf span');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function upd() { const r = z.closest('.tr').getBoundingClientRect(); const f = reduced ? 1 : Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+    z.style.transform = 'scale(' + (.4 + f * 1.5) + ')'; z.style.opacity = String(.07 + f * .16); }
+  addEventListener('scroll', upd, { passive: true }); upd(); })();
+
+(() => {
+  const sec = document.getElementById('s3');
+  const cv = sec.querySelector('.flow-cv');
+  const gl = cv.getContext('webgl', { antialias: false });
+  if (!gl) { cv.outerHTML = '<div style="position:absolute;inset:0;display:grid;place-content:center;color:rgba(220,235,240,.5);font:400 11px/1 ui-monospace,monospace;letter-spacing:.3em">WEBGL 不可用 · 静态观测模式</div>'; return; }
+  const N = Math.min(20000, 6000), DIM = '120,85,40', LIT = '200,153,46';
+  const VS = 'attribute vec3 aSeed;uniform float uT;uniform vec2 uM;uniform vec2 uR;uniform float uE;varying float vG;vec2 fl(vec2 p,float t){return vec2(sin(p.y*2.1+t*.21)+cos(p.x*1.7-t*.13),sin(p.x*2.6-t*.17)+cos(p.y*2.2+t*.11))*22.;}void main(){vec2 p=vec2(aSeed.x*uR.x,aSeed.y*uR.y);float l=fract(aSeed.z+uT*(.01+aSeed.z*.012));for(int i=0;i<4;i++)p+=fl(p*.004,uT)*.016;vec2 d=p-uM;float s=exp(-length(d)*.011)*uE;p+=normalize(d+.001)*s*90.+vec2(-d.y,d.x)*s*.5;p=mod(p,uR);float fk=.35+.65*pow(sin(l*6.2832+aSeed.z*40.)*.5+.5,3.);vG=clamp(s*2.4+fk*.42,.06,1.);gl_Position=vec4((p/uR)*2.-1.,0.,1.);gl_PointSize=(2.+aSeed.z*2.6)*(1.+vG*1.8)*uR.y/900.*1.8;}';
+  const FS = 'precision mediump float;varying float vG;void main(){vec2 c=gl_PointCoord-.5;float d=length(c);float co=smoothstep(.5,.05,d);vec3 col=mix(vec3(120,85,40)*.5,vec3(200,153,46),min(1.,vG*1.15));gl_FragColor=vec4(col,co*(.25+vG*.75));if(gl_FragColor.a<.02)discard;}';
+  const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+  const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+  const seeds = new Float32Array(N * 3); for (let i = 0; i < N * 3; i++) seeds[i] = Math.random();
+  const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, seeds, gl.STATIC_DRAW);
+  const a = gl.getAttribLocation(pr, 'aSeed'); gl.enableVertexAttribArray(a); gl.vertexAttribPointer(a, 3, gl.FLOAT, false, 0, 0);
+  const u = { t: gl.getUniformLocation(pr,'uT'), m: gl.getUniformLocation(pr,'uM'), r: gl.getUniformLocation(pr,'uR'), e: gl.getUniformLocation(pr,'uE') };
+  let mx = -9e3, my = -9e3, en = 0, tEn = 0, last = 0, run = false, t0 = performance.now();
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dpr = Math.min(devicePixelRatio || 1, 1.5);
+  addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; tEn = 1; last = performance.now(); });
+  const sz = () => { const r = cv.getBoundingClientRect(); if (!r.width) return; cv.width = r.width * dpr; cv.height = r.height * dpr; gl.viewport(0, 0, cv.width, cv.height); };
+  addEventListener('resize', sz);
+  new IntersectionObserver((es) => { run = es[0].isIntersecting; }, { threshold: .05 }).observe(sec);
+  (function fr(ts) { requestAnimationFrame(fr); if (!run) return; sz();
+    en += (tEn - en) * .035; if (ts - last > 4200) tEn = Math.max(0, tEn - .012);
+    const r = cv.getBoundingClientRect();
+    gl.uniform1f(u.t, reduced ? 20 : (ts - t0) / 1000); gl.uniform2f(u.m, mx - r.left, my - r.top); gl.uniform2f(u.r, r.width, r.height); gl.uniform1f(u.e, en);
+    gl.clearColor(.004, .031, .039, 1); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.POINTS, 0, N);
+  })(t0);
+})();
+(() => { const z = document.querySelector('#tr-s3-s4 .ink');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function upd() { const r = z.parentElement.getBoundingClientRect(); const f = reduced ? 1 : Math.min(1, Math.max(0, -r.top / (r.height - innerHeight)));
+    z.style.clipPath = 'circle(' + (f * 90) + '% at 50% 55%)'; }
+  addEventListener('scroll', upd, { passive: true }); upd(); })();
+</script>
+</body>
+</html>

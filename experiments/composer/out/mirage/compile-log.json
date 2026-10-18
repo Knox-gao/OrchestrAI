@@ -1,0 +1,42 @@
+{
+ "scenes": [
+  {
+   "id": "s1",
+   "capability": "cinematicStage",
+   "purpose": "定场：用体积光与尘粒建立'高温空气中的幻象'氛围，三秒内指认品牌名"
+  },
+  {
+   "id": "s2",
+   "capability": "dataLedger",
+   "purpose": "信息：四个代表作以数据档案带呈现，幻象被'归档为真实证据'"
+  },
+  {
+   "id": "s3",
+   "capability": "flowField",
+   "purpose": "视觉高潮：访客亲手搅动荧光粒子流，体验'幻象由我生成'的核心隐喻，最大体量交互"
+  },
+  {
+   "id": "s4",
+   "capability": "ledgerClose",
+   "purpose": "收束：把幻象落回真实邀约，CTA直达约聊"
+  }
+ ],
+ "transitions": [
+  {
+   "after": "s1",
+   "mechanism": "decomposeGrid",
+   "why": "'無境'二字散解为青色档案网格——蜃景被拆解归档，语义上正好承接作品档案幕"
+  },
+  {
+   "after": "s2",
+   "mechanism": "inkExpand",
+   "why": "档案（冷/静）被橙色热浪吞没——从'证据'进入'制造现场'，冷暖反转标记高潮开启"
+  },
+  {
+   "after": "s3",
+   "mechanism": "depthPush",
+   "why": "景深推近巨字，粒子流被吸进'無境'内部——隐喻一切幻象终归于无，落在邀约"
+  }
+ ],
+ "autoTransitions": []
+}

@@ -1,0 +1,263 @@
+{
+ "plan": {
+  "concept": {
+   "claim": "把头戴影院做成「一枚可翻转的观测仪器」——世界在你戴上之前，先被你亲手翻开。",
+   "identity": "巨型汉字「观」与六面体钛架仪器的双重指认物：所有转场都围绕字与仪器的交接",
+   "audience": "高端影音/科技尝鲜者与设计师人群",
+   "task": "发布观界 VISTA，突出 8K 微距屏/空间音频/钛架，引导预约试戴"
+  },
+  "artDirection": {
+   "palette": [
+    "#0B0E13",
+    "#1A2B3C",
+    "#C8A24B",
+    "#E8E4DC",
+    "#6FB4E8"
+   ],
+   "ink": "#E8E4DC",
+   "typography": "巨号衬线中文标题（观/界）+ 细体英文 VISTA 辅注，字距极端压缩与释放作为节奏手段",
+   "material": "钛灰金属 #1A2B3C 与晨雾蓝光 #6FB4E8，铜金 #C8A24B 只用于关键数据与 CTA",
+   "graphics": "体积光束+尘粒的电影感空间；荧光粒子暗示空间音频的声场"
+  },
+  "narrative": "一束光里出现「观界」二字→字解体成数据档案→粒子声场搅动→翻转钛架仪器看清规格→留下铜金刻印预约试戴",
+  "scenes": [
+   {
+    "id": "s1",
+    "name": "定场·观测开始",
+    "purpose": "首屏指认「观界」品牌与影院级气氛",
+    "capability": "cinematicStage",
+    "params": {
+     "kick": "VISTA 发布 · HEADSET CINEMA",
+     "title": "观界",
+     "sub": "戴上之前，先看清世界 · 8K Micro-OLED × 空间音频 × 钛合金",
+     "accent": "#C8A24B",
+     "ink": "#E8E4DC",
+     "beamColor": "#6FB4E8",
+     "dustColor": "#C8A24B",
+     "bgTop": "#0B0E13",
+     "bgBottom": "#1A2B3C"
+    },
+    "enter": "光束自顶部劈开黑暗，尘粒漂浮，巨字「观界」自雾中显影",
+    "exit": "光束收缩、字体开始碎裂",
+    "mobile": "光束改为单束，尘粒减半",
+    "accept": [
+     "首屏能指认巨字「观界」与副标 8K/钛合金文案",
+     "3 秒内有光束与尘粒可见"
+    ]
+   },
+   {
+    "id": "s2",
+    "name": "发展·参数档案",
+    "purpose": "用档案带陈述核心规格信息",
+    "capability": "dataLedger",
+    "params": {
+     "kicker": "规格档案 · SPEC LEDGER",
+     "heading": "每一项，都被刻进仪器",
+     "accent": "#6FB4E8",
+     "ink": "#E8E4DC",
+     "records": [
+      {
+       "no": "01",
+       "name": "8K 微距屏",
+       "en": "8K Micro-OLED",
+       "note": "单眼 4K×2，PPD 39，像素密度达视网膜极限 3 倍",
+       "stats": [
+        [
+         "分辨率",
+         "7680×4320"
+        ],
+        [
+         "刷新",
+         "120Hz"
+        ],
+        [
+         "色域",
+         "DCI-P3 98%"
+        ]
+       ]
+      },
+      {
+       "no": "02",
+       "name": "空间音频",
+       "en": "Spatial Audio",
+       "note": "六麦阵列 + 头部追踪，声音固定在空间而非耳机里",
+       "stats": [
+        [
+         "声道",
+         "6 麦阵列"
+        ],
+        [
+         "延迟",
+         "<8ms"
+        ],
+        [
+         "追踪",
+         "6DoF"
+        ]
+       ]
+      },
+      {
+       "no": "03",
+       "name": "钛合金骨架",
+       "en": "Titanium Frame",
+       "note": "五轴 CNC 一体成型 Ti-6Al-4V，整机仅 388g",
+       "stats": [
+        [
+         "材质",
+         "Ti-6Al-4V"
+        ],
+        [
+         "重量",
+         "388g"
+        ],
+        [
+         "铰链",
+         "20 万次"
+        ]
+       ]
+      }
+     ]
+    },
+    "enter": "档案带自左向右依次点亮",
+    "exit": "末条数据放大成铜金印章",
+    "mobile": "记录纵向堆叠，stats 横滑",
+    "accept": [
+     "三条记录的 no/name/stats 均可逐条指认",
+     "铜金色数据（如 388g）可被指出"
+    ]
+   },
+   {
+    "id": "s3",
+    "name": "高潮·声场粒子",
+    "purpose": "以最大体量的可交互粒子流呈现空间音频",
+    "capability": "flowField",
+    "params": {
+     "label": "空间音频 · 你的手就是声场",
+     "stirLabel": "搅动一下，声音被你推动",
+     "side": "left",
+     "count": 9000,
+     "bg": "#0B0E13",
+     "dim": "47,74,105",
+     "lit": "111,180,232"
+    },
+    "enter": "蓝色粒子自档案带散开后汇成流场",
+    "exit": "粒子被吸入右侧仪器轮廓",
+    "mobile": "触点搅动，粒子 4000",
+    "accept": [
+     "按住拖动可在 0.5s 内看到粒子被搅出漩涡",
+     "左侧文案「你的手就是声场」可指认"
+    ]
+   },
+   {
+    "id": "s4",
+    "name": "高潮·翻转仪器",
+    "purpose": "产品主视觉与规格/转化入口",
+    "capability": "productStage",
+    "params": {
+     "kicker": "观界 VISTA · 观测仪器",
+     "name": "观界 VISTA",
+     "tagline": "388g 钛架 · 一台你愿意翻过来看的影院",
+     "accent": "#C8A24B",
+     "bg": "#1A2B3C",
+     "ink": "#E8E4DC",
+     "specs": [
+      [
+       "屏幕",
+       "8K Micro-OLED"
+      ],
+      [
+       "音频",
+       "6DoF 空间音频"
+      ],
+      [
+       "骨架",
+       "钛合金 Ti-6Al-4V"
+      ],
+      [
+       "重量",
+       "388g"
+      ]
+     ],
+     "cta": "预约试戴",
+     "ctaTarget": "/reserve"
+    },
+    "enter": "拖转六面体钛架亮相，蓝光描边",
+    "exit": "六面体定格正面，铜金 CTA 呼吸",
+    "mobile": "单指拖转，CTA 固定底部",
+    "accept": [
+     "拖动六面体可 360° 旋转",
+     "点击「预约试戴」跳转 /reserve"
+    ]
+   },
+   {
+    "id": "s5",
+    "name": "收束·铜金刻印",
+    "purpose": "转化回响与留存记忆点",
+    "capability": "ledgerClose",
+    "params": {
+     "heading": "把影院，戴在眼前",
+     "note": "首批试戴限 500 席 · 全国 12 城 VISTA 体验馆",
+     "cta": "预约试戴 →",
+     "accent": "#C8A24B",
+     "ink": "#E8E4DC",
+     "foot": "观界 VISTA © 2025 · VISTA Labs"
+    },
+    "enter": "铜金刻印「界」字浮现，CTA 收拢于视觉中心",
+    "exit": "",
+    "mobile": "CTA 通栏按钮",
+    "accept": [
+     "CTA 可点击并给出预约反馈",
+     "「500 席/12 城」文案可指认"
+    ]
+   }
+  ],
+  "transitions": [
+   {
+    "after": "s1",
+    "mechanism": "decomposeGrid",
+    "params": {
+     "fromPhrase": "观界",
+     "color": "#6FB4E8"
+    },
+    "why": "「观」字散解为色谱网格，语义上等于「看清构成」——品牌字直接裂解成规格数据的入口"
+   },
+   {
+    "after": "s2",
+    "mechanism": "letterformHandoff",
+    "params": {
+     "glyph": "声",
+     "color": "#6FB4E8"
+    },
+    "why": "巨字「声」交接给粒子声场，把规格档案里的空间音频条款变成可玩的实体"
+   },
+   {
+    "after": "s3",
+    "mechanism": "depthPush",
+    "params": {
+     "word": "观",
+     "bg": "#1A2B3C"
+    },
+    "why": "景深推近把散逸的粒子吸向远处仪器轮廓，完成从声场到产品本体的视线聚焦"
+   },
+   {
+    "after": "s4",
+    "mechanism": "inkExpand",
+    "params": {
+     "color": "#C8A24B",
+     "word": "界"
+    },
+    "why": "铜金圆吞没全屏并留下「界」字刻印，呼应开场的「观界」完成闭环，把注意力交给 CTA"
+   }
+  ],
+  "acceptance": [
+   "首屏 3 秒内可指认巨字「观界」、光束与 8K/钛合金副标",
+   "全程三次出现「观/界」字形（开场字、景深推近字、结尾刻印）形成闭环",
+   "点击产品幕或结尾幕的「预约试戴」均在页面内给出跳转/反馈"
+  ]
+ },
+ "callMeta": {
+  "ms": 34615,
+  "tries": 1,
+  "tokens": 2491
+ }
+}
