@@ -33,11 +33,13 @@ export function saveAssets(projectName, assets) {
 }
 
 /** 采集结果 → 资产条目（src=来源工作区相对路径，供跨工作区复用读取） */
-export function assetEntry(img, { reason = '', provider = '', srcWs = '' } = {}) {
+export function assetEntry(img, { reason = '', provider = '', srcWs = '', slotKey = '', en = '' } = {}) {
   return {
     file: img.file,
     src: srcWs ? path.join(srcWs, img.file).replaceAll('\\', '/') : img.file,
     title: img.title ?? '',
+    slotKey: slotKey || slotKeyOf(img.title),
+    en: en || '',
     sub: img.sub ?? '',
     author: img.author ?? '',
     license: img.license ?? '',
@@ -51,18 +53,41 @@ export function assetEntry(img, { reason = '', provider = '', srcWs = '' } = {})
   };
 }
 
+/** 图位 key：展示名归一化（去空白/大小写） */
+export function slotKeyOf(name) {
+  return String(name ?? '').trim().toLowerCase().replace(/\s+/g, '');
+}
+
 /**
- * 锁定复用判定：按对象名找旧条目；locked 且源文件存在且 sha1 一致 → 返回可直接使用的图片对象。
- * 源文件被清理或改动 → 不复用（诚实降级为重新采集）。
- * @returns {{file,title,sub,desc,author,license,page,buf,reused:true}|null}
+ * 图位解析（语义角色判定）：
+ *   - 名称精确相同 → 同图位（复用候选）
+ *   - 名称不同但英文标识相同（如"雷神托尔"→"雷神"，en 都是 Thor）→ 同图位
+ *   - 英文标识都存在且不同 → 语义角色已实质变化 → 不得复用（status: semantic-change）
+ *   - 源文件丢失 / sha1 不符 → 明确状态，不静默换图
+ * @returns {{status:'reuse'|'source-missing'|'hash-mismatch'|'semantic-change'|'no-match', img?:Object}}
  */
-export function reusableAsset(assets, objectName) {
-  const prev = (assets.entries ?? []).find((e) => e.locked && e.title === objectName);
-  if (!prev) return null;
+export function resolveSlot(assets, item) {
+  const key = slotKeyOf(item.name);
+  const en = String(item.en ?? '').trim().toLowerCase();
+  const entries = assets.entries ?? [];
+  let prev = entries.find((e) => slotKeyOf(e.title) === key);
+  if (!prev && en) prev = entries.find((e) => e.en && e.en === en && e.locked);
+  if (!prev) return { status: 'no-match' };
+  if (en && prev.en && prev.en !== en) return { status: 'semantic-change', prev };
+  if (!prev.locked) return { status: 'no-match' };
   const fp = path.join(ROOT, 'workspaces', prev.src);
-  if (!fs.existsSync(fp)) return null;
+  if (!fs.existsSync(fp)) return { status: 'source-missing', prev };
   let buf;
-  try { buf = fs.readFileSync(fp); } catch { return null; }
-  if (hashBuf(buf) !== prev.sha1) return null;
-  return { file: prev.file, title: prev.title, sub: prev.sub, desc: prev.desc ?? '', author: prev.author, license: prev.license, page: prev.page, buf, reused: true };
+  try { buf = fs.readFileSync(fp); } catch { return { status: 'source-missing', prev }; }
+  if (hashBuf(buf) !== prev.sha1) return { status: 'hash-mismatch', prev };
+  return {
+    status: 'reuse',
+    img: { file: prev.file, title: prev.title, sub: prev.sub ?? '', desc: prev.desc ?? item.desc ?? '', author: prev.author, license: prev.license, page: prev.page, buf, reused: true },
+  };
+}
+
+/** 兼容保留：旧签名（按对象名复用） */
+export function reusableAsset(assets, objectName) {
+  const r = resolveSlot(assets, { name: objectName });
+  return r.status === 'reuse' ? r.img : null;
 }

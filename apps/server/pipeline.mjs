@@ -10,7 +10,11 @@ import { staticCheck } from './generator/quality.mjs';
 import { runNodeTests } from './runner.mjs';
 import { collectImages, queryCascade, bestMatch, extractEnglishTokens } from './scraper.mjs';
 import { visualAudit } from './visualaudit.mjs';
-import { loadAssets, saveAssets, assetEntry, reusableAsset } from './assets.mjs';
+import { loadAssets, saveAssets, assetEntry, reusableAsset, resolveSlot } from './assets.mjs';
+import { generateBrief } from './generator/designbrief.mjs';
+import { pickLayout } from './generator/layouts/index.mjs';
+import { rankCandidates } from './generator/curator.mjs';
+import { renderCheck } from './rendercheck.mjs';
 import { getKeys } from './keys.mjs';
 import { placeholderCard } from './generator/png.mjs';
 import { findStyle, getStyleDef } from './generator/styles.mjs';
@@ -105,6 +109,26 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       }
       spec.viaLLM = true;
       spec.llmProvider = intent.llmProvider;
+      // ---- 阶段二任务 B：完整 Design Brief（landing 类）——双方向+schema 校验，失败回退旧简报路径
+      if (intent.type === 'landing' && !spec.designLayout) {
+        try {
+          onPhase?.('AI 首席设计师正在撰写 Design Brief（双方向）…');
+          const { brief, notes, callMeta } = await generateBrief(requirement, projectTitle ?? spec.title, gw);
+          spec.designBrief = brief;
+          spec.designLayout = pickLayout(brief);
+          spec.designBriefMeta = { ms: callMeta.ms, retries: callMeta.retries, parseOk: callMeta.parseOk, notes };
+          cues.push({ d: 218, events: [
+            { type: 'agent_state_changed', role: 'designer', status: 'analyzing', detail: `Design Brief：${brief.directions.map((d) => d.name).join(' / ')} → 选定 ${spec.designLayout ?? 'pageShell 回退'}` },
+            { type: 'log', level: 'info', from: 'designer', message: `📐 Design Brief 完成（${callMeta.ms}ms，重试${callMeta.retries}）：方向A「${brief.directions[0].name}·${brief.directions[0].layoutStrategy}」/ 方向B「${brief.directions[1].name}·${brief.directions[1].layoutStrategy}」${notes.length ? `；规范化：${notes[0].slice(0, 40)}` : ''}` },
+          ] });
+        } catch (e) {
+          spec.designLayout = null;
+          spec.designBriefMeta = { failed: String(e?.message ?? e).slice(0, 140) };
+          cues.push({ d: 219, events: [
+            { type: 'log', level: 'warn', from: 'designer', message: `⚠ Design Brief 未通过校验，布局回退 pageShell：${String(e?.message ?? e).slice(0, 110)}` },
+          ] });
+        }
+      }
     } else {
       spec.viaLLM = false;
       spec.llmFallbackReason = String(lastErr?.message ?? lastErr ?? '两次尝试均未返回有效数据集').slice(0, 140);
@@ -135,16 +159,18 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       ]);
       let done = 0, okCount = 0;
       const noPhotoNames = [];
-      // 查询级联采集：全名 → LLM 词 → 英文名 → 前缀截断 → 本名；每级取 3 候选按标题重叠度择优。
-      // strict 择优：标题须完整命中对象名/英文名才采用（弱片段命中=无把握，不猜）；
-      // 级联全部无把握 → 英文维基百科权威肖像兜底（文章头图天然对位，经代理出网）。
+      // 查询级联采集：全名 → LLM 词 → 英文名 → 前缀截断 → 本名；每级取 3 候选交策展器四维评分。
+      // 内容维度须 strong（完整词命中）才采用（弱命中=无把握，不猜）；策略与阶段一 strict 等效并叠加 tech/visual/source 维。
       const collectOne = async (it) => {
         const targets = [it.name, extractEnglishTokens(it.query || '')].filter(Boolean);
         for (const q of queryCascade(it)) {
           const r = await collectImages({ query: q, count: 3, keys });
           if (r.images.length > 0) {
-            const best = bestMatch(r.images, targets, { strict: true });
-            if (best) return best;
+            const { ranked } = rankCandidates(r.images, { targets });
+            const top = ranked[0];
+            if (top && top.dims.content.level === 'strong' && top.dims.tech.score > 0) {
+              return { ...top.cand, buf: top.cand.buf, curatorReasons: top.reasons, curatorTotal: top.total };
+            }
           }
           await new Promise((r2) => setTimeout(r2, 700));
         }
@@ -155,16 +181,20 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         }
         return null;
       };
-      // 图片资产锁定复用（阶段一）：按项目名注册表跨工作区复用已锁定图片，重生成不换图。
+      // 图片资产锁定复用（阶段二升级为图位语义解析）：名称变但语义同→复用；语义变→拒绝并保留 retired 记录。
       // 开关：ORCHESTRAI_IMAGE_LOCK=off 关闭（回滚通道）。
       const lockOn = process.env.ORCHESTRAI_IMAGE_LOCK !== 'off';
       const assetKey = projectTitle || spec.title || projectId;
       const prevAssets = lockOn ? loadAssets(assetKey) : { version: 1, entries: [] };
       let reuseCount = 0;
+      const slotStats = { reuse: 0, 'semantic-change': 0, 'source-missing': 0, 'hash-mismatch': 0, 'no-match': 0 };
+      const retiredNames = [];
       const results = await mapPool(items, 2, async (it) => {
         if (lockOn) {
-          const reused = reusableAsset(prevAssets, it.name);
-          if (reused) { reuseCount++; okCount++; return reused; }
+          const r = resolveSlot(prevAssets, { name: it.name, en: extractEnglishTokens(it.query || it.name) });
+          slotStats[r.status] = (slotStats[r.status] ?? 0) + 1;
+          if (r.status === 'reuse') { reuseCount++; okCount++; return r.img; }
+          if (r.status === 'semantic-change') retiredNames.push(it.name);
         }
         const got = await collectOne(it);
         done++;
@@ -173,41 +203,62 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         onPhase?.(`正在为「${it.name}」采集照片（${done}/${items.length}）${got ? '' : ' · 未获照片将用示意卡'}`);
         return got;
       });
+      // 文件命名：复用资产保留原文件名并预占；新采集递增序号并跳过已占用名
+      // （真实缺陷修复：同名覆盖曾致 images.js 引用缺失文件，被渲染门禁检出）
+      const usedNames = new Set(items.map((it, i) => (results[i]?.reused ? results[i].file : null)).filter(Boolean));
+      let seq = 1;
       spec.images = items.map((it, i) => {
         const got = results[i];
         const base = { title: it.name, sub: it.sub, desc: it.desc };
-        if (got) return {
-          ...base,
-          // 锁定复用保留原文件名；新采集按序号命名
-          file: got.reused ? got.file : `images/img-${String(i + 1).padStart(2, '0')}.${got.ext}`,
-          author: got.author.slice(0, 60), license: got.license.slice(0, 40), page: got.page,
-          buf: got.buf,
-        };
+        if (got) {
+          let file;
+          if (got.reused) {
+            file = got.file;
+          } else {
+            do { file = `images/img-${String(seq).padStart(2, '0')}.${got.ext}`; seq++; } while (usedNames.has(file));
+          }
+          usedNames.add(file);
+          return {
+            ...base,
+            file,
+            author: got.author.slice(0, 60), license: got.license.slice(0, 40), page: got.page,
+            buf: got.buf,
+          };
+        }
+        let file;
+        do { file = `images/card-${String(seq).padStart(2, '0')}.png`; seq++; } while (usedNames.has(file));
+        usedNames.add(file);
         return {
           ...base,
-          file: `images/card-${String(i + 1).padStart(2, '0')}.png`,
+          file,
           author: 'OrchestrAI 本地生成', license: '生成内容', page: '',
           buf: placeholderCard(800, 600, spec.template.meta.accent, i),
         };
       });
-      // 资产注册表落盘：真实网络照片记为锁定资产（来源工作区/许可/理由/时间/sha1 可追溯）；示意卡不入锁
+      // 资产注册表落盘：真实网络照片记为锁定资产（slotKey/en/来源工作区/许可/理由/时间/sha1）；
+      // 语义变化的旧条目标记 retired 保留（不删除不覆盖）；示意卡不入锁。
       if (lockOn) {
         const fresh = items
           .map((it, i) => (results[i] && !results[i].reused ? assetEntry(spec.images[i], {
             provider: spec.provider ?? '',
-            reason: `对象「${it.name}」本轮采集（strict 择优/多级级联/维基兜底）`,
+            reason: results[i].curatorReasons ? `策展评分 ${results[i].curatorTotal}：${results[i].curatorReasons.join('；').slice(0, 140)}` : `对象「${it.name}」维基权威肖像兜底`,
             srcWs: path.basename(ws),
+            slotKey: undefined,
+            en: extractEnglishTokens(it.query || it.name),
           }) : null))
           .filter(Boolean);
         const reusedNames = new Set(items.filter((it, i) => results[i]?.reused).map((it) => it.name));
         const kept = (prevAssets.entries ?? []).filter((e) => reusedNames.has(e.title));
-        saveAssets(assetKey, { version: 1, entries: [...kept, ...fresh] });
+        const retired = (prevAssets.entries ?? [])
+          .filter((e) => retiredNames.includes(e.title))
+          .map((e) => ({ ...e, locked: false, status: 'retired', retiredAt: new Date().toISOString() }));
+        saveAssets(assetKey, { version: 1, entries: [...kept, ...fresh, ...retired] });
       }
       spec.provider = `定向采集 ${okCount}/${items.length}${reuseCount ? `（复用已锁定 ${reuseCount}）` : ''}`;
       spec.imageSource = okCount > 0 ? 'network' : 'placeholder';
       const totalBytes = spec.images.reduce((a, i) => a + i.buf.length, 0);
       emit(500, [
-        { type: 'log', level: okCount === items.length ? 'success' : 'info', from: 'designer', message: `图鉴采集完成：${okCount}/${items.length} 个对象获得真实网络照片（共 ${(totalBytes / 1024 / 1024).toFixed(1)}MB，多候选择优）${noPhotoNames.length ? `；未获照片（图源索引真空，已用示意卡保留介绍）：${noPhotoNames.join('、')}` : ''}` },
+        { type: 'log', level: okCount === items.length ? 'success' : 'info', from: 'designer', message: `图鉴采集完成：${okCount}/${items.length} 个对象获得真实网络照片（共 ${(totalBytes / 1024 / 1024).toFixed(1)}MB，策展四维评分）${lockOn ? `；图位解析：复用${slotStats.reuse} 新采${slotStats['no-match']} 语义变更${slotStats['semantic-change']} 源丢失${slotStats['source-missing']}${retiredNames.length ? `（retired：${retiredNames.join('、')}）` : ''}` : ''}${noPhotoNames.length ? `；未获照片（已用示意卡保留介绍）：${noPhotoNames.join('、')}` : ''}` },
       ]);
       emit(260, [
         { type: 'agent_run_ended', runId: 'R-00', taskId: 'T1', status: 'succeeded', usage: usage(400, 100, 0.01) },
@@ -461,6 +512,25 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     { type: 'agent_state_changed', role: 'supervisor', status: 'idle' },
   ]);
 
+  // ---- 渲染门禁（Gate 4/6 证据）：Edge headless 双视口截图 + DOM 探针（必需图片/横向溢出）----
+  // 开关 ORCHESTRAI_RENDERCHECK=off；环境缺失 → not_run 如实披露（不假绿）；fail → 事件 error + 摘要注明（阶段三收紧为阻断）。
+  let renderGate = null;
+  if (process.env.ORCHESTRAI_RENDERCHECK !== 'off') {
+    onPhase?.('渲染门禁：桌面/移动双视口截图与探针检查…');
+    let commit = '';
+    try { commit = (await import('node:child_process')).execSync('git rev-parse --short HEAD', { cwd: ROOT }).toString().trim(); } catch { commit = 'unknown'; }
+    try {
+      renderGate = await renderCheck({ wsDir: ws, label: projectId, outDir: path.join(ws, '_rendercheck'), commit, requirement: sentence });
+      emit(295, [
+        { type: 'gate_result', gate: 'render', passed: renderGate.gate.pass, detail: renderGate.gate.reason },
+        { type: 'log', level: renderGate.gate.status === 'pass' ? 'success' : renderGate.gate.status === 'not_run' ? 'warn' : 'error', from: 'supervisor', message: `🖥 渲染门禁[${renderGate.gate.status}]：${renderGate.gate.reason}（截图与指标见 _rendercheck/）` },
+      ]);
+    } catch (e) {
+      renderGate = { gate: { pass: false, status: 'not_run', reason: String(e?.message ?? e).slice(0, 120) } };
+      emit(295, [{ type: 'log', level: 'warn', from: 'supervisor', message: `🖥 渲染门禁未执行：${renderGate.gate.reason}` }]);
+    }
+  }
+
   // ---- 交付（T3）----
   const manifest = Object.keys(files).map((f) => `workspaces/${projectId}/${f}`);
   const previewUrl = `/preview/${projectId}/`;
@@ -506,7 +576,7 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
 
   persistProject(cues, {
     projectId, spec, sentence, files, ws, projectTitle,
-    testSummary: `真实测试 node --test：${firstOk ? '首次全绿' : '首次失败 → 修复 → 回归通过'}；视觉审查：${audit.ok ? `${audit.buttons.length} 个按键全部绑定` : audit.summary}`,
+    testSummary: `真实测试 node --test：${firstOk ? '首次全绿' : '首次失败 → 修复 → 回归通过'}；视觉审查：${audit.ok ? `${audit.buttons.length} 个按键全部绑定` : audit.summary}${renderGate ? `；渲染门禁[${renderGate.gate.status}]：${renderGate.gate.reason.slice(0, 60)}` : '；渲染门禁：未执行（开关关闭）'}`,
     hadDefectFix: !firstOk, firstOk,
   });
 

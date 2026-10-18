@@ -1,6 +1,9 @@
-/** 模板：产品介绍页（landing）—— hero + 特性 + 参数表 + CTA，内容由 LLM 生成或占位 */
+/** 模板：产品介绍页（landing）—— hero + 特性 + 参数表 + CTA，内容由 LLM 生成或占位；
+ *  阶段二：有 Design Brief 时用 editorial/workbench 布局原语渲染，pageShell 保留为回退 */
 import { buildThemeCss, pageShell } from '../theme.mjs';
 import { getStyleDef } from '../styles.mjs';
+import { tokensFromDirection, tokensCss } from '../tokens.mjs';
+import { editorial, workbench } from '../layouts/index.mjs';
 
 export const meta = {
   type: 'landing',
@@ -110,6 +113,24 @@ addEventListener('scroll', onScroll, { passive: true });
 backTop.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
 onScroll();
 `;
+
+  // ---- 阶段二任务 B：Design Brief 驱动的布局分支（editorial/workbench 原语渲染同一数据）----
+  if (spec.designLayout === 'editorial' || spec.designLayout === 'workbench') {
+    const tokens = tokensFromDirection(spec.designBrief.directions[0], spec.designBrief);
+    const render = spec.designLayout === 'workbench' ? workbench : editorial;
+    const sections = (L.features ?? []).map((f) => ({ title: f.t, text: f.d, facts: [], img: '', stats: [] }));
+    const stats = (L.specs ?? []).slice(0, 4).map(([k, v]) => ({ k: String(k).slice(0, 8), v: String(v).slice(0, 12) }));
+    if (stats.length) sections.unshift({ title: '总览', text: '', facts: [], img: '', stats });
+    const r = render({ title: L.headline ?? spec.title, tagline: L.tagline, intro: L.intro, sections, contact: '', tokens });
+    return {
+      'index.html': r.html,
+      'style.css': tokensCss(tokens) + r.css,
+      'app.mjs': app,
+      'logic.mjs': logic,
+      'test/logic.test.mjs': test,
+      'package.json': JSON.stringify({ name: 'app-landing', private: true, type: 'module' }, null, 2),
+    };
+  }
 
   const html = pageShell(
     spec.title,
