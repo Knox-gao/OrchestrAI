@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>天球仪 · ARMILLARY — 星轨档案馆方向一</title>
+<style>
+:root { --bg:#070605; --brass:#c9a961; --brass-dim:rgba(201,169,97,.34); --ink:#e8e2d2; --ink-dim:rgba(232,226,210,.55); }
+* { margin:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; background:var(--bg); font-family:Georgia,'Songti SC',serif; }
+#sphere { position:fixed; inset:0; display:block; cursor:grab; touch-action:none; }
+#sphere.dragging { cursor:grabbing; }
+/* 标题铅字块：压左下角，仪器铭牌 */
+.plate {
+  position:fixed; left:clamp(20px,4vw,56px); bottom:clamp(20px,5vh,52px); z-index:5; pointer-events:none;
+  border-left:2px solid var(--brass); padding:4px 0 6px 18px;
+}
+.plate .no { font:500 10px/1 ui-monospace,monospace; letter-spacing:.34em; color:var(--brass); margin-bottom:10px; }
+.plate h1 { font-weight:400; font-size:clamp(30px,3.6vw,46px); letter-spacing:.26em; color:var(--ink); }
+.plate .en { display:block; font:300 11px/1 ui-monospace,monospace; letter-spacing:.5em; color:var(--ink-dim); margin-top:9px; }
+.plate .spec { font:400 10px/1 ui-monospace,monospace; letter-spacing:.24em; color:var(--ink-dim); margin-top:12px; }
+.plate .hint { margin-top:14px; font-size:12px; letter-spacing:.2em; color:var(--ink-dim); }
+/* 底座刻度（图例即仪器部件） */
+.meridian { position:fixed; left:50%; bottom:clamp(20px,5vh,52px); transform:translateX(-50%); z-index:5;
+  font:400 11px/1 ui-monospace,monospace; letter-spacing:.3em; color:var(--brass); opacity:.9; }
+.base {
+  position:fixed; right:clamp(20px,3.5vw,48px); bottom:clamp(20px,5vh,52px); z-index:5;
+  display:flex; gap:10px; align-items:flex-end; font:400 10px/1 ui-monospace,monospace; color:var(--ink-dim); letter-spacing:.18em;
+}
+.base i { display:block; width:26px; height:3px; margin-bottom:6px; background:var(--c); opacity:.85; }
+.base span { text-align:center; }
+/* 档案签：从球心拉出 */
+.tag {
+  position:fixed; z-index:8; background:#0d0c0a; border:1px solid var(--brass-dim); border-left:2px solid var(--brass);
+  padding:10px 14px; min-width:200px; pointer-events:none; transform:translate(-50%,-130%);
+  opacity:0; transition:opacity .18s;
+}
+.tag.show { opacity:1; }
+.tag .n { font-size:16px; letter-spacing:.14em; color:var(--ink); }
+.tag .d { font:400 10.5px/1.8 ui-monospace,monospace; color:var(--ink-dim); letter-spacing:.08em; margin-top:5px; }
+@media (max-width:760px) {
+  .plate { left:18px; right:18px; bottom:16px; }
+  .plate h1 { font-size:26px; }
+  .meridian { position:fixed; left:50%; bottom:clamp(20px,5vh,52px); transform:translateX(-50%); z-index:5;
+  font:400 11px/1 ui-monospace,monospace; letter-spacing:.3em; color:var(--brass); opacity:.9; }
+.base { display:none; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+<canvas id="sphere"></canvas>
+<div class="plate">
+  <div class="no">INSTRUMENT NO.7 — 十二亮星</div>
+  <h1>天球 仪<span class="en">ARMILLARY SPHERE</span></h1>
+  <div class="spec">φ 12° 倾角 ／ 经 45° 分划 ／ 十二星钉 · 光谱五型</div>
+  <div class="hint">转动天球 · 点击星钉 —— 钉在球面上的灯</div>
+</div>
+<div class="meridian" id="meri">LON 000°</div>
+<div class="base" id="base"></div>
+<div class="tag" id="tag"><div class="n"></div><div class="d"></div></div>
+<script type="module">
+const STARS = [
+  { n:'天狼星', en:'Sirius', mag:-1.46, dist:'8.6 ly', spec:'A', lon:14, lat:-17 },
+  { n:'老人星', en:'Canopus', mag:-0.74, dist:'310 ly', spec:'A', lon:52, lat:-53 },
+  { n:'大角星', en:'Arcturus', mag:-0.05, dist:'36.7 ly', spec:'K', lon:114, lat:20 },
+  { n:'南门二', en:'Rigil Kent', mag:-0.27, dist:'4.4 ly', spec:'G', lon:186, lat:-61 },
+  { n:'织女一', en:'Vega', mag:0.03, dist:'25 ly', spec:'A', lon:238, lat:39 },
+  { n:'五车二', en:'Capella', mag:0.08, dist:'42.9 ly', spec:'G', lon:258, lat:46 },
+  { n:'参宿七', en:'Rigel', mag:0.13, dist:'860 ly', spec:'B', lon:305, lat:-9 },
+  { n:'参宿四', en:'Betelgeuse', mag:0.50, dist:'548 ly', spec:'M', lon:305, lat:7 },
+  { n:'牛郎星', en:'Altair', mag:0.76, dist:'16.7 ly', spec:'A', lon:292, lat:9 },
+  { n:'毕宿五', en:'Aldebaran', mag:0.86, dist:'65 ly', spec:'K', lon:272, lat:16 },
+  { n:'心宿二', en:'Antares', mag:1.06, dist:'550 ly', spec:'M', lon:202, lat:-27 },
+  { n:'天津四', en:'Deneb', mag:1.25, dist:'2600 ly', spec:'A', lon:255, lat:45 },
+];
+const SPEC = { O:'#9bb0ff', B:'#aabfff', A:'#cad7ff', F:'#f8f7ff', G:'#fff4ea', K:'#ffd2a1', M:'#ffcc6f' };
+const cv = document.getElementById('sphere'), ctx = cv.getContext('2d');
+const tag = document.getElementById('tag');
+let W, H, dpr = Math.min(devicePixelRatio || 1, 2);
+const resize = () => { W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
+resize(); addEventListener('resize', resize);
+
+// 底座光谱刻度
+document.getElementById('base').innerHTML = Object.entries(SPEC).map(([k, c]) => `<span><i style="--c:${c}"></i>${k}</span>`).join('');
+
+// 天球姿态：倾斜 12° 的仪器感 + 用户旋转
+let ry = -0.6, rx = 0.21 + 0.21, vy = 0, vx = 0; // rx 含 12° 倾角
+const R = () => Math.min(W, H) * 0.385;
+const FOV = 620;
+function proj(lon, lat, rr) {
+  const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
+  let x = Math.cos(la) * Math.sin(lo), y = Math.sin(la), z = Math.cos(la) * Math.cos(lo);
+  const cy = Math.cos(ry), sy = Math.sin(ry);
+  let x1 = x * cy - z * sy, z1 = x * sy + z * cy;
+  const cx = Math.cos(rx), sx = Math.sin(rx);
+  let y1 = y * cx - z1 * sx, z2 = y * sx + z1 * cx;
+  const d = FOV / (FOV + z2 * rr);
+  return { x: W / 2 + x1 * rr * d, y: H * 0.5 - y1 * rr * d, depth: z2, scale: d };
+}
+let drag = false, moved = 0, lx = 0, ly = 0, hoverS = null, pickPos = null;
+function draw(t) {
+  if (!drag) { ry += vy; rx += vx; vy *= 0.94; vx *= 0.94; }
+  rx = Math.max(-0.9, Math.min(0.9, rx));
+  ctx.fillStyle = '#070605'; ctx.fillRect(0, 0, W, H);
+  const rr = R();
+  // 球体底盘暗晕（仪器体量感）
+  const bodyG = ctx.createRadialGradient(W/2 - rr*.38, H*.5 - rr*.42, rr*.12, W/2, H*.5, rr*1.0);
+  bodyG.addColorStop(0, 'rgba(30,26,19,.85)'); bodyG.addColorStop(.62, 'rgba(16,14,10,.55)'); bodyG.addColorStop(1, 'rgba(8,7,5,0)');
+  ctx.fillStyle = bodyG; ctx.beginPath(); ctx.arc(W/2, H*.5, rr*1.0, 0, 6.2832); ctx.fill();
+  // 经纬线（稀疏黄铜）
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(201,169,97,.30)';
+  for (let lo = 0; lo < 180; lo += 45) { ctx.beginPath();
+    for (let la = -90; la <= 90; la += 6) { const p = proj(lo, la, rr); la === -90 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); }
+    for (let la = 90; la >= -90; la -= 6) { const p = proj(lo + 180, la, rr); ctx.lineTo(p.x, p.y); }
+    ctx.closePath(); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(201,169,97,.20)';
+  for (let la = -60; la <= 60; la += 30) { ctx.beginPath();
+    for (let lo = 0; lo <= 360; lo += 6) { const p = proj(lo, la, rr); lo === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); }
+    ctx.stroke(); }
+  // 赤道环（加粗黄铜，前后分两半画增强立体）
+  ctx.strokeStyle = 'rgba(201,169,97,.75)'; ctx.lineWidth = 1.6;
+  for (const half of [[0, 180], [180, 360]]) { ctx.beginPath();
+    for (let lo = half[0]; lo <= half[1]; lo += 4) { const p = proj(lo, 0, rr * 1.04); lo === half[0] ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); }
+    ctx.stroke(); }
+  // 星钉：按深度排序（远→近），近大远小近亮远暗
+  const pts = STARS.map((s) => ({ s, p: proj(s.lon, s.lat, rr) })).sort((a, b) => b.p.depth - a.p.depth);
+  for (const { s, p } of pts) {
+    const r = Math.max(2.4, (5.6 - s.mag * 1.9)) * p.scale;
+    const a = p.depth > 0 ? 0.38 : 1; // 背面钉暗
+    const c = SPEC[s.spec];
+    if (p.depth < 0.25) { // 近侧钉：光晕+星钉
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3.4);
+      g.addColorStop(0, c + '99'); g.addColorStop(1, c + '00');
+      ctx.globalAlpha = a; ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r * 3.4, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = a; ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.2832); ctx.fill();
+    // 钉入球面的短杆（仪器感）
+    if (p.depth < 0.25) { ctx.strokeStyle = 'rgba(201,169,97,.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x, p.y - r * 1.8); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    if (p.depth < 0.3) { ctx.font = '300 10px ui-monospace,monospace'; ctx.fillStyle = `rgba(232,226,210,${a * 0.75})`; ctx.textAlign = 'left'; ctx.fillText(s.n, p.x + r + 7, p.y + 3); }
+    s._sx = p.x; s._sy = p.y; s._r = r;
+  }
+  const lon = ((-ry * 180 / Math.PI) % 360 + 360) % 360;
+  document.getElementById('meri').textContent = 'LON ' + String(Math.round(lon)).padStart(3, '0') + '°';
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+// 拖转（惯性）
+cv.addEventListener('mousedown', (e) => { drag = true; moved = 0; lx = e.clientX; ly = e.clientY; cv.classList.add('dragging'); });
+addEventListener('mousemove', (e) => {
+  if (!drag) {
+    let hov = null, hd = 22;
+    for (const s of STARS) { const d = Math.hypot(s._sx - e.clientX, s._sy - e.clientY); if (d < hd + (s._r ?? 0)) { hd = d; hov = s; } }
+    cv.style.cursor = hov ? 'pointer' : 'grab';
+  }
+  if (drag) { vy = (e.clientX - lx) * 0.006; vx = (e.clientY - ly) * 0.004; moved += Math.abs(e.clientX - lx) + Math.abs(e.clientY - ly); lx = e.clientX; ly = e.clientY; ry += vy; rx += vx; vy *= .5; vx *= .5; }
+});
+addEventListener('mouseup', () => { drag = false; cv.classList.remove('dragging'); });
+// 触屏
+cv.addEventListener('touchstart', (e) => { drag = true; moved = 0; lx = e.touches[0].clientX; ly = e.touches[0].clientY; }, { passive: true });
+cv.addEventListener('touchmove', (e) => { if (!drag) return; const t = e.touches[0]; ry += (t.clientX - lx) * .008; rx += (t.clientY - ly) * .005; moved += Math.abs(t.clientX - lx) + Math.abs(t.clientY - ly); lx = t.clientX; ly = t.clientY; }, { passive: true });
+cv.addEventListener('touchend', (e) => { drag = false; if (moved < 8 && e.changedTouches[0]) clickAt(e.changedTouches[0].clientX, e.changedTouches[0].clientY); });
+// 点击星钉 → 档案签
+function clickAt(mx, my) {
+  let best = null, bd = 24;
+  for (const s of STARS) { const d = Math.hypot(s._sx - mx, s._sy - my); if (d < bd + (s._r ?? 0)) { bd = d; best = s; } }
+  if (!best) { tag.classList.remove('show'); return; }
+  tag.querySelector('.n').textContent = best.n + ' · ' + best.en;
+  tag.querySelector('.d').innerHTML = `星等 ${best.mag.toFixed(2)} ／ ${best.dist} ／ 光谱 ${best.spec} 型`;
+  tag.style.left = best._sx + 'px'; tag.style.top = best._sy + 'px';
+  tag.classList.add('show');
+}
+cv.addEventListener('click', (e) => { if (moved > 6) return; clickAt(e.clientX, e.clientY); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape') tag.classList.remove('show'); });
+</script>
+</body>
+</html>

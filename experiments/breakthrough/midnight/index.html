@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>子夜观测志 · MIDNIGHT LOG — 星轨档案馆方向三</title>
+<style>
+:root {
+  --paper:#efe9dc; --paper-2:#e7e0d0; --ink:#26221a; --ink-soft:rgba(38,34,26,.72);
+  --red:#b23a2f; --grid:rgba(38,34,26,.10);
+  --hand:'Segoe Script','KaiTi','STKaiti',cursive;
+  --serif:Georgia,'Songti SC',serif;
+  --mono:ui-monospace,monospace;
+}
+* { margin:0; box-sizing:border-box; }
+html,body { height:100%; }
+body { background:var(--paper); color:var(--ink); font-family:var(--serif); overflow:hidden; }
+/* 纸面肌理：细网格 + 轻噪点 */
+.log { position:fixed; inset:0; }
+.log::before { content:''; position:absolute; inset:0;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:72px 72px; }
+.log::after { content:''; position:absolute; inset:0; opacity:.5; mix-blend-mode:multiply;
+  background-image:radial-gradient(circle,rgba(38,34,26,.045) .5px,transparent .6px); background-size:4px 4px; }
+.head { position:absolute; top:clamp(18px,4vh,40px); left:clamp(20px,4vw,56px); z-index:4; }
+.head .date { font-family:var(--hand); font-size:clamp(18px,2vw,24px); color:var(--ink); transform:rotate(-1.2deg); }
+.head h1 { font-weight:600; font-size:clamp(24px,2.6vw,36px); letter-spacing:.3em; margin-top:6px; }
+.head .en { font:400 10px/1 var(--mono); letter-spacing:.34em; color:var(--ink-soft); margin-top:8px; }
+.head .night { font-family:var(--hand); color:var(--red); font-size:15px; margin-top:10px; transform:rotate(-1.2deg); }
+/* 墨点星图（SVG 渗墨滤镜） */
+svg.stars { position:absolute; inset:0; width:100%; height:100%; z-index:2; }
+.ink-dot { fill:#211d15; cursor:pointer; }
+.ink-dot:hover { fill:#000; }
+/* 红笔批注 */
+.annot { font-family:var(--hand); color:var(--red); font-size:14px; }
+.annot-line { stroke:var(--red); stroke-width:1.1; fill:none; opacity:.85; }
+/* 索引纸卡（点击翻出） */
+.paper-card {
+  position:fixed; z-index:9; right:clamp(18px,5vw,72px); top:50%; transform:translateY(-50%) rotate(1.4deg) scale(.96);
+  width:min(320px,86vw); background:#f7f2e6; padding:22px 24px 18px;
+  box-shadow:2px 3px 0 rgba(38,34,26,.14), 12px 18px 34px rgba(38,34,26,.22);
+  opacity:0; pointer-events:none; transition:transform .22s cubic-bezier(.2,1,.4,1), opacity .18s;
+  border-top:1px solid rgba(38,34,26,.12);
+}
+.paper-card.open { opacity:1; pointer-events:auto; transform:translateY(-50%) rotate(-.6deg) scale(1); }
+.paper-card::before { content:''; position:absolute; left:14px; right:14px; top:9px; height:1px; background:rgba(38,34,26,.14); box-shadow:0 3px 0 rgba(38,34,26,.07); }
+.paper-card .no { font:400 9.5px/1 var(--mono); letter-spacing:.28em; color:var(--ink-soft); }
+.paper-card h2 { font-size:26px; letter-spacing:.1em; margin:8px 0 2px; }
+.paper-card .en { font:400 10.5px/1 var(--mono); color:var(--ink-soft); letter-spacing:.2em; }
+.paper-card dl { display:grid; grid-template-columns:1fr 1fr; margin:14px 0 10px; border-top:1px dashed rgba(38,34,26,.3); padding-top:10px; font-size:13px; }
+.paper-card dt { color:var(--ink-soft); font-size:11px; }
+.paper-card dd { font-family:var(--mono); margin:2px 0 10px; }
+.paper-card .note { font-family:var(--hand); color:var(--red); font-size:14.5px; line-height:1.8; transform:rotate(-.5deg); }
+.paper-card .src { margin-top:12px; font:400 9px/1.6 var(--mono); color:var(--ink-soft); letter-spacing:.1em; }
+.card-x { position:absolute; top:10px; right:10px; border:none; background:none; font-size:15px; color:var(--ink-soft); cursor:pointer; }
+.foot { position:absolute; bottom:clamp(14px,3vh,30px); left:clamp(20px,4vw,56px); right:clamp(20px,4vw,56px);
+  display:flex; justify-content:space-between; font:400 9.5px/1 var(--mono); letter-spacing:.2em; color:var(--ink-soft); z-index:4; }
+.foot .hand { font-family:var(--hand); font-size:14px; letter-spacing:.05em; }
+@media (max-width:760px) {
+  body { overflow-y:auto; }
+  .log { position:static; height:88vh; }
+  .paper-card { right:50%; transform:translate(50%,-46%) rotate(1.2deg) scale(.96); top:44%; }
+  .paper-card.open { transform:translate(50%,-50%) rotate(-.5deg) scale(1); }
+}
+</style>
+</head>
+<body>
+<div class="log">
+  <div class="head">
+    <div class="date">十月十七 · 晴 · 视宁度佳</div>
+    <h1>子夜观测志</h1>
+    <div class="en">MIDNIGHT LOG — BRIGHT STARS SURVEY</div>
+    <div class="night">今夜复核十二亮星，墨点即星，红笔存疑。</div>
+  </div>
+  <svg class="stars" id="sky"></svg>
+  <div class="foot">
+    <span>档案编号 ML-07 · 手绘坐标网格 72px</span>
+    <span class="hand">— 观测者签名</span>
+  </div>
+</div>
+<div class="paper-card" id="card">
+  <button class="card-x" id="x">✕</button>
+  <div class="no">LOG ENTRY —</div>
+  <h2 id="c-n">—</h2><div class="en" id="c-en">—</div>
+  <dl><div><dt>视星等</dt><dd id="c-mag">—</dd></div><div><dt>距离</dt><dd id="c-dist">—</dd></div>
+      <div><dt>光谱型</dt><dd id="c-spec">—</dd></div><div><dt>记录夜</dt><dd>第 7 夜</dd></div></dl>
+  <div class="note" id="c-note">—</div>
+  <div class="src">示例数据 · 公开星表常识口径（非精确归算）</div>
+</div>
+<script type="module">
+const STARS = [
+  { n:'天狼星', en:'Sirius', mag:-1.46, dist:'8.6 ly', spec:'A1', x:.66, y:.26, q:null },
+  { n:'老人星', en:'Canopus', mag:-0.74, dist:'310 ly', spec:'A9', x:.16, y:.70, q:'南方低空，亮极' },
+  { n:'大角星', en:'Arcturus', mag:-0.05, dist:'36.7 ly', spec:'K1', x:.50, y:.14, q:'橙色明显' },
+  { n:'南门二', en:'Rigil Kent', mag:-0.27, dist:'4.4 ly', spec:'G2', x:.10, y:.82, q:'近星，视差可测' },
+  { n:'织女一', en:'Vega', mag:0.03, dist:'25 ly', spec:'A0', x:.40, y:.12, q:null },
+  { n:'五车二', en:'Capella', mag:0.08, dist:'42.9 ly', spec:'G3', x:.28, y:.20, q:null },
+  { n:'参宿七', en:'Rigel', mag:0.13, dist:'860 ly', spec:'B8', x:.84, y:.36, q:'蓝得发白' },
+  { n:'参宿四', en:'Betelgeuse', mag:0.50, dist:'548 ly', spec:'M2', x:.78, y:.52, q:'色变，续测' },
+  { n:'牛郎星', en:'Altair', mag:0.76, dist:'16.7 ly', spec:'A7', x:.56, y:.34, q:null },
+  { n:'毕宿五', en:'Aldebaran', mag:0.86, dist:'65 ly', spec:'K5', x:.24, y:.44, q:null },
+  { n:'心宿二', en:'Antares', mag:1.06, dist:'550 ly', spec:'M1', x:.60, y:.80, q:'与火星同色，易混' },
+  { n:'天津四', en:'Deneb', mag:1.25, dist:'2600 ly', spec:'A2', x:.46, y:.06, q:'远而仍亮' },
+];
+const svg = document.getElementById('sky');
+const NS = 'http://www.w3.org/2000/svg';
+// 渗墨滤镜
+const defs = document.createElementNS(NS, 'defs');
+defs.innerHTML = `<filter id="ink"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>`;
+svg.appendChild(defs);
+const card = document.getElementById('card');
+const magR = (m) => 5.5 + (1.6 - Math.max(-1.5, Math.min(1.6, m))) * 5.5; // 墨点半径=星等
+for (const s of STARS) {
+  const cx = s.x * 100, cy = s.y * 100;
+  // 主墨点
+  const d = document.createElementNS(NS, 'circle');
+  d.setAttribute('cx', cx + '%'); d.setAttribute('cy', cy + '%');
+  d.setAttribute('r', magR(s.mag)); d.setAttribute('class', 'ink-dot');
+  d.setAttribute('filter', 'url(#ink)');
+  d.addEventListener('click', () => {
+    document.getElementById('c-n').textContent = s.n;
+    document.getElementById('c-en').textContent = s.en;
+    document.getElementById('c-mag').textContent = s.mag.toFixed(2);
+    document.getElementById('c-dist').textContent = s.dist;
+    document.getElementById('c-spec').textContent = s.spec;
+    document.getElementById('c-note').textContent = (s.q ? '「' + s.q + '」' : '例无异常，续守。');
+    card.classList.add('open');
+  });
+  svg.appendChild(d);
+  // 亮星红批注（前 4 亮）
+  if (s.mag < 0.1) {
+    const g = document.createElementNS(NS, 'g');
+    g.innerHTML = `<line class="annot-line" x1="${cx + 1}%" y1="${cy}%" x2="${cx + 6}%" y2="${cy - 5}%"/>
+      <text class="annot" x="${cx + 6.2}%" y="${cy - 5.2}%">${s.n} ${s.mag.toFixed(1)}</text>`;
+    svg.appendChild(g);
+  }
+}
+document.getElementById('x').addEventListener('click', () => card.classList.remove('open'));
+addEventListener('keydown', (e) => { if (e.key === 'Escape') card.classList.remove('open'); });
+</script>
+</body>
+</html>

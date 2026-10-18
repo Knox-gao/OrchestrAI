@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>摄谱长廊 · SPECTRAL PLATE — 星轨档案馆方向二</title>
+<style>
+:root {
+  --bg:#0b0a08; --paper-line:rgba(240,235,220,.08); --ink:#ece6d4; --ink-dim:rgba(236,230,212,.6);
+  --mono:ui-monospace,'Cascadia Mono',monospace;
+  --O:#9bb0ff; --B:#aabfff; --A:#cad7ff; --F:#f8f7ff; --G:#fff4ea; --K:#ffd2a1; --M:#ffcc6f;
+}
+* { margin:0; box-sizing:border-box; }
+html,body { height:100%; }
+body { background:var(--bg); color:var(--ink); font-family:Georgia,'Songti SC',serif; overflow:hidden; }
+header.mast {
+  position:fixed; top:clamp(16px,3vh,34px); left:clamp(18px,3.5vw,50px); right:clamp(18px,3.5vw,50px);
+  display:flex; justify-content:space-between; align-items:baseline; z-index:5; pointer-events:none;
+}
+.mast h1 { font-weight:400; font-size:clamp(20px,2.2vw,30px); letter-spacing:.34em; }
+.mast .no { font:400 10px/1 var(--mono); letter-spacing:.3em; color:var(--ink-dim); }
+/* 七条谱带：满幅水平节奏 */
+.plates { position:fixed; inset:clamp(74px,10vh,104px) 0 clamp(56px,8vh,84px); display:flex; flex-direction:column; overflow-y:auto; scrollbar-width:none; }
+.band {
+  flex:1; min-height:72px; position:relative; border-bottom:1px solid var(--paper-line);
+  display:flex; align-items:stretch; cursor:pointer; transition:background .15s;
+}
+.band:first-child { border-top:1px solid var(--paper-line); }
+.band:hover { background:rgba(240,235,220,.025); }
+.band .letter {
+  flex:0 0 clamp(64px,9vw,128px); display:flex; align-items:center; justify-content:flex-start;
+  padding-left:clamp(18px,3vw,44px); font-weight:400; font-size:clamp(40px,5.4vh,64px);
+  color:var(--c); line-height:1; opacity:.92;
+}
+.band .letter small { font:400 9.5px/1.5 var(--mono); color:var(--ink-dim); letter-spacing:.2em; margin-left:10px; align-self:flex-end; padding-bottom:10px; }
+.band .strip { flex:1; position:relative; align-self:stretch; }
+.dot {
+  position:absolute; top:50%; transform:translate(-50%,-50%); border-radius:50%;
+  background:var(--c); cursor:pointer;
+  box-shadow:0 0 0 1px rgba(0,0,0,.35);
+  transition:box-shadow .15s;
+}
+.dot:hover { box-shadow:0 0 0 1px rgba(0,0,0,.35), 0 0 14px 2px var(--c); }
+/* 行内底片注记 */
+.note {
+  position:absolute; bottom:calc(100% + 6px); left:var(--nx); transform:translateX(-50%);
+  background:#151310; border:1px solid var(--paper-line); padding:8px 12px; white-space:nowrap;
+  font:400 10.5px/1.7 var(--mono); color:var(--ink); letter-spacing:.06em; display:none; z-index:6;
+}
+.note.show { display:block; }
+.note b { color:var(--c); font-weight:500; }
+footer.colo { position:fixed; bottom:clamp(16px,3vh,30px); left:clamp(18px,3.5vw,50px); right:clamp(18px,3.5vw,50px);
+  display:flex; justify-content:space-between; font:400 9.5px/1 var(--mono); letter-spacing:.22em; color:var(--ink-dim); z-index:5; pointer-events:none; }
+@media (max-width:760px) {
+  body { overflow-y:auto; }
+  .plates { position:static; margin-top:86px; }
+  .band { min-height:96px; }
+  .band .letter { flex-basis:64px; padding-left:16px; font-size:38px; }
+  footer.colo { position:static; padding:14px 18px 26px; }
+}
+</style>
+</head>
+<body>
+<header class="mast">
+  <h1>摄 谱 长 廊</h1>
+  <span class="no">SPECTRAL PLATE · O→M · 星等即点径</span>
+</header>
+<div class="plates" id="plates"></div>
+<footer class="colo"><span>十二亮星 · 按光谱分章</span><span>点击星点 → 底片注记 · 示例数据（公开星表常识口径）</span></footer>
+<script type="module">
+const BANDS = {
+  B: { name:'蓝白', intro:'炽热而短命' }, A: { name:'白', intro:'夜空的多数亮星' },
+  G: { name:'黄', intro:'与太阳同族' }, K: { name:'橙', intro:'沉稳的长寿者' }, M: { name:'红', intro:'冷而巨大' },
+};
+const STARS = [
+  { n:'参宿七', en:'Rigel', band:'B', mag:0.13, dist:'860 ly', note:'猎户座左足，光度约太阳 12 万倍' },
+  { n:'织女一', en:'Vega', band:'A', mag:0.03, dist:'25 ly', note:'历史上的摄影零等标准星' },
+  { n:'天狼星', en:'Sirius', band:'A', mag:-1.46, dist:'8.6 ly', note:'全天最亮恒星' },
+  { n:'牛郎星', en:'Altair', band:'A', mag:0.76, dist:'16.7 ly', note:'自转约 9 小时一周的扁星' },
+  { n:'天津四', en:'Deneb', band:'A', mag:1.25, dist:'2600 ly', note:'已知最明亮恒星之一' },
+  { n:'五车二', en:'Capella', band:'G', mag:0.08, dist:'42.9 ly', note:'北天冬季的黄色灯塔' },
+  { n:'南门二', en:'Rigil Kent', band:'G', mag:-0.27, dist:'4.4 ly', note:'距太阳最近的恒星系统之一' },
+  { n:'大角星', en:'Arcturus', band:'K', mag:-0.05, dist:'36.7 ly', note:'1933 年世博用它的星光开幕' },
+  { n:'毕宿五', en:'Aldebaran', band:'K', mag:0.86, dist:'65 ly', note:'金牛之眼' },
+  { n:'参宿四', en:'Betelgeuse', band:'M', mag:0.50, dist:'548 ly', note:'未来的超新星候选' },
+  { n:'心宿二', en:'Antares', band:'M', mag:1.06, dist:'550 ly', note:'天蝎之心，火星的对手' },
+];
+const plates = document.getElementById('plates');
+for (const [k, meta] of Object.entries(BANDS)) {
+  const band = document.createElement('div');
+  band.className = 'band'; band.style.setProperty('--c', `var(--${k})`);
+  const stars = STARS.filter((s) => s.band === k);
+  band.innerHTML = `<div class="letter">${k}<small>${meta.name}型<br>${stars.length} 颗 · ${meta.intro}</small></div><div class="strip"></div>`;
+  const strip = band.querySelector('.strip');
+  stars.forEach((s, i) => {
+    const r = 5 + (2 - Math.max(-1.5, Math.min(1.5, s.mag))) * 4.2; // 星等→点径
+    const d = document.createElement('i');
+    d.className = 'dot';
+    d.style.left = (12 + (i + 0.5) * (76 / stars.length)) + '%';
+    d.style.width = d.style.height = (r * 2) + 'px';
+    d.title = s.n;
+    const note = document.createElement('div');
+    note.className = 'note';
+    note.style.setProperty('--nx', d.style.left);
+    note.innerHTML = `<b>${s.n} · ${s.en}</b><br>星等 ${s.mag.toFixed(2)} ／ ${s.dist}<br>${s.note}`;
+    d.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.note.show').forEach((x) => x.classList.remove('show'));
+      note.classList.add('show');
+    });
+    strip.append(d, note);
+  });
+  band.addEventListener('click', () => band.querySelectorAll('.note').forEach((n) => n.classList.remove('show')));
+  plates.appendChild(band);
+}
+</script>
+</body>
+</html>
