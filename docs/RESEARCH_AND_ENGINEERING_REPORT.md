@@ -75,6 +75,8 @@
 
 ## 7. 变更历史
 
+- 2026-10-18（深夜++++）：**Recovery 2：多页面产品体验重建（潮汐露营 v3）**。Bug 复现（表单无 JS 处理/无导航/内容薄/裸 input×4）→ 分 3 调用构建多页面 SPA（HTML 6515 + CSS 8830 + JS 5578 字符，~108s）。v3 改善：导航 4 链接 ✓/sections 3→4/h2 2→4/裸 input 4→**0**/零溢出。**关键架构发现：跨调用 DOM 契约失效**——HTML 和 JS 分次生成时属性名约定不自动协调（JS 用 data-page 路由但 HTML 无该属性），路由因此失效。这解释了为什么 Scene Composer（编译器强制命名空间）能工作而纯开放式拼合不行——开放式生成需要 DOM 契约保障层。三版对比 v0-v2-v3 截图存证。docs/recovery2-report.md。
+
 - 2026-10-18（深夜+++）：**Creative Quality Recovery（潮汐露营单作品彻底重设计）**。丰富探针（含计算样式/bounding box/焦点/表单结构/canvas缓冲）发现 9 问题（3 high 含首屏价值不明/日历塌陷/表单乱序），修改级别决策=结构重构。4 次 LLM 调用 ~2.5min 完成整体重设计+二轮精修。v0→v2：首屏 h1 纯隐喻→行动导向、页高 4816→2664px(-45%)、表单字段乱序→决策序、空幕删除、交互 25→10 精简。前后对比图存证。**如实区分**：有证据改善（textContent/scrollHeight/fieldNames/空幕删除）vs 模型判断（首屏传达是否更好/64vs104px 哪个佳/决策序是否自然）。**未解决**：裸 input 4 个、JS IIFE=0（交互可靠性存疑）、独立人工评审缺失。**结论**：反馈闭环能触发结构级重设计（H3 部分成立），代码完整性护栏需加固（检测裸控件/IIFE→定向补齐）。docs/creative-quality-recovery.md + experiments/benchmark/{recovery.mjs, out/c/, shots/c-recovery/}。
 
 - 2026-10-18（深夜++）：**Creative Intelligence Benchmark（三差异需求开放式创作全链实验）**。三需求（A 茧·生成艺术个展 / B 汉字演化交互图谱 / C 潮汐露营·预订官网）×LLM 创意规划→开放式代码→浏览器验收→批评修订。每项目 7-9 次调用 ~3min ~15k tokens。**结构差异验证**：三项目概念/视觉/技术路径完全不同（Canvas+WebGL 暗色艺术展 / SVG 描边书法长廊 / Canvas 波形+表单自然风），LLM 自主选择三种技术栈未被白名单限制。浏览器实测：零溢出/无控制台错误/移动端正常/25 交互元素（C 含完整表单）。**如实披露**：①围栏提取率仅 40%（`​```javascript` 不匹配 `​```js` 正则——已修复但未重跑），三项目均有缺失幕；②批评循环 0 输出（探针仅结构统计，LLM 无法从中"看见"视觉缺陷——H3 不成立）。H1 部分成立 / H2 成立 / H3 不成立 / H4 部分成立。人工仅修 fences 正则与静态服务（生成器缺陷），零内容级介入。docs/creative-benchmark.md + experiments/benchmark/ 全证据。下一步：修正则重跑→增强探针→验证批评循环有效性。
