@@ -847,6 +847,110 @@ body{
   .visit-map{border-right:none;border-bottom:1px solid rgba(232,223,206,.2)}
   .visit-wx{flex-direction:column;text-align:center}
 }
+/* ===== 覆盖修复样式 ===== */
+
+/* --- 1 & 4. story 幕：拓宽内容区 + 右侧竖排引文做视觉配重 --- */
+section.story .story__inner {
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(140px, 1fr);
+  gap: clamp(40px, 5vw, 80px);
+  align-items: start;
+}
+
+section.story .story__side {
+  align-self: stretch;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+section.story .story__quote {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-family: 'Noto Serif SC', serif;
+  font-size: clamp(18px, 1.6vw, 24px);
+  letter-spacing: 0.35em;
+  line-height: 1.9;
+  color: rgba(230, 220, 205, 0.55);
+  border-right: 1px solid rgba(230, 220, 205, 0.18);
+  padding-right: clamp(16px, 2vw, 28px);
+  max-height: 480px;
+}
+
+@media (max-width: 768px) {
+  section.story .story__inner {
+    grid-template-columns: 1fr;
+  }
+  section.story .story__quote {
+    writing-mode: horizontal-tb;
+    border-right: none;
+    border-left: 2px solid rgba(230, 220, 205, 0.3);
+    padding: 0 0 0 16px;
+    max-height: none;
+  }
+}
+
+/* --- 2. listen 幕：预约姓名 input 设计化 --- */
+section.listen input:not([class]) {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  max-width: 420px;
+  background: rgba(10, 10, 12, 0.6);
+  border: 1px solid rgba(200, 160, 110, 0.45);
+  border-radius: 2px;
+  color: #e6dccd;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  padding: 14px 18px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+section.listen input:not([class])::placeholder {
+  color: rgba(230, 220, 205, 0.35);
+}
+section.listen input:not([class]):focus {
+  outline: none;
+  border-color: #c8a06e;
+  box-shadow: 0 0 0 3px rgba(200, 160, 110, 0.15);
+}
+
+/* --- 3. 字阶修复：h2 提级 + eyebrow / h3 中间层级 --- */
+section.story h2,
+section.listen h2,
+section.visit h2 {
+  font-size: clamp(42px, 4vw, 56px);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.4em;
+}
+
+section.story .story__inner > h2::before,
+section.listen h2::before,
+section.visit h2::before {
+  content: attr(data-eyebrow);
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: #c8a06e;
+  margin-bottom: 18px;
+}
+
+section.story h3,
+section.listen h3,
+section.visit h3 {
+  font-size: clamp(20px, 1.8vw, 26px);
+  font-weight: 500;
+  line-height: 1.35;
+  color: rgba(230, 220, 205, 0.85);
+  margin: 1.2em 0 0.6em;
+}
 </style></head><body>
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -920,224 +1024,197 @@ body{
   </footer>
 </section>
 
+
 <script type="module">
-/* 唱片墙筛选 */
-(function () {
-  var section = document.querySelector('.wall');
-  if (!section) return;
+function createScrollSnap(root = document, opts = {}) {
+  const cfg = {
+    threshold: opts.threshold ?? 130,          // 累积意图阈值(px 归一化)
+    animMs: opts.animMs ?? 600,                // 翻页动画时长
+    mode: opts.mode ?? 'snap',                 // 'snap'（吸附）| 'free'（自然滚动，控制器不干预）
+    lockMs: opts.lockMs ?? 800,                // 转场后锁定时长
+    gapTolerance: opts.gapTolerance ?? 40,     // 场景间隙容差
+    maxViewportRatio: opts.maxViewportRatio ?? 1.5, // 超过此比例的场景不吸附
+    reduced: opts.reduced ?? matchMedia('(prefers-reduced-motion: reduce)').matches,
+  };
+  const state = {
+    phase: 'idle',       // idle | accumulating | transitioning | settling
+    accumulated: 0,      // 归一化累积意图（正=向下）
+    target: -1,          // 目标场景索引
+    locked: false,
+    lastWheel: 0,
+  };
+  let scenes = [];
+  let observers = [];
+  let cleanup = [];
 
-  // 兼容两种结构：.upd 容器或直接在 .wall 内查找
-  var scope = section.querySelector('.upd') || section;
-
-  var items = Array.prototype.slice.call(scope.querySelectorAll('[data-label], [data-price]'));
-  if (!items.length) return;
-
-  var filterBar = scope.querySelector('[data-filter-bar]');
-  if (!filterBar) {
-    filterBar = document.createElement('div');
-    filterBar.setAttribute('data-filter-bar', '');
-    filterBar.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:16px 0;';
-    items[0].parentNode.insertBefore(filterBar, items[0]);
+  function findScenes() {
+    scenes = [...root.querySelectorAll('section[id], [data-snap]')].map((el) => ({
+      el,
+      id: el.id,
+      snap: el.dataset.snap !== 'false',
+      freeScroll: el.dataset.freeScroll === 'true',
+    }));
   }
 
-  // 无结果提示
-  var emptyTip = scope.querySelector('[data-empty]');
-  if (!emptyTip) {
-    emptyTip = document.createElement('p');
-    emptyTip.setAttribute('data-empty', '');
-    emptyTip.textContent = '本周暂时没有符合筛选条件的唱片，换个条件试试吧～';
-    emptyTip.style.cssText = 'display:none;text-align:center;padding:32px 0;color:#888;';
-    items[items.length - 1].parentNode.insertBefore(emptyTip, items[items.length - 1].nextSibling);
+  function anchorOf(i) {
+    if (i < 0 || i >= scenes.length) return null;
+    const s = scenes[i];
+    if (!s.snap) return null;
+    const r = s.el.getBoundingClientRect();
+    const top = scrollY + r.top; // 视口相对 → 文档绝对
+    // 长内容场景：锚定顶部；否则锚定使场景居中（或顶对齐如果场景≥视口）
+    if (r.height > innerHeight * cfg.maxViewportRatio || s.freeScroll) {
+      return Math.round(scrollY + r.top);
+    }
+    // 短场景：尽量居中（但不超边界）
+    const centered = scrollY + r.top - (innerHeight - r.height) / 2;
+    const maxScroll = (root === document ? root.documentElement : root).scrollHeight - innerHeight;
+    return Math.round(Math.max(0, Math.min(maxScroll, centered)));
   }
 
-  // 按钮状态样式
-  var baseStyle = 'cursor:pointer;padding:6px 14px;border:1px solid #999;border-radius:16px;background:#fff;font-size:14px;';
-  var activeStyle = baseStyle + 'background:#1a1a1a;color:#fff;border-color:#1a1a1a;';
-
-  // 收集厂牌与价位
-  var labels = [], prices = [];
-  items.forEach(function (it) {
-    var l = it.getAttribute('data-label');
-    var p = it.getAttribute('data-price');
-    if (l && labels.indexOf(l) === -1) labels.push(l);
-    if (p && prices.indexOf(p) === -1) prices.push(p);
-  });
-
-  var state = { label: 'all', price: 'all' };
-
-  function makeBtn(text, group, value) {
-    var b = document.createElement('button');
-    b.type = 'button';
-    b.textContent = text;
-    b.setAttribute('data-filter-group', group);
-    b.setAttribute('data-filter-value', value);
-    b.style.cssText = baseStyle;
-    b.addEventListener('click', function () {
-      state[group] = value;
-      apply();
+  function nearestScene() {
+    const mid = scrollY + innerHeight / 2;
+    let best = 0, bd = Infinity;
+    scenes.forEach((s, i) => {
+      const r = s.el.getBoundingClientRect();
+      const center = scrollY + r.top + r.height / 2;
+      const d = Math.abs(center - mid);
+      if (d < bd) { bd = d; best = i; }
     });
-    return b;
+    return best;
   }
 
-  // 生成筛选按钮
-  filterBar.appendChild(makeBtn('全部厂牌', 'label', 'all'));
-  labels.forEach(function (l) { filterBar.appendChild(makeBtn(l, 'label', l)); });
-  filterBar.appendChild(makeBtn('全部价位', 'price', 'all'));
-  prices.forEach(function (p) { filterBar.appendChild(makeBtn(p, 'price', p)); });
-
-  function refreshBtns() {
-    filterBar.querySelectorAll('button').forEach(function (b) {
-      var g = b.getAttribute('data-filter-group');
-      var v = b.getAttribute('data-filter-value');
-      b.style.cssText = state[g] === v ? activeStyle : baseStyle;
-    });
+  function snapScenes() {
+    return scenes.map((s, i) => ({ ...s, i })).filter((s) => s.snap && s.el.getBoundingClientRect().height <= innerHeight * cfg.maxViewportRatio);
   }
 
-  function apply() {
-    var visible = 0;
-    items.forEach(function (it) {
-      var okL = state.label === 'all' || it.getAttribute('data-label') === state.label;
-      var okP = state.price === 'all' || it.getAttribute('data-price') === state.price;
-      var show = okL && okP;
-      it.style.display = show ? '' : 'none';
-      if (show) visible++;
-    });
-    emptyTip.style.display = visible === 0 ? '' : 'none';
-    refreshBtns();
+  function goTo(targetIdx) {
+    const snaps = snapScenes();
+    const inSnap = snaps.find((s) => s.i === targetIdx);
+    if (!inSnap) return false;
+    const pos = anchorOf(targetIdx);
+    if (pos === null) return false;
+    state.phase = 'transitioning';
+    state.target = targetIdx;
+    state.locked = true;
+    window.scrollTo({ top: pos, behavior: cfg.reduced ? 'instant' : 'smooth' });
+    setTimeout(() => {
+      state.phase = 'settling';
+      setTimeout(() => {
+        state.phase = 'idle';
+        state.accumulated = 0;
+        state.locked = false;
+      }, cfg.lockMs);
+    }, cfg.animMs);
+    return true;
   }
 
-  apply();
-})();
-
-/* 试听位预约 */
-(function () {
-  var section = document.querySelector('.listen');
-  if (!section) return;
-
-  var decks = ['A', 'B'];
-  var slots = ['14:00 - 15:00', '16:00 - 17:00', '18:00 - 19:00'];
-  var bookings = {}; // key: deck-slot -> name
-
-  var title = document.createElement('h3');
-  title.textContent = '试听位预约';
-  section.appendChild(title);
-
-  var grid = document.createElement('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:560px;';
-
-  var info = document.createElement('p');
-  var confirmBox = document.createElement('div');
-  confirmBox.style.cssText = 'margin-top:16px;padding:12px;border:1px dashed #999;display:none;';
-  section.appendChild(grid);
-  section.appendChild(info);
-  section.appendChild(confirmBox);
-
-  function updateInfo() {
-    var left = decks.length * slots.length - Object.keys(bookings).length;
-    info.textContent = '本周剩余试听位：' + left;
+  function handleWheel(e) {
+    if (cfg.mode === 'free') return;
+    if (state.locked) { e.preventDefault(); return; }
+    // 检查是否在自由滚动区（嵌套滚动/长内容内部）
+    const inNested = e.target.closest && e.target.closest('[data-free-scroll], pre, .free-scroll');
+    if (inNested) return;
+    e.preventDefault();
+    // 归一化：deltaMode 1=行(×33) 2=页(×innerHeight)；高分辨率触控板小 delta 自然小
+    const mode = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? innerHeight : 1;
+    const delta = e.deltaY * mode;
+    const now = performance.now();
+    // 时间衰减：>300ms 未滚动则重置累积
+    if (now - state.lastWheel > 300) state.accumulated = 0;
+    state.lastWheel = now;
+    // 累积（同向叠加，反向消减）
+    state.accumulated += delta;
+    if (state.accumulated !== 0 && Math.sign(state.accumulated) !== Math.sign(delta)) {
+      state.accumulated = delta; // 反向重置
+    }
+    if (state.phase === 'idle') state.phase = 'accumulating';
+    if (Math.abs(state.accumulated) >= cfg.threshold) {
+      const dir = Math.sign(state.accumulated);
+      const snaps = snapScenes();
+      const cur = nearestScene();
+      // 在吸附场景序列中找下一个（可能跳过非吸附场景）
+      let next = -1;
+      if (dir > 0) { for (let j = cur + 1; j < scenes.length; j++) { if (snapScenes().some((s) => s.i === j)) { next = j; break; } } }
+      else { for (let j = cur - 1; j >= 0; j--) { if (snapScenes().some((s) => s.i === j)) { next = j; break; } } }
+      if (next >= 0 && goTo(next)) {
+        // 成功触发
+      } else {
+        // 到达边界：允许原生滚动（首尾）
+        state.accumulated = 0;
+        state.phase = 'idle';
+      }
+    }
   }
 
-  function render() {
-    grid.innerHTML = '';
-    decks.forEach(function (deck) {
-      slots.forEach(function (slot) {
-        var key = deck + '|' + slot;
-        var btn = document.createElement('button');
-        btn.textContent = '唱机 ' + deck + ' · ' + slot;
-        btn.style.cssText = 'padding:10px;cursor:pointer;';
-        if (bookings[key]) {
-          btn.textContent += '（已约：' + bookings[key] + '）';
-          btn.disabled = true;
-          btn.style.opacity = '0.5';
-        } else {
-          btn.addEventListener('click', function () { openConfirm(key, btn.textContent); });
-        }
-        grid.appendChild(btn);
-      });
-    });
-    updateInfo();
+  function handleKey(e) {
+    if (cfg.mode === 'free') return;
+    // 键盘：方向键=单步翻页，PageUp/PageDown/Home/End 保留原生
+    if (e.key === 'ArrowDown' && !state.locked) {
+      e.preventDefault();
+      const cur = nearestScene();
+      const snaps = snapScenes();
+      for (let j = cur + 1; j < scenes.length; j++) { if (snaps.some((s) => s.i === j)) { goTo(j); return; } }
+    } else if (e.key === 'ArrowUp' && !state.locked) {
+      e.preventDefault();
+      const cur = nearestScene();
+      const snaps = snapScenes();
+      for (let j = cur - 1; j >= 0; j--) { if (snaps.some((s) => s.i === j)) { goTo(j); return; } }
+    }
+    // PageUp/PageDown/Home/End: 不拦截，原生行为
   }
 
-  function openConfirm(key, label) {
-    confirmBox.style.display = 'block';
-    confirmBox.innerHTML = '';
-    var p = document.createElement('p');
-    p.textContent = '确认预约：' + label + '，请输入您的姓名：';
-    var input = document.createElement('input');
-    input.placeholder = '姓名';
-    input.style.cssText = 'padding:6px;margin-right:8px;';
-    var ok = document.createElement('button');
-    ok.textContent = '登记';
-    var cancel = document.createElement('button');
-    cancel.textContent = '取消';
-    cancel.style.marginLeft = '8px';
-    confirmBox.appendChild(p);
-    confirmBox.appendChild(input);
-    confirmBox.appendChild(ok);
-    confirmBox.appendChild(cancel);
-
-    ok.addEventListener('click', function () {
-      var name = input.value.trim();
-      if (!name) { alert('请输入姓名'); return; }
-      bookings[key] = name;
-      confirmBox.style.display = 'none';
-      alert('登记成功！' + name + '，已为您保留 ' + label + '。');
-      render();
-    });
-    cancel.addEventListener('click', function () { confirmBox.style.display = 'none'; });
+  function handleTouch(e) {
+    // 触屏：让原生滚动工作（浏览器已有惯性），只在松手后做吸附
+    // 不 preventDefault（保留自然触感）
   }
 
-  render();
-})();
-
-/* 门面动效 */
-(function () {
-  var hero = document.querySelector('.hero');
-  if (!hero) return;
-
-  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // —— 可指认的主视觉：旋转的黑胶唱片 ——
-  var vinyl = hero.querySelector('.vinyl') || (function () {
-    var el = document.createElement('div');
-    el.className = 'vinyl';
-    el.setAttribute('aria-hidden', 'true');
-    el.innerHTML = '<span class="vinyl-label"></span><span class="vinyl-hole"></span>';
-    hero.appendChild(el);
-    return el;
-  })();
-
-  hero.querySelectorAll('[data-hero-stagger]').forEach(function (node, i) {
-    node.style.setProperty('--hero-delay', (i * 140) + 'ms');
-  });
-  if (vinyl) vinyl.style.setProperty('--hero-delay', '360ms');
-
-  if (reduce) {
-    hero.classList.add('hero--ready');
-    vinyl.classList.add('vinyl--spin'); // 静止状态由 CSS 控制，不加动画
-    return;
+  function handleTouchEnd(e) {
+    if (cfg.mode === 'free' || state.locked) return;
+    // 触屏松手后：如果接近某个场景锚点（<25%视口），轻吸附
+    const cur = nearestScene();
+    const pos = anchorOf(cur);
+    if (pos !== null && Math.abs(scrollY - pos) < innerHeight * 0.25) {
+      window.scrollTo({ top: pos, behavior: 'smooth' });
+    }
   }
 
-  // 唱片：先淡入落位，再持续慢转
-  vinyl.addEventListener('animationend', function onSpinIn(e) {
-    if (e.animationName.indexOf('hero-vinyl-in') === -1) return;
-    vinyl.removeEventListener('animationend', onSpinIn);
-    vinyl.classList.add('vinyl--spin');
-    vinyl.addEventListener('mouseenter', function () {
-      vinyl.classList.add('vinyl--fast');
-    });
-    vinyl.addEventListener('mouseleave', function () {
-      vinyl.classList.remove('vinyl--fast');
-    });
-  });
+  function handleResize() {
+    findScenes();
+  }
 
-  // 双 rAF 确保初始态先被渲染，再触发过渡
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () {
-      hero.classList.add('hero--ready');
-    });
-  });
-})();
+  function mount() {
+    findScenes();
+    const wheelOpts = { passive: false };
+    window.addEventListener('wheel', handleWheel, wheelOpts);
+    window.addEventListener('keydown', handleKey);
+    root.addEventListener('touchend', handleTouchEnd, { passive: true });
+    root.addEventListener('resize', handleResize);
+    cleanup = [
+      () => window.removeEventListener('wheel', handleWheel, wheelOpts),
+      () => window.removeEventListener('keydown', handleKey),
+      () => root.removeEventListener('touchend', handleTouchEnd, { passive: true }),
+      () => root.removeEventListener('resize', handleResize),
+    ];
+    return api;
+  }
+
+  const api = {
+    state,
+    cfg,
+    scenes: () => scenes,
+    nearestScene,
+    anchorOf,
+    goTo,
+    mount,
+    destroy: () => { cleanup.forEach((fn) => fn()); state.phase = 'idle'; },
+    // 测试辅助：模拟意图
+    _test: { handleWheel, handleKey, findScenes },
+  };
+  return api;
+}
+const ctrl = createScrollSnap(document, { threshold: 130, animMs: 600, mode: "snap" });
+ctrl.mount(); window.__snap = ctrl;
 </script>
 </body>
 </html>
