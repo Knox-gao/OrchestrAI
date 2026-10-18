@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON / 城市脉搏 — 虚构城市 NEON-7</title>
+<style>
+:root{
+  --bg:#05060a;
+  --ink:#e8eaf2;
+  --dim:#8b90a5;
+  --amber:#ffb347;
+  --cyan:#3ef2e0;
+  --ice:#8ab6ff;
+  --magenta:#ff4fd8;
+  --panel:rgba(10,12,20,.88);
+  --line:rgba(255,255,255,.08);
+  --mono:'Courier New',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:var(--mono);-webkit-font-smoothing:antialiased}
+canvas#city{position:fixed;inset:0;display:block;cursor:crosshair}
+#vignette{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,5,.65) 100%)}
+
+/* ---------- header ---------- */
+header{position:fixed;top:0;left:0;right:0;padding:22px 28px;display:flex;
+  justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:5}
+.brand h1{font-size:clamp(22px,3.4vw,34px);letter-spacing:.35em;font-weight:400}
+.brand h1 em{font-style:normal;color:var(--cyan);text-shadow:0 0 18px rgba(62,242,224,.7)}
+.brand .sub{margin-top:6px;font-size:11px;letter-spacing:.25em;color:var(--dim)}
+.hud{text-align:right;font-size:11px;line-height:1.9;color:var(--dim);letter-spacing:.15em}
+.hud b{color:var(--ink);font-weight:400}
+.hud .blink{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--magenta);margin-right:8px;box-shadow:0 0 12px var(--magenta);
+  animation:bl 1.6s infinite}
+@keyframes bl{50%{opacity:.15}}
+
+/* ---------- signal tabs ---------- */
+nav.signals{position:fixed;left:28px;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:10px;z-index:6}
+.signal-btn{display:flex;align-items:center;gap:12px;background:transparent;
+  border:1px solid var(--line);border-left:3px solid var(--c,#888);
+  color:var(--dim);padding:12px 16px;cursor:pointer;min-width:170px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-align:left;
+  transition:all .3s;backdrop-filter:blur(6px);background:rgba(8,10,16,.5)}
+.signal-btn .en{display:block;font-size:9px;opacity:.55;margin-top:3px;letter-spacing:.3em}
+.signal-btn:hover{color:var(--ink);border-color:var(--c)}
+.signal-btn.active{color:var(--ink);background:rgba(255,255,255,.05);
+  box-shadow:0 0 24px -6px var(--c);border-left-width:3px}
+.signal-btn .dot{width:9px;height:9px;border-radius:50%;background:var(--c);
+  flex:none;box-shadow:0 0 10px var(--c)}
+
+/* ---------- time bar ---------- */
+.timebar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  width:min(620px,calc(100% - 40px));z-index:6;padding:16px 22px 20px;
+  background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px)}
+.timebar .row{display:flex;justify-content:space-between;font-size:10px;
+  letter-spacing:.25em;color:var(--dim);margin-bottom:10px}
+#clock{color:var(--ink);font-size:13px}
+.timebar input[type=range]{width:100%;appearance:none;height:2px;
+  background:linear-gradient(90deg,#1b2340,#3ef2e055);outline:none}
+.timebar input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;
+  border-radius:50%;background:var(--ink);border:2px solid var(--cyan);
+  box-shadow:0 0 14px var(--cyan);cursor:pointer}
+.play{margin-top:12px;display:flex;gap:14px;align-items:center}
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:.2em;background:transparent;
+  border:1px solid var(--line);color:var(--ink);padding:7px 18px;cursor:pointer;transition:.25s}
+.btn:hover{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 14px -4px var(--cyan)}
+.play .hint{font-size:10px;color:var(--dim);letter-spacing:.15em}
+
+/* ---------- district panel ---------- */
+aside.panel{position:fixed;right:0;top:0;bottom:0;width:min(360px,88vw);
+  background:var(--panel);border-left:1px solid var(--line);backdrop-filter:blur(16px);
+  z-index:7;transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);
+  padding:30px 26px;overflow-y:auto}
+aside.panel.open{transform:none}
+.panel .close{position:absolute;top:14px;right:14px;background:none;border:none;
+  color:var(--dim);font-size:20px;cursor:pointer;font-family:var(--mono)}
+.panel .close:hover{color:var(--ink)}
+.panel .tag{font-size:10px;letter-spacing:.35em;color:var(--dim)}
+.panel h2{font-size:24px;letter-spacing:.2em;margin:8px 0 2px;font-weight:400}
+.panel .en2{font-size:11px;color:var(--dim);letter-spacing:.3em;margin-bottom:18px}
+.panel .pulse-num{font-size:52px;letter-spacing:.05em;line-height:1;
+  margin:18px 0 4px;text-shadow:0 0 24px currentColor}
+.panel .pulse-label{font-size:10px;letter-spacing:.3em;color:var(--dim);margin-bottom:20px}
+.bars{display:flex;flex-direction:column;gap:14px;margin-top:8px}
+.bar .lab{display:flex;justify-content:space-between;font-size:10px;
+  letter-spacing:.2em;color:var(--dim);margin-bottom:5px}
+.bar .lab b{color:var(--ink);font-weight:400}
+.track{height:3px;background:rgba(255,255,255,.08)}
+.fill{height:100%;background:var(--fc,#fff);box-shadow:0 0 10px var(--fc);
+  transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.panel .story{margin-top:22px;font-size:12px;line-height:2;color:#b9bdd0;
+  letter-spacing:.08em;border-top:1px solid var(--line);padding-top:18px}
+.fiction{margin-top:26px;font-size:9px;letter-spacing:.3em;color:#555a6e}
+
+/* ---------- legend / footer ---------- */
+.legend{position:fixed;right:28px;bottom:26px;z-index:5;text-align:right;
+  font-size:9px;letter-spacing:.25em;color:var(--dim);line-height:2.1;pointer-events:none}
+footer{position:fixed;left:28px;bottom:26px;z-index:5;font-size:9px;
+  letter-spacing:.3em;color:#4c5165;pointer-events:none}
+
+@media(max-width:768px){
+  header{padding:16px}
+  .hud{display:none}
+  nav.signals{flex-direction:row;left:50%;top:auto;bottom:118px;
+    transform:translateX(-50%);gap:6px}
+  .signal-btn{min-width:0;padding:8px 10px;font-size:10px}
+  .signal-btn .en,.signal-btn .dot{display:none}
+  .timebar{bottom:12px;width:calc(100% - 24px);padding:12px 14px 14px}
+  .play .hint{display:none}
+  .legend{display:none}
+  footer{display:none}
+  aside.panel{width:100vw}
+}
+</style>
+</head>
+<body>
+
+<canvas id="city"></canvas>
+<div id="vignette"></div>
+
+<header>
+  <div class="brand">
+    <h1>N E O N <em>/</em> 城市脉搏</h1>
+    <div class="sub">NEON-7 · 虚构城市 · 2087 城市级信号感知网络</div>
+  </div>
+  <div class="hud">
+    <div><span class="blink"></span>SENSOR GRID <b>ONLINE</b></div>
+    <div>SECTORS <b id="hudSectors">7</b> · UPTIME <b>99.97%</b></div>
+    <div>LOCAL TIME <b id="hudClock">12:00</b></div>
+  </div>
+</header>
+
+<nav class="signals" aria-label="城市信号切换">
+  <button class="signal-btn active" data-signal="traffic" style="--c:var(--amber)">
+    <span class="dot"></span><span>交通脉动<span class="en">TRAFFIC</span></span></button>
+  <button class="signal-btn" data-signal="flow" style="--c:var(--cyan)">
+    <span class="dot"></span><span>人流潮汐<span class="en">CROWD FLOW</span></span></button>
+  <button class="signal-btn" data-signal="weather" style="--c:var(--ice)">
+    <span class="dot"></span><span>气象薄膜<span class="en">WEATHER FILM</span></span></button>
+  <button class="signal-btn" data-signal="energy" style="--c:var(--magenta)">
+    <span class="dot"></span><span>能量网格<span class="en">ENERGY GRID</span></span></button>
+</nav>
+
+<div class="timebar">
+  <div class="row"><span>CITY CYCLE · 城市昼夜节律</span><span id="clock">12:00</span></div>
+  <input type="range" id="hour" class="hour-range" min="0" max="23" step="1" value="12"
+    aria-label="选择一天中的时间">
+  <div class="play">
+    <button class="btn" id="playBtn" aria-label="播放时间流逝">▶ 播放</button>
+    <button class="btn" id="peakBtn" aria-label="跳转到高峰时刻">⤴ 跳至峰值</button>
+    <span class="hint">拖动时间轴，观察信号如何随昼夜涨落</span>
+  </div>
+</div>
+
+<aside class="panel" id="panel" aria-label="区域详情">
+  <button class="close" id="closePanel" aria-label="关闭面板">✕</button>
+  <div class="tag" id="pTag">SECTOR</div>
+  <h2 id="pName">—</h2>
+  <div class="en2" id="pEn">—</div>
+  <div class="pulse-num" id="pNum">0</div>
+  <div class="pulse-label" id="pUnit">SIGNAL</div>
+  <div class="bars">
+    <div class="bar"><div class="lab"><span>TRAFFIC 交通</span><b id="bTraffic">0</b></div>
+      <div class="track"><div class="fill" id="fTraffic" style="--fc:var(--amber)"></div></div></div>
+    <div class="bar"><div class="lab"><span>FLOW 人流</span><b id="bFlow">0</b></div>
+      <div class="track"><div class="fill" id="fFlow" style="--fc:var(--cyan)"></div></div></div>
+    <div class="bar"><div class="lab"><span>WEATHER 气象</span><b id="bWeather">0</b></div>
+      <div class="track"><div class="fill" id="fWeather" style="--fc:var(--ice)"></div></div></div>
+    <div class="bar"><div class="lab"><span>ENERGY 能源</span><b id="bEnergy">0</b></div>
+      <div class="track"><div class="fill" id="fEnergy" style="--fc:var(--magenta)"></div></div></div>
+  </div>
+  <p class="story" id="pStory"></p>
+  <p class="fiction">※ NEON-7 为虚构城市 · 所有数据为概念演示模拟数据</p>
+</aside>
+
+<div class="legend">
+  <div>信号强度 → 光点大小 / 亮度</div>
+  <div>点击光点查看区域详情</div>
+  <div>银色细线 · 环城轨道线</div>
+</div>
+<footer>NEON-7 URBAN PULSE SYSTEM — A FICTIONAL CITY STUDY</footer>
+
+<script>
+/* ============ 数据：7 个虚构区域 ============ */
+const SIGNALS = {
+  traffic:{name:'交通脉动',en:'TRAFFIC',color:'#ffb347',unit:'CONGESTION INDEX 拥堵指数',max:100},
+  flow:{name:'人流潮汐',en:'CROWD FLOW',color:'#3ef2e0',unit:'PEOPLE / KM² 每平方公里人数',max:100},
+  weather:{name:'气象薄膜',en:'WEATHER FILM',color:'#8ab6ff',unit:'AEROSOL DENSITY 大气密度 %',max:100},
+  energy:{name:'能量网格',en:'ENERGY GRID',color:'#ff4fd8',unit:'GRID LOAD 电网负载 %',max:100}
+};
+const SECTORS = [
+ {id:'core', name:'零点中枢', en:'ZERO CORE', x:.50,y:.44, r:1.5, base:{traffic:62,flow:88,weather:44,energy:82},
+  story:'城市的心脏。全城信号在此汇聚又散开——你看到的每一次光晕，都是七百万人共同呼吸的残影。'},
+ {id:'harbor', name:'雾港码头', en:'MIST HARBOR', x:.20,y:.66, r:1.15, base:{traffic:48,flow:55,weather:82,energy:40},
+  story:'气溶胶薄膜在港口上空最厚。当湿度信号转蓝，悬浮货艇会像萤群一样浮出雾面。'},
+ {id:'spire', name:'低语尖塔', en:'WHISPER SPIRE', x:.72,y:.26, r:1.1, base:{traffic:35,flow:70,weather:30,energy:92},
+  story:'垂直城市。能源网格在正午过载时，整座塔会短暂变暗——居民把这称作"塔的眨眼"。'},
+ {id:'grid', name:'旧电网格', en:'OLD GRID', x:.28,y:.24, r:1.0, base:{traffic:78,flow:42,weather:38,energy:66},
+  story:'旧时代的高架桥残骸被改成立体轨道。晚高峰的拥堵指数能一路烧成琥珀色。'},
+ {id:'market', name:'浮市环廊', en:'FLOAT MARKET', x:.66,y:.66, r:1.2, base:{traffic:55,flow:95,weather:52,energy:58},
+  story:'人流潮汐在这里最狂野。凌晨三点的夜市人流，比白天的中枢还要汹涌。'},
+ {id:'park', name:'静默绿洲', en:'SILENT OASIS', x:.44,y:.76, r:.9, base:{traffic:18,flow:30,weather:60,energy:22},
+  story:'全城唯一禁飞区。信号在这里刻意变弱——设计者想让城市学会安静。'},
+ {id:'gate', name:'北环闸门', en:'NORTH GATE', x:.80,y:.50, r:1.0, base:{traffic:70,flow:60,weather:46,energy:50},
+  story:'进出城的咽喉。所有离城者的最后记忆，都是闸门上流动的青色光纹。'}
+];
+const LINKS=[['core','harbor'],['core','spire'],['core','grid'],['core','market'],
+ ['core','gate'],['harbor','park'],['park','market'],['market','gate'],['grid','spire'],['spire','gate']];
+
+/* 昼夜节律曲线：每区域每信号 = base * 时段因子 + 少量随机相位 */
+const PHASE = SECTORS.map((s,i)=> (i*1.7)%6.28);
+function val(si, sig, h){
+  const b = SECTORS[si].base[sig];
+  const day = Math.sin((h-6)/24*Math.PI*2 + PHASE[si]);      // 昼主峰
+  const night = Math.sin((h-21)/24*Math.PI*2 + PHASE[si]);   // 夜次峰
+  let f;
+  if(sig==='traffic') f = .55 + .45*Math.max(0,day);
+  else if(sig==='flow') f = .5 + .35*Math.max(0,day) + .3*Math.max(0,night);
+  else if(sig==='weather') f = .6 + .4*Math.max(0,-day);      // 夜间湿度高
+  else f = .45 + .55*Math.max(0,day*.8+night*.4+.3);
+  f += .06*Math.sin(h*3+PHASE[si]);
+  return Math.max(4, Math.min(100, b*f));
+}
+const PEAK_HOUR = {traffic:18, flow:19, weather:3, energy:14};
+
+/* ============ 渲染 ============ */
+const cv=document.getElementById('city'), ctx=cv.getContext('2d');
+let W,H,DPR, sel=null, sig='traffic', hour=12, playing=false, t0=performance.now();
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener('resize',resize);resize();
+
+function pos(s){
+  // 小屏时垂直压缩布局
+  const topPad = W>768? .14:.30, spanY = W>768? .72:.55;
+  return {x:s.x*W, y:topPad*H + (s.y-0.2)/0.6*spanY*H};
+}
+function curVals(){return SECTORS.map((s,i)=>({v:val(i,sig,hour),
+  all:{traffic:val(i,'traffic',hour),flow:val(i,'flow',hour),
+       weather:val(i,'weather',hour),energy:val(i,'energy',hour)}}));}
+
+function draw(now){
+  const t=(now-t0)/1000;
+  const C=SIGNALS[sig].color, vals=curVals();
+  // 背景微网格
+  ctx.fillStyle='#05060a';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(120,140,255,.04)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=90){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=90){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // 轨道连线：亮度随两端信号
+  LINKS.forEach(([a,b])=>{
+    const A=pos(SECTORS.find(s=>s.id===a)), B=pos(SECTORS.find(s=>s.id===b));
+    const ia=SECTORS.findIndex(s=>s.id===a), ib=SECTORS.findIndex(s=>s.id===b);
+    const g=(vals[ia].v+vals[ib].v)/200;
+    ctx.strokeStyle=`rgba(180,190,220,${.05+g*.3})`;
+    ctx.lineWidth=.7+g*1.6;
+    ctx.setLineDash([3,7]);ctx.lineDashOffset=-t*12;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();ctx.setLineDash([]);
+    // 流动光点
+    const flow=(t*.12+ia*.37)%1;
+    const fx=A.x+(B.x-A.x)*flow, fy=A.y+(B.y-A.y)*flow;
+    ctx.fillStyle=C;ctx.globalAlpha=.25+g*.5;
+    ctx.beginPath();ctx.arc(fx,fy,1.6,0,7);ctx.fill();ctx.globalAlpha=1;
+  });
+
+  // 区域光点
+  vals.forEach((d,i)=>{
+    const s=SECTORS[i], p=pos(s);
+    const n=(s.base[sig]/100)*3;
+    const pulse=.75+.25*Math.sin(t*(1.2+n)+PHASE[i]);
+    const R=(10+s.r*10)*(.55+d.v/100*.9);
+    const isSel = sel===s.id;
+    // 光晕
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,R*3.2*pulse);
+    gr.addColorStop(0,C+'55');gr.addColorStop(1,'transparent');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(p.x,p.y,R*3.2*pulse,0,7);ctx.fill();
+    // 主体
+    ctx.fillStyle=isSel?'#ffffff':C;
+    ctx.globalAlpha=.35+d.v/100*.65;
+    ctx.beginPath();ctx.arc(p.x,p.y,R*pulse,0,7);ctx.fill();
+    ctx.globalAlpha=1;
+    // 选中环
+    if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(p.x,p.y,R*2.1+3*Math.sin(t*3),0,7);ctx.stroke();}
+    // 标签
+    ctx.font='10px Courier New';ctx.textAlign='center';
+    ctx.fillStyle=isSel?'#fff':'rgba(200,205,225,.75)';
+    ctx.fillText(s.name+' · '+s.en, p.x, p.y+R*2.1+16);
+    ctx.fillStyle=C;ctx.font='11px Courier New';
+    ctx.fillText(Math.round(d.v), p.x, p.y-R*1.6-8);
+  });
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+/* ============ 交互 ============ */
+cv.addEventListener('click',e=>{
+  let best=null,bd=44;
+  SECTORS.forEach(s=>{const p=pos(s);
+    const d=Math.hypot(e.clientX-p.x,e.clientY-p.y);
+    if(d<bd){bd=d;best=s;}});
+  if(best) openPanel(best); else closePanel();
+});
+function openPanel(s){
+  sel=s.id; const P=document.getElementById('panel');
+  document.getElementById('pTag').textContent='SECTOR / '+(SECTORS.indexOf(s)+1).toString().padStart(2,'0');
+  document.getElementById('pName').textContent=s.name;
+  document.getElementById('pEn').textContent=s.en;
+  document.getElementById('pStory').textContent=s.story;
+  updatePanel(); P.classList.add('open');
+}
+function closePanel(){sel=null;document.getElementById('panel').classList.remove('open');}
+document.getElementById('closePanel').onclick=closePanel;
+function updatePanel(){
+  if(!sel)return; const i=SECTORS.findIndex(s=>s.id===sel);
+  const all=curVals()[i].all, cur=all[sig], C=SIGNALS[sig];
+  document.getElementById('pNum').textContent=Math.round(cur);
+  document.getElementById('pNum').style.color=C.color;
+  document.getElementById('pUnit').textContent=C.en+' · '+C.unit;
+  for(const k of ['traffic','flow','weather','energy']){
+    document.getElementById('b'+k[0].toUpperCase()+k.slice(1)).textContent=Math.round(all[k]);
+    document.getElementById('f'+k[0].toUpperCase()+k.slice(1)).style.width=all[k]+'%';
+  }
+}
+document.querySelectorAll('.signal-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.signal-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); sig=btn.dataset.signal; updatePanel();
+  });
+});
+
+const hourEl=document.getElementById('hour');
+function setHour(h){hour=(h+24)%24;
+  const s=String(hour).padStart(2,'0')+':00';
+  hourEl.value=hour;
+  document.getElementById('clock').textContent=s;
+  document.getElementById('hudClock').textContent=s;
+  updatePanel();}
+hourEl.addEventListener('input',e=>setHour(+e.target.value));
+document.getElementById('peakBtn').onclick=()=>setHour(PEAK_HOUR[sig]);
+let playT=null;
+document.getElementById('playBtn').onclick=function(){
+  playing=!playing; this.textContent=playing?'⏸ 暂停':'▶ 播放';
+  if(playing){playT=setInterval(()=>setHour(hour+ .25),80);}else clearInterval(playT);
+};
+
+setHour(12);
+</script>
+</body>
+</html>

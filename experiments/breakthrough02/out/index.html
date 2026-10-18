@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON / 城市脉搏 — 虚构城市 NEON-7</title>
+<style>
+:root{
+  --bg:#05060a;
+  --ink:#e8eaf2;
+  --dim:#8b90a5;
+  --amber:#ffb347;
+  --cyan:#3ef2e0;
+  --ice:#8ab6ff;
+  --magenta:#ff4fd8;
+  --panel:rgba(10,12,20,.88);
+  --line:rgba(255,255,255,.08);
+  --mono:'Courier New',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:var(--mono);-webkit-font-smoothing:antialiased}
+canvas#city{position:fixed;inset:0;display:block;cursor:crosshair}
+#vignette{position:fixed;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%,transparent 55%,rgba(0,0,5,.65) 100%)}
+
+/* ---------- header ---------- */
+header{position:fixed;top:0;left:0;right:0;padding:22px 28px;display:flex;
+  justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:5}
+.brand h1{font-size:clamp(22px,3.4vw,34px);letter-spacing:.35em;font-weight:400}
+.brand h1 em{font-style:normal;color:var(--cyan);text-shadow:0 0 18px rgba(62,242,224,.7)}
+.brand .sub{margin-top:6px;font-size:11px;letter-spacing:.25em;color:var(--dim)}
+.hud{text-align:right;font-size:11px;line-height:1.9;color:var(--dim);letter-spacing:.15em}
+.hud b{color:var(--ink);font-weight:400}
+.hud .blink{display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--magenta);margin-right:8px;box-shadow:0 0 12px var(--magenta);
+  animation:bl 1.6s infinite}
+@keyframes bl{50%{opacity:.15}}
+
+/* ---------- signal tabs ---------- */
+nav.signals{position:fixed;left:28px;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:10px;z-index:6}
+.signal-btn{display:flex;align-items:center;gap:12px;background:transparent;
+  border:1px solid var(--line);border-left:3px solid var(--c,#888);
+  color:var(--dim);padding:12px 16px;cursor:pointer;min-width:170px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-align:left;
+  transition:all .3s;backdrop-filter:blur(6px);background:rgba(8,10,16,.5)}
+.signal-btn .en{display:block;font-size:9px;opacity:.55;margin-top:3px;letter-spacing:.3em}
+.signal-btn:hover{color:var(--ink);border-color:var(--c)}
+.signal-btn.active{color:var(--ink);background:rgba(255,255,255,.05);
+  box-shadow:0 0 24px -6px var(--c);border-left-width:3px}
+.signal-btn .dot{width:9px;height:9px;border-radius:50%;background:var(--c);
+  flex:none;box-shadow:0 0 10px var(--c)}
+
+/* ---------- time bar ---------- */
+.timebar{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+  width:min(620px,calc(100% - 40px));z-index:6;padding:16px 22px 20px;
+  background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(12px)}
+.timebar .row{display:flex;justify-content:space-between;font-size:10px;
+  letter-spacing:.25em;color:var(--dim);margin-bottom:10px}
+#clock{color:var(--ink);font-size:13px}
+.timebar input[type=range]{width:100%;appearance:none;height:2px;
+  background:linear-gradient(90deg,#1b2340,#3ef2e055);outline:none}
+.timebar input::-webkit-slider-thumb{appearance:none;width:16px;height:16px;
+  border-radius:50%;background:var(--ink);border:2px solid var(--cyan);
+  box-shadow:0 0 14px var(--cyan);cursor:pointer}
+.play{margin-top:12px;display:flex;gap:14px;align-items:center}
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:.2em;background:transparent;
+  border:1px solid var(--line);color:var(--ink);padding:7px 18px;cursor:pointer;transition:.25s}
+.btn:hover{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 14px -4px var(--cyan)}
+.play .hint{font-size:10px;color:var(--dim);letter-spacing:.15em}
+
+/* ---------- district panel ---------- */
+aside.panel{position:fixed;right:0;top:0;bottom:0;width:min(360px,88vw);
+  background:var(--panel);border-left:1px solid var(--line);backdrop-filter:blur(16px);
+  z-index:7;transform:translateX(105%);transition:transform .45s cubic-bezier(.2,.8,.2,1);
+  padding:30px 26px;overflow-y:auto}
+aside.panel.open{transform:none}
+.panel .close{position:absolute;top:14px;right:14px;background:none;border:none;
+  color:var(--dim);font-size:20px;cursor:pointer;font-family:var(--mono)}
+.panel .close:hover{color:var(--ink)}
+.panel .tag{font-size:10px;letter-spacing:.35em;color:var(--dim)}
+.panel h2{font-size:24px;letter-spacing:.2em;margin:8px 0 2px;font-weight:400}
+.panel .en2{font-size:11px;color:var(--dim);letter-spacing:.3em;margin-bottom:18px}
+.panel .pulse-num{font-size:52px;letter-spacing:.05em;line-height:1;
+  margin:18px 0 4px;text-shadow:0 0 24px currentColor}
+.panel .pulse-label{font-size:10px;letter-spacing:.3em;color:var(--dim);margin-bottom:20px}
+.bars{display:flex;flex-direction:column;gap:14px;margin-top:8px}
+.bar .lab{display:flex;justify-content:space-between;font-size:10px;
+  letter-spacing:.2em;color:var(--dim);margin-bottom:5px}
+.bar .lab b{color:var(--ink);font-weight:400}
+.track{height:3px;background:rgba(255,255,255,.08)}
+.fill{height:100%;background:var(--fc,#fff);box-shadow:0 0 10px var(--fc);
+  transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.panel .story{margin-top:22px;font-size:12px;line-height:2;color:#b9bdd0;
+  letter-spacing:.08em;border-top:1px solid var(--line);padding-top:18px}
+.fiction{margin-top:26px;font-size:9px;letter-spacing:.3em;color:#555a6e}
+
+/* ---------- legend / footer ---------- */
+.legend{position:fixed;right:28px;bottom:26px;z-index:5;text-align:right;
+  font-size:9px;letter-spacing:.25em;color:var(--dim);line-height:2.1;pointer-events:none}
+footer{position:fixed;left:28px;bottom:26px;z-index:5;font-size:9px;
+  letter-spacing:.3em;color:#4c5165;pointer-events:none}
+
+@media(max-width:768px){
+  header{padding:16px}
+  .hud{display:none}
+  nav.signals{flex-direction:row;left:50%;top:auto;bottom:118px;
+    transform:translateX(-50%);gap:6px}
+  .signal-btn{min-width:0;padding:8px 10px;font-size:10px}
+  .signal-btn .en,.signal-btn .dot{display:none}
+  .timebar{bottom:12px;width:calc(100% - 24px);padding:12px 14px 14px}
+  .play .hint{display:none}
+  .legend{display:none}
+  footer{display:none}
+  aside.panel{width:100vw}
+}
+/* ===== 补丁：信号模式区分 & 信息侧栏 ===== */
+
+/* 侧栏容器 */
+.info-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 280px;
+  max-height: calc(100vh - 32px);
+  background: rgba(10, 14, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 16px;
+  color: #e8ecf4;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+  overflow-y: auto;
+  transition: border-color 0.4s ease;
+}
+
+.info-panel__title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: 0.5px;
+}
+
+.info-panel__type {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.info-panel__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.info-panel__row span:last-child {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.info-panel__desc {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: rgba(232, 236, 244, 0.65);
+}
+
+/* 各模式主题色 */
+.info-panel[data-mode="traffic"] { border-color: #ffaa33; }
+.info-panel[data-mode="traffic"] .info-panel__type { background: rgba(255,170,51,0.18); color: #ffaa33; }
+
+.info-panel[data-mode="crowd"] { border-color: #44ccff; }
+.info-panel[data-mode="crowd"] .info-panel__type { background: rgba(68,204,255,0.18); color: #44ccff; }
+
+.info-panel[data-mode="weather"] { border-color: #aabbff; }
+.info-panel[data-mode="weather"] .info-panel__type { background: rgba(170,187,255,0.18); color: #aabbff; }
+
+.info-panel[data-mode="energy"] { border-color: #66ff99; }
+.info-panel[data-mode="energy"] .info-panel__type { background: rgba(102,255,153,0.18); color: #66ff99; }
+
+/* canvas 顶部当前模式指示条 */
+.canvas-mode-indicator {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #0a0e18;
+  font-weight: 700;
+  z-index: 100;
+  transition: background 0.4s ease;
+}
+
+.canvas-mode-indicator[data-mode="traffic"] { background: #ffaa33; }
+.canvas-mode-indicator[data-mode="crowd"]   { background: #44ccff; }
+.canvas-mode-indicator[data-mode="weather"] { background: #aabbff; }
+.canvas-mode-indicator[data-mode="energy"]  { background: #66ff99; }
+</style>
+</head>
+<body>
+
+<canvas id="city"></canvas>
+<div id="vignette"></div>
+
+<header>
+  <div class="brand">
+    <h1>N E O N <em>/</em> 城市脉搏</h1>
+    <div class="sub">NEON-7 · 虚构城市 · 2087 城市级信号感知网络</div>
+  </div>
+  <div class="hud">
+    <div><span class="blink"></span>SENSOR GRID <b>ONLINE</b></div>
+    <div>SECTORS <b id="hudSectors">7</b> · UPTIME <b>99.97%</b></div>
+    <div>LOCAL TIME <b id="hudClock">12:00</b></div>
+  </div>
+</header>
+
+<nav class="signals" aria-label="城市信号切换">
+  <button class="signal-btn active" data-signal="traffic" style="--c:var(--amber)">
+    <span class="dot"></span><span>交通脉动<span class="en">TRAFFIC</span></span></button>
+  <button class="signal-btn" data-signal="flow" style="--c:var(--cyan)">
+    <span class="dot"></span><span>人流潮汐<span class="en">CROWD FLOW</span></span></button>
+  <button class="signal-btn" data-signal="weather" style="--c:var(--ice)">
+    <span class="dot"></span><span>气象薄膜<span class="en">WEATHER FILM</span></span></button>
+  <button class="signal-btn" data-signal="energy" style="--c:var(--magenta)">
+    <span class="dot"></span><span>能量网格<span class="en">ENERGY GRID</span></span></button>
+</nav>
+
+<div class="timebar">
+  <div class="row"><span>CITY CYCLE · 城市昼夜节律</span><span id="clock">12:00</span></div>
+  <input type="range" id="hour" class="hour-range" min="0" max="23" step="1" value="12"
+    aria-label="选择一天中的时间">
+  <div class="play">
+    <button class="btn" id="playBtn" aria-label="播放时间流逝">▶ 播放</button>
+    <button class="btn" id="peakBtn" aria-label="跳转到高峰时刻">⤴ 跳至峰值</button>
+    <span class="hint">拖动时间轴，观察信号如何随昼夜涨落</span>
+  </div>
+</div>
+
+<aside class="panel" id="panel" aria-label="区域详情">
+  <button class="close" id="closePanel" aria-label="关闭面板">✕</button>
+  <div class="tag" id="pTag">SECTOR</div>
+  <h2 id="pName">—</h2>
+  <div class="en2" id="pEn">—</div>
+  <div class="pulse-num" id="pNum">0</div>
+  <div class="pulse-label" id="pUnit">SIGNAL</div>
+  <div class="bars">
+    <div class="bar"><div class="lab"><span>TRAFFIC 交通</span><b id="bTraffic">0</b></div>
+      <div class="track"><div class="fill" id="fTraffic" style="--fc:var(--amber)"></div></div></div>
+    <div class="bar"><div class="lab"><span>FLOW 人流</span><b id="bFlow">0</b></div>
+      <div class="track"><div class="fill" id="fFlow" style="--fc:var(--cyan)"></div></div></div>
+    <div class="bar"><div class="lab"><span>WEATHER 气象</span><b id="bWeather">0</b></div>
+      <div class="track"><div class="fill" id="fWeather" style="--fc:var(--ice)"></div></div></div>
+    <div class="bar"><div class="lab"><span>ENERGY 能源</span><b id="bEnergy">0</b></div>
+      <div class="track"><div class="fill" id="fEnergy" style="--fc:var(--magenta)"></div></div></div>
+  </div>
+  <p class="story" id="pStory"></p>
+  <p class="fiction">※ NEON-7 为虚构城市 · 所有数据为概念演示模拟数据</p>
+</aside>
+
+<div class="legend">
+  <div>信号强度 → 光点大小 / 亮度</div>
+  <div>点击光点查看区域详情</div>
+  <div>银色细线 · 环城轨道线</div>
+</div>
+<footer>NEON-7 URBAN PULSE SYSTEM — A FICTIONAL CITY STUDY</footer>
+
+<script>
+/* ============ 数据：7 个虚构区域 ============ */
+const SIGNALS = {
+  traffic:{name:'交通脉动',en:'TRAFFIC',color:'#ffb347',unit:'CONGESTION INDEX 拥堵指数',max:100},
+  flow:{name:'人流潮汐',en:'CROWD FLOW',color:'#3ef2e0',unit:'PEOPLE / KM² 每平方公里人数',max:100},
+  weather:{name:'气象薄膜',en:'WEATHER FILM',color:'#8ab6ff',unit:'AEROSOL DENSITY 大气密度 %',max:100},
+  energy:{name:'能量网格',en:'ENERGY GRID',color:'#ff4fd8',unit:'GRID LOAD 电网负载 %',max:100}
+};
+const SECTORS = [
+ {id:'core', name:'零点中枢', en:'ZERO CORE', x:.50,y:.44, r:1.5, base:{traffic:62,flow:88,weather:44,energy:82},
+  story:'城市的心脏。全城信号在此汇聚又散开——你看到的每一次光晕，都是七百万人共同呼吸的残影。'},
+ {id:'harbor', name:'雾港码头', en:'MIST HARBOR', x:.20,y:.66, r:1.15, base:{traffic:48,flow:55,weather:82,energy:40},
+  story:'气溶胶薄膜在港口上空最厚。当湿度信号转蓝，悬浮货艇会像萤群一样浮出雾面。'},
+ {id:'spire', name:'低语尖塔', en:'WHISPER SPIRE', x:.72,y:.26, r:1.1, base:{traffic:35,flow:70,weather:30,energy:92},
+  story:'垂直城市。能源网格在正午过载时，整座塔会短暂变暗——居民把这称作"塔的眨眼"。'},
+ {id:'grid', name:'旧电网格', en:'OLD GRID', x:.28,y:.24, r:1.0, base:{traffic:78,flow:42,weather:38,energy:66},
+  story:'旧时代的高架桥残骸被改成立体轨道。晚高峰的拥堵指数能一路烧成琥珀色。'},
+ {id:'market', name:'浮市环廊', en:'FLOAT MARKET', x:.66,y:.66, r:1.2, base:{traffic:55,flow:95,weather:52,energy:58},
+  story:'人流潮汐在这里最狂野。凌晨三点的夜市人流，比白天的中枢还要汹涌。'},
+ {id:'park', name:'静默绿洲', en:'SILENT OASIS', x:.44,y:.76, r:.9, base:{traffic:18,flow:30,weather:60,energy:22},
+  story:'全城唯一禁飞区。信号在这里刻意变弱——设计者想让城市学会安静。'},
+ {id:'gate', name:'北环闸门', en:'NORTH GATE', x:.80,y:.50, r:1.0, base:{traffic:70,flow:60,weather:46,energy:50},
+  story:'进出城的咽喉。所有离城者的最后记忆，都是闸门上流动的青色光纹。'}
+];
+const LINKS=[['core','harbor'],['core','spire'],['core','grid'],['core','market'],
+ ['core','gate'],['harbor','park'],['park','market'],['market','gate'],['grid','spire'],['spire','gate']];
+
+/* 昼夜节律曲线：每区域每信号 = base * 时段因子 + 少量随机相位 */
+const PHASE = SECTORS.map((s,i)=> (i*1.7)%6.28);
+function val(si, sig, h){
+  const b = SECTORS[si].base[sig];
+  const day = Math.sin((h-6)/24*Math.PI*2 + PHASE[si]);      // 昼主峰
+  const night = Math.sin((h-21)/24*Math.PI*2 + PHASE[si]);   // 夜次峰
+  let f;
+  if(sig==='traffic') f = .55 + .45*Math.max(0,day);
+  else if(sig==='flow') f = .5 + .35*Math.max(0,day) + .3*Math.max(0,night);
+  else if(sig==='weather') f = .6 + .4*Math.max(0,-day);      // 夜间湿度高
+  else f = .45 + .55*Math.max(0,day*.8+night*.4+.3);
+  f += .06*Math.sin(h*3+PHASE[si]);
+  return Math.max(4, Math.min(100, b*f));
+}
+const PEAK_HOUR = {traffic:18, flow:19, weather:3, energy:14};
+
+/* ============ 渲染 ============ */
+const cv=document.getElementById('city'), ctx=cv.getContext('2d');
+let W,H,DPR, sel=null, sig='traffic', hour=12, playing=false, t0=performance.now();
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
+  cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener('resize',resize);resize();
+
+function pos(s){
+  // 小屏时垂直压缩布局
+  const topPad = W>768? .14:.30, spanY = W>768? .72:.55;
+  return {x:s.x*W, y:topPad*H + (s.y-0.2)/0.6*spanY*H};
+}
+function curVals(){return SECTORS.map((s,i)=>({v:val(i,sig,hour),
+  all:{traffic:val(i,'traffic',hour),flow:val(i,'flow',hour),
+       weather:val(i,'weather',hour),energy:val(i,'energy',hour)}}));}
+
+function draw(now){
+  const t=(now-t0)/1000;
+  const C=SIGNALS[sig].color, vals=curVals();
+  // 背景微网格
+  ctx.fillStyle='#05060a';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(120,140,255,.04)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=90){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=90){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // 轨道连线：亮度随两端信号
+  LINKS.forEach(([a,b])=>{
+    const A=pos(SECTORS.find(s=>s.id===a)), B=pos(SECTORS.find(s=>s.id===b));
+    const ia=SECTORS.findIndex(s=>s.id===a), ib=SECTORS.findIndex(s=>s.id===b);
+    const g=(vals[ia].v+vals[ib].v)/200;
+    ctx.strokeStyle=`rgba(180,190,220,${.05+g*.3})`;
+    ctx.lineWidth=.7+g*1.6;
+    ctx.setLineDash([3,7]);ctx.lineDashOffset=-t*12;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();ctx.setLineDash([]);
+    // 流动光点
+    const flow=(t*.12+ia*.37)%1;
+    const fx=A.x+(B.x-A.x)*flow, fy=A.y+(B.y-A.y)*flow;
+    ctx.fillStyle=C;ctx.globalAlpha=.25+g*.5;
+    ctx.beginPath();ctx.arc(fx,fy,1.6,0,7);ctx.fill();ctx.globalAlpha=1;
+  });
+
+  // 区域光点
+  vals.forEach((d,i)=>{
+    const s=SECTORS[i], p=pos(s);
+    const n=(s.base[sig]/100)*3;
+    const pulse=.75+.25*Math.sin(t*(1.2+n)+PHASE[i]);
+    const R=(10+s.r*10)*(.55+d.v/100*.9);
+    const isSel = sel===s.id;
+    // 光晕
+    const gr=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,R*3.2*pulse);
+    gr.addColorStop(0,C+'55');gr.addColorStop(1,'transparent');
+    ctx.fillStyle=gr;ctx.beginPath();ctx.arc(p.x,p.y,R*3.2*pulse,0,7);ctx.fill();
+    // 主体
+    ctx.fillStyle=isSel?'#ffffff':C;
+    ctx.globalAlpha=.35+d.v/100*.65;
+    ctx.beginPath();ctx.arc(p.x,p.y,R*pulse,0,7);ctx.fill();
+    ctx.globalAlpha=1;
+    // 选中环
+    if(isSel){ctx.strokeStyle='#fff';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.arc(p.x,p.y,R*2.1+3*Math.sin(t*3),0,7);ctx.stroke();}
+    // 标签
+    ctx.font='10px Courier New';ctx.textAlign='center';
+    ctx.fillStyle=isSel?'#fff':'rgba(200,205,225,.75)';
+    ctx.fillText(s.name+' · '+s.en, p.x, p.y+R*2.1+16);
+    ctx.fillStyle=C;ctx.font='11px Courier New';
+    ctx.fillText(Math.round(d.v), p.x, p.y-R*1.6-8);
+  });
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+/* ============ 交互 ============ */
+cv.addEventListener('click',e=>{
+  let best=null,bd=44;
+  SECTORS.forEach(s=>{const p=pos(s);
+    const d=Math.hypot(e.clientX-p.x,e.clientY-p.y);
+    if(d<bd){bd=d;best=s;}});
+  if(best) openPanel(best); else closePanel();
+});
+function openPanel(s){
+  sel=s.id; const P=document.getElementById('panel');
+  document.getElementById('pTag').textContent='SECTOR / '+(SECTORS.indexOf(s)+1).toString().padStart(2,'0');
+  document.getElementById('pName').textContent=s.name;
+  document.getElementById('pEn').textContent=s.en;
+  document.getElementById('pStory').textContent=s.story;
+  updatePanel(); P.classList.add('open');
+}
+function closePanel(){sel=null;document.getElementById('panel').classList.remove('open');}
+document.getElementById('closePanel').onclick=closePanel;
+function updatePanel(){
+  if(!sel)return; const i=SECTORS.findIndex(s=>s.id===sel);
+  const all=curVals()[i].all, cur=all[sig], C=SIGNALS[sig];
+  document.getElementById('pNum').textContent=Math.round(cur);
+  document.getElementById('pNum').style.color=C.color;
+  document.getElementById('pUnit').textContent=C.en+' · '+C.unit;
+  for(const k of ['traffic','flow','weather','energy']){
+    document.getElementById('b'+k[0].toUpperCase()+k.slice(1)).textContent=Math.round(all[k]);
+    document.getElementById('f'+k[0].toUpperCase()+k.slice(1)).style.width=all[k]+'%';
+  }
+}
+document.querySelectorAll('.signal-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.signal-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active'); sig=btn.dataset.signal; updatePanel();
+  });
+});
+
+const hourEl=document.getElementById('hour');
+function setHour(h){hour=(h+24)%24;
+  const s=String(hour).padStart(2,'0')+':00';
+  hourEl.value=hour;
+  document.getElementById('clock').textContent=s;
+  document.getElementById('hudClock').textContent=s;
+  updatePanel();}
+hourEl.addEventListener('input',e=>setHour(+e.target.value));
+document.getElementById('peakBtn').onclick=()=>setHour(PEAK_HOUR[sig]);
+let playT=null;
+document.getElementById('playBtn').onclick=function(){
+  playing=!playing; this.textContent=playing?'⏸ 暂停':'▶ 播放';
+  if(playing){playT=setInterval(()=>setHour(hour+ .25),80);}else clearInterval(playT);
+};
+
+setHour(12);
+/* ===== 补丁：canvas 信号模式区分渲染 + 信息侧栏逻辑 ===== */
+(function () {
+  if (window.__signalModePatchApplied) return;
+  window.__signalModePatchApplied = true;
+
+  // ---- 模式配置 ----
+  const MODES = {
+    traffic: {
+      color: "#ffaa33",
+      particleCount: 120,
+      speed: 3.2,
+      pattern: "flow-lines", // 沿车道流动的短线
+      label: "交通信号",
+      desc: "车辆沿固定路径高速流动，密度随信号周期波动。",
+      metrics: { "车流密度": "62%", "平均速度": "48 km/h", "信号周期": "90s", "拥堵指数": "1.4" }
+    },
+    crowd: {
+      color: "#44ccff",
+      particleCount: 200,
+      speed: 1.2,
+      pattern: "swarm", // 无规则聚集群
+      label: "人流信号",
+      desc: "人群呈无规则聚集与扩散，热点区域随机出现。",
+      metrics: { "人流密度": "78%", "移动速度": "1.2 m/s", "聚集热点": "4 处", "预测峰值": "18:30" }
+    },
+    weather: {
+      color: "#aabbff",
+      particleCount: 300,
+      speed: 0.8,
+      pattern: "drift", // 缓慢飘落
+      label: "气象信号",
+      desc: "粒子自上而下缓慢漂移，模拟降水/气流运动。",
+      metrics: { "温度": "22.5°C", "湿度": "68%", "风速": "3.4 m/s", "气压": "1013 hPa" }
+    },
+    energy: {
+      color: "#66ff99",
+      particleCount: 80,
+      speed: 2.0,
+      pattern: "pulse", // 中心脉冲扩散
+      label: "能量信号",
+      desc: "能量脉冲从核心节点周期性向外辐射扩散。",
+      metrics: { "负载": "54%", "峰值功率": "8.2 MW", "传输损耗": "3.1%", "频率": "50 Hz" }
+    }
+  };
+
+  let currentMode = "traffic";
+  let particles = [];
+  let pulses = [];
+  let rafId = null;
+
+  // ---- 侧栏 & 指示条 DOM ----
+  const panel = document.createElement("div");
+  panel.className = "info-panel";
+  document.body.appendChild(panel);
+
+  const indicator = document.createElement("div");
+  indicator.className = "canvas-mode-indicator";
+  document.body.appendChild(indicator);
+
+  function renderPanel() {
+    const m = MODES[currentMode];
+    panel.dataset.mode = currentMode;
+    indicator.dataset.mode = currentMode;
+    indicator.textContent = m.label;
+    panel.innerHTML = `
+      <div class="info-panel__title">区域详情</div>
+      <span class="info-panel__type">${m.label}</span>
+      ${Object.entries(m.metrics).map(([k, v]) =>
+        `<div class="info-panel__row"><span>${k}</span><span>${v}</span></div>`).join("")}
+      <p class="info-panel__desc">${m.desc}</p>
+    `;
+  }
+
+  // ---- 粒子 ----
+  function initParticles(w, h) {
+    const m = MODES[currentMode];
+    particles = [];
+    pulses = [];
+    for (let i = 0; i < m.particleCount; i++) {
+      particles.push({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * m.speed,
+        vy: (Math.random() - 0.5) * m.speed,
+        size: 1 + Math.random() * 2.5,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+
+  function renderPattern(ctx, w, h, t) {
+    const m = MODES[currentMode];
+    ctx.fillStyle = m.color;
+
+    if (m.pattern === "flow-lines") {
+      // 交通：水平车道流动短线
+      const lanes = 6;
+      for (const p of particles) {
+        p.x += m.speed * (1 + 0.5 * Math.sin(t / 800 + p.phase));
+        if (p.x > w + 20) { p.x = -20; p.y = Math.random() * h; }
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t / 300 + p.phase);
+        ctx.fillRect(p.x, p.y, 12 + p.size * 3, 2);
+      }
+    } else if (m.pattern === "swarm") {
+      // 人流：随机聚集
+      for (const p of particles) {
+        p.vx += (Math.random() - 0.5) * 0.15;
+        p.vy += (Math.random() - 0.5) * 0.15;
+        p.vx = Math.max(-m.speed, Math.min(m.speed, p.vx));
+        p.vy = Math.max(-m.speed, Math.min(m.speed, p.vy));
+        p.x = (p.x + p.vx + w) % w;
+        p.y = (p.y + p.vy + h) % h;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (m.pattern === "drift") {
+      // 气象：缓慢飘落
+      for (const p of particles) {
+        p.y += m.speed;
+        p.x += Math.sin(t / 1000 + p.phase) * 0.4;
+        if (p.y > h) { p.y = -5; p.x = Math.random() * w; }
+        ctx.globalAlpha = 0.35;
+        ctx.fillRect(p.x, p.y, 1.5, 6 + p.size * 2);
+      }
+    } else if (m.pattern === "pulse") {
+      // 能量：中心脉冲
+      if (t % 1600 < 16) pulses.push({ r: 0, alpha: 1 });
+      pulses.forEach(pu => { pu.r += 2.4; pu.alpha -= 0.008; });
+      pulses = pulses.filter(pu => pu.alpha > 0);
+      ctx.lineWidth = 2;
+      pulses.forEach(pu => {
+        ctx.globalAlpha = pu.alpha;
+        ctx.strokeStyle = m.color;
+        ctx.beginPath();
+        ctx.arc(w / 2, h / 2, pu.r, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      for (const p of particles) {
+        const ang = Math.atan2(p.y - h / 2, p.x - w / 2);
+        p.x += Math.cos(ang) * m.speed * 0.4;
+        p.y += Math.sin(ang) * m.speed * 0.4;
+        if (Math.hypot(p.x - w / 2, p.y - h / 2) > Math.max(w, h) / 2) {
+          p.x = w / 2 + (Math.random() - 0.5) * 40;
+          p.y = h / 2 + (Math.random() - 0.5) * 40;
+        }
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- 接入已有 canvas（若无则创建）----
+  let canvas = document.querySelector("#signal-canvas, canvas");
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    canvas.id = "signal-canvas";
+    Object.assign(canvas.style, { position: "fixed", inset: "0", width: "100vw", height: "100vh", zIndex: "0" });
+    document.body.prepend(canvas);
+  }
+  const ctx = canvas.getContext("2d");
+
+  function resize() {
+    canvas.width = canvas.clientWidth || window.innerWidth;
+    canvas.height = canvas.clientHeight || window.innerHeight;
+    initParticles(canvas.width, canvas.height);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  function loop(t) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    renderPattern(ctx, canvas.width, canvas.height, t);
+    rafId = requestAnimationFrame(loop);
+  }
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(loop);
+
+  // ---- 暴露模式切换 API 并拦截已有切换逻辑 ----
+  window.setSignalMode = function (mode) {
+    if (!MODES[mode]) return;
+    currentMode = mode;
+    initParticles(canvas.width, canvas.height);
+    renderPanel();
+  };
+  // 若页面已有切换函数，包装它以保持兼容
+  if (typeof window.switchMode === "function" && !window.switchMode.__patched) {
+    const orig = window.switchMode;
+    window.switchMode = function (mode) {
+      const r = orig.apply(this, arguments);
+      window.setSignalMode(mode);
+      return r;
+    };
+    window.switchMode.__patched = true;
+  }
+
+  renderPanel();
+})();
+</script>
+</body>
+</html>
