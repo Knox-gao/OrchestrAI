@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILDFRAME · 荒野如剧场</title>
+<style>
+:root{--ink:#0d120e;--paper:#f4f1e8;--amber:#d9a441;--moss:#5d7052;--serif:'Songti SC','Noto Serif SC',Georgia,serif;--sans:'PingFang SC','Helvetica Neue',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--paper);font-family:var(--sans);overflow-x:hidden}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:99;opacity:.07;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+nav{position:fixed;top:0;width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 6vw;z-index:50;mix-blend-mode:difference}
+.logo{font-family:var(--serif);font-size:20px;letter-spacing:.4em}
+.nav-links{display:flex}
+nav a{color:var(--paper);text-decoration:none;margin-left:32px;font-size:13px;letter-spacing:.2em;opacity:.8;transition:.3s}
+nav a:hover{opacity:1;color:var(--amber)}
+.hero{height:100vh;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 120%,#2a3a28 0%,#0d120e 65%)}
+.hero::before{content:'';position:absolute;inset:0;background:
+ radial-gradient(circle at 20% 30%,rgba(217,164,65,.12),transparent 40%),
+ radial-gradient(circle at 80% 20%,rgba(93,112,82,.15),transparent 45%)}
+.hero .frame-line{position:absolute;inset:36px;border:1px solid rgba(244,241,232,.15);pointer-events:none}
+.hero h1{font-family:var(--serif);font-size:clamp(44px,9vw,120px);letter-spacing:.15em;position:relative;animation:rise 1.4s ease both}
+.hero p{margin-top:24px;letter-spacing:.5em;font-size:14px;opacity:.6;animation:rise 1.4s .3s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+.hero .cta{display:inline-block;margin-top:48px;padding:16px 52px;border:1px solid var(--amber);color:var(--amber);text-decoration:none;letter-spacing:.3em;font-size:13px;transition:.3s;animation:rise 1.4s .6s ease both}
+.hero .cta:hover{background:var(--amber);color:var(--ink)}
+.hero .scroll-hint{position:absolute;bottom:48px;font-size:11px;letter-spacing:.4em;opacity:.4;animation:rise 1.4s .9s ease both}
+.philo{padding:20vh 8vw;display:grid;grid-template-columns:1fr 1fr;gap:6vw;align-items:center}
+.philo .kicker{font-size:12px;letter-spacing:.5em;color:var(--amber);margin-bottom:20px}
+.philo h2{font-family:var(--serif);font-size:clamp(30px,4vw,54px);line-height:1.6}
+.philo p{opacity:.65;line-height:2;margin-top:24px;font-size:15px}
+.philo .num{font-family:var(--serif);font-size:clamp(80px,12vw,180px);color:transparent;-webkit-text-stroke:1px rgba(244,241,232,.2);line-height:1;text-align:center}
+.reveal{opacity:0;transform:translateY(50px);transition:1s ease}
+.reveal.on{opacity:1;transform:none}
+.camps{padding:12vh 6vw}
+.sec-title{font-family:var(--serif);font-size:clamp(28px,4vw,46px);text-align:center;letter-spacing:.2em;margin-bottom:12px}
+.sec-sub{text-align:center;opacity:.5;font-size:13px;letter-spacing:.4em;margin-bottom:64px}
+.filters{display:flex;justify-content:center;gap:16px;margin-bottom:48px;flex-wrap:wrap}
+.filters button{background:none;border:1px solid #3a453a;color:var(--paper);padding:10px 28px;letter-spacing:.2em;font-size:13px;cursor:pointer;transition:.3s}
+.filters button.act,.filters button:hover{border-color:var(--amber);color:var(--amber)}
+.camp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;max-width:1300px;margin:0 auto}
+.camp{position:relative;height:440px;overflow:hidden;cursor:pointer;filter:grayscale(.3);transition:.5s}
+.camp:hover{filter:none}
+.camp .bg{position:absolute;inset:0;transition:1s;background-size:cover;background-position:center}
+.camp:hover .bg{transform:scale(1.08)}
+.camp .info{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:32px;background:linear-gradient(transparent 30%,rgba(13,18,14,.92))}
+.camp h3{font-family:var(--serif);font-size:26px;letter-spacing:.1em}
+.camp .meta{font-size:12px;letter-spacing:.2em;color:var(--amber);margin-top:8px}
+.camp .tag{position:absolute;top:20px;left:20px;font-size:11px;letter-spacing:.3em;border:1px solid var(--paper);padding:6px 14px}
+.gallery{padding:12vh 6vw}
+.g-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:180px;gap:12px;max-width:1300px;margin:0 auto}
+.g-item{overflow:hidden;position:relative}
+.g-item img{width:100%;height:100%;object-fit:cover;transition:.8s;filter:saturate(.8)}
+.g-item:hover img{transform:scale(1.1);filter:saturate(1.2)}
+.g-item:nth-child(1){grid-column:span 2;grid-row:span 2}
+.g-item:nth-child(4){grid-row:span 2}
+.g-item .cap{position:absolute;left:0;bottom:0;padding:16px;font-size:12px;letter-spacing:.2em;background:linear-gradient(transparent,rgba(13,18,14,.85));width:100%}
+footer{background:#0a0e0b;padding:96px 6vw 48px;text-align:center}
+footer h2{font-family:var(--serif);font-size:clamp(26px,3.5vw,42px);letter-spacing:.15em}
+footer .sub{opacity:.5;margin:16px 0 36px;font-size:14px;letter-spacing:.2em}
+.news-form{display:flex;max-width:460px;margin:0 auto;gap:0}
+.news-form input{flex:1;background:#141a15;border:1px solid #3a453a;border-right:none;color:var(--paper);padding:15px 18px;font-size:14px;outline:none}
+.news-form input:focus{border-color:var(--amber)}
+.news-form button{background:var(--amber);border:1px solid var(--amber);color:var(--ink);padding:15px 30px;letter-spacing:.2em;font-size:13px;cursor:pointer;transition:.3s}
+.news-form button:hover{background:#e8b658}
+.foot-links{display:flex;justify-content:center;gap:36px;margin-top:64px;font-size:12px;letter-spacing:.25em;opacity:.5;flex-wrap:wrap}
+.foot-links a{color:var(--paper);text-decoration:none}
+.copy{margin-top:32px;font-size:11px;opacity:.3;letter-spacing:.2em}
+.overlay{position:fixed;inset:0;background:rgba(13,18,14,.96);z-index:100;display:none;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#161d17;border:1px solid #2c362c;padding:48px;width:min(480px,92vw);max-height:88vh;overflow-y:auto;position:relative}
+.modal .close-x{position:absolute;top:16px;right:20px;background:none;border:none;color:var(--paper);font-size:22px;cursor:pointer;opacity:.6}
+.modal .close-x:hover{opacity:1;color:var(--amber)}
+.modal h3{font-family:var(--serif);letter-spacing:.15em;margin-bottom:8px;font-size:24px}
+.modal .sub{opacity:.5;font-size:13px;margin-bottom:24px;letter-spacing:.15em}
+.modal label{display:block;font-size:12px;letter-spacing:.25em;opacity:.6;margin:20px 0 8px}
+.modal input,.modal select{width:100%;background:#0d120e;border:1px solid #3a453a;color:var(--paper);padding:13px;font-size:14px;font-family:var(--sans);outline:none}
+.modal input:focus,.modal select:focus{border-color:var(--amber)}
+.modal .err{color:#e06d5a;font-size:12px;margin-top:6px;letter-spacing:.1em;display:none}
+.modal .err.show{display:block}
+.modal .btns{display:flex;gap:12px;margin-top:36px}
+.modal button.btn-main{flex:1;padding:15px;letter-spacing:.25em;font-size:13px;cursor:pointer;border:1px solid var(--amber);background:var(--amber);color:var(--ink);transition:.3s}
+.modal button.btn-main:hover{background:#e8b658}
+.modal button.btn-main:disabled{opacity:.5;cursor:not-allowed}
+.steps{display:flex;justify-content:center;gap:8px;margin-bottom:32px}
+.steps span{font-size:11px;letter-spacing:.2em;padding:6px 14px;border:1px solid #3a453a;opacity:.4}
+.steps span.act{border-color:var(--amber);color:var(--amber);opacity:1}
+.price-line{display:flex;justify-content:space-between;font-size:14px;margin-top:20px;padding-top:20px;border-top:1px solid #2c362c;letter-spacing:.1em}
+.price-line .total{color:var(--amber);font-family:var(--serif);font-size:20px}
+.summary{background:#0d120e;border:1px solid #2c362c;padding:24px;margin-top:8px;font-size:14px;line-height:2.2;letter-spacing:.1em}
+.summary b{color:var(--amber)}
+.toast{position:fixed;bottom:32px;left:50%;transform:translate(-50%,80px);background:var(--amber);color:var(--ink);padding:14px 32px;font-size:13px;letter-spacing:.2em;z-index:200;transition:.5s;opacity:0}
+.toast.show{transform:translate(-50%,0);opacity:1}
+@media(max-width:768px){
+ nav{padding:18px 5vw;flex-direction:column;gap:10px}
+ .nav-links a{margin:0 10px;font-size:12px}
+ .philo{grid-template-columns:1fr;padding:14vh 6vw;gap:40px}
+ .g-grid{grid-template-columns:repeat(2,1fr);grid-auto-rows:140px}
+ .g-item:nth-child(1){grid-column:span 2;grid-row:span 2}
+ .g-item:nth-child(4){grid-row:span 2}
+ .camp{height:360px}
+ .modal{padding:32px 24px}
+ .hero .frame-line{inset:20px}
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<nav>
+ <div class="logo">WILDFRAME</div>
+ <div class="nav-links">
+  <a href="#philosophy">哲学</a>
+  <a href="#camps">营地</a>
+  <a href="#gallery">瞬间</a>
+  <a href="#reserve">预约</a>
+ </div>
+</nav>
+
+<section class="hero" data-page="home">
+ <div class="frame-line"></div>
+ <h1>荒野如剧场</h1>
+ <p>每一次露营，都是一部只属于你的电影</p>
+ <a class="cta" href="#reserve">开启荒野之旅</a>
+ <div class="scroll-hint">— 往 下 滚 动 —</div>
+</section>
+
+<section class="philo" id="philosophy">
+ <div class="reveal">
+  <div class="num">01</div>
+ </div>
+ <div class="reveal">
+  <div class="kicker">BRAND PHILOSOPHY</div>
+  <h2>我们不制造帐篷，<br>我们搭建镜头。</h2>
+  <p>WILDFRAME 相信，荒野从来不是背景板，而是主视觉。我们在川西、滇北与黔东南选定的每一处营地，都经过取景般的反复踩点——晨雾涌入山谷的方位、篝火与银河的角度、帐篷门帘拉开时的第一缕光。装备只选用经过三千小时实地验证的材料，让舒适退到幕后，让风景站在聚光灯下。</p>
+ </div>
+</section>
+
+<section class="camps" id="camps">
+ <h2 class="sec-title reveal">四幕营地</h2>
+ <div class="sec-sub reveal">FOUR CAMPS · FOUR ACTS</div>
+ <div class="filters reveal">
+  <button class="filter-btn act" data-filter="all">全部</button>
+  <button class="filter-btn" data-filter="alpine">高山草甸</button>
+  <button class="filter-btn" data-filter="lake">湖畔</button>
+  <button class="filter-btn" data-filter="forest">森林</button>
+ </div>
+ <div class="camp-grid">
+  <div class="camp reveal" data-type="alpine" data-name="四姑娘山·云幕营地" data-price="880" data-open="booking">
+   <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80')"></div>
+   <span class="tag">ACT Ⅰ</span>
+   <div class="info"><h3>四姑娘山 · 云幕营地</h3><div class="meta">海拔 3,200m · ¥880/晚</div></div>
+  </div>
+  <div class="camp reveal" data-type="lake" data-name="泸沽湖·镜面营地" data-price="760" data-open="booking">
+   <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800&q=80')"></div>
+   <span class="tag">ACT Ⅱ</span>
+   <div class="info"><h3>泸沽湖 · 镜面营地</h3><div class="meta">湖畔日出位 · ¥760/晚</div></div>
+  </div>
+  <div class="camp reveal" data-type="forest" data-name="香格里拉·松涛营地" data-price="680" data-open="booking">
+   <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80')"></div>
+   <span class="tag">ACT Ⅲ</span>
+   <div class="info"><h3>香格里拉 · 松涛营地</h3><div class="meta">原始松林 · ¥680/晚</div></div>
+  </div>
+  <div class="camp reveal" data-type="alpine" data-name="哈巴雪山·星轨营地" data-price="920" data-open="booking">
+   <div class="bg" style="background-image:url('https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800&q=80')"></div>
+   <span class="tag">ACT Ⅳ</span>
+   <div class="info"><h3>哈巴雪山 · 星轨营地</h3><div class="meta">观星台 · ¥920/晚</div></div>
+  </div>
+ </div>
+</section>
+
+<section class="gallery" id="gallery">
+ <h2 class="sec-title reveal">露营者的瞬间</h2>
+ <div class="sec-sub reveal">MOMENTS FROM THE WILD</div>
+ <div class="g-grid">
+  <div class="g-item reveal"><img src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80" alt="篝火夜话"><div class="cap">@山野拾光 · 四姑娘山</div></div>
+  <div class="g-item reveal"><img src="https://images.unsplash.com/photo-1478131143081-80f7f84ca84d?w=600&q=80" alt="晨雾"><div class="cap">@Luna在路上 · 香格里拉</div></div>
+  <div class="g-item reveal"><img src="https://images.unsplash.com/photo-1475483768296-6163e08872a1?w=600&q=80" alt="湖畔清晨"><div class="cap">@阿哲的胶片 · 泸沽湖</div></div>
+  <div class="g-item reveal"><img src="https://images.unsplash.com/photo-1537565266759-34bbc16be345?w=600&q=80" alt="帐篷"><div class="cap">@野人日记 · 哈巴雪山</div></div>
+  <div class="g-item reveal"><img src="https://images.unsplash.com/photo-1517824806704-9040b037703b?w=600&q=80" alt="星空"><div class="cap">@星野收藏家 · 云幕营地</div></div>
+ </div>
+</section>
+
+<footer id="reserve">
+ <h2 class="reveal">把下一帧，留给荒野。</h2>
+ <div class="sub reveal">订阅营地开放通知与季节限定路线</div>
+ <form class="news-form reveal" id="newsForm" novalidate>
+  <label for="newsEmail" style="position:absolute;left:-9999px">邮箱地址</label>
+  <input class="news-input" id="newsEmail" type="email" placeholder="your@email.com">
+  <button class="news-btn" type="submit">订阅</button>
+ </form>
+ <div class="foot-links">
+  <a href="#philosophy">品牌哲学</a><a href="#camps">营地</a><a href="#gallery">瞬间</a><a href="#reserve">预约</a>
+ </div>
+ <div class="copy">© 2025 WILDFRAME 荒野如剧场 · 滇 ICP 备 2025XXXXXX 号</div>
+</footer>
+
+<div class="overlay" id="bookOverlay">
+ <div class="modal">
+  <button class="close-x" id="closeBook" aria-label="关闭">×</button>
+  <h3 id="bookCampName">预约营地</h3>
+  <div class="sub">三步完成 · 确认后 2 小时内管家回电</div>
+  <div class="steps"><span class="act" data-step="1">① 选日期</span><span data-step="2">② 人数</span><span data-step="3">③ 确认</span></div>
+
+  <div class="step-pane" data-pane="1">
+   <label for="inDate">入住日期</label>
+   <input class="f-date" id="inDate" type="date">
+   <div class="err" id="errDate">请选择 7 天内的入住日期</div>
+   <label for="nights">入住晚数</label>
+   <select class="f-nights" id="nights">
+    <option value="1">1 晚</option><option value="2">2 晚</option><option value="3" selected>3 晚</option><option value="5">5 晚</option>
+   </select>
+   <div class="price-line"><span>房费预估</span><span class="total" id="pricePreview">—</span></div>
+  </div>
+
+  <div class="step-pane" data-pane="2" style="display:none">
+   <label for="guests">入住人数（每顶帐篷最多 3 人）</label>
+   <select class="f-guests" id="guests"><option value="1">1 人</option><option value="2" selected>2 人</option><option value="3">3 人</option></select>
+   <label for="tentName">主订人姓名</label>
+   <input class="f-name" id="tentName" type="text" placeholder="例如：林晚舟">
+   <div class="err" id="errName">请填写主订人姓名</div>
+   <label for="tentPhone">联系电话</label>
+   <input class="f-phone" id="tentPhone" type="tel" placeholder="11 位手机号">
+   <div class="err" id="errPhone">请输入正确的 11 位手机号</div>
+  </div>
+
+  <div class="step-pane" data-pane="3" style="display:none">
+   <div class="summary" id="bookSummary"></div>
+  </div>
+
+  <div class="btns">
+   <button class="btn-main" id="prevStep" style="display:none;background:none;color:var(--amber)">上一步</button>
+   <button class="btn-main" id="nextStep">下一步</button>
+  </div>
+ </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+ // 筛选
+ var fBtns=document.querySelectorAll('.filter-btn');
+ fBtns.forEach(function(b){
+  b.addEventListener('click',function(){
+   fBtns.forEach(function(x){x.classList.remove('act')});
+   b.classList.add('act');
+   var f=b.dataset.filter;
+   document.querySelectorAll('.camp').forEach(function(c){
+    c.style.display=(f==='all'||c.dataset.type===f)?'':'none';
+   });
+  });
+ });
+
+ // 滚动渐显
+ var io=new IntersectionObserver(function(es){
+  es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target)}});
+ },{threshold:.15});
+ document.querySelectorAll('.reveal').forEach(function(el){io.observe(el)});
+
+ // toast
+ var toast=document.getElementById('toast'),tTimer;
+ function showToast(msg){
+  toast.textContent=msg;toast.classList.add('show');
+  clearTimeout(tTimer);tTimer=setTimeout(function(){toast.classList.remove('show')},2800);
+ }
+
+ // 预约弹窗
+ var overlay=document.getElementById('bookOverlay'),
+   step=1,price=0,campName='';
+ var panes=document.querySelectorAll('.step-pane'),
+   stepDots=document.querySelectorAll('.steps span'),
+   nextB=document.getElementById('nextStep'),
+   prevB=document.getElementById('prevStep');
+
+ function showStep(n){
+  step=n;
+  panes.forEach(function(p){p.style.display=p.dataset.pane==n?'':'none'});
+  stepDots.forEach(function(d){d.classList.toggle('act',+d.dataset.step===n)});
+  prevB.style.display=n>1?'':'none';
+  nextB.textContent=n<3?'下一步':(nextB.disabled?'✓ 预约成功':'提交预约');
+ }
+
+ function calc(){
+  var nights=+document.getElementById('nights').value;
+  document.getElementById('pricePreview').textContent='¥'+(price*nights).toLocaleString();
+ }
+
+ document.querySelectorAll('[data-open="booking"]').forEach(function(c){
+  c.addEventListener('click',function(){
+   campName=c.dataset.name;price=+c.dataset.price;
+   document.getElementById('bookCampName').textContent=campName;
+   nextB.disabled=false;
+   var d=new Date(Date.now()+86400000);
+   document.getElementById('inDate').min=new Date().toISOString().slice(0,10);
+   document.getElementById('inDate').value=d.toISOString().slice(0,10);
+   document.getElementById('errDate').classList.remove('show');
+   document.getElementById('errName').classList.remove('show');
+   document.getElementById('errPhone').classList.remove('show');
+   calc();showStep(1);
+   overlay.classList.add('open');
+  });
+ });
+ document.getElementById('closeBook').onclick=function(){overlay.classList.remove('open')};
+ overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('open')});
+ document.getElementById('nights').addEventListener('change',calc);
+
+ nextB.addEventListener('click',function(){
+  if(step===1){
+   var v=document.getElementById('inDate').value;
+   if(!v){document.getElementById('errDate').classList.add('show');return}
+   document.getElementById('errDate').classList.remove('show');
+   showStep(2);
+  }else if(step===2){
+   var name=document.getElementById('tentName').value.trim(),
+     phone=document.getElementById('tentPhone').value.trim(),
+     ok=true;
+   document.getElementById('errName').classList.toggle('show',!name);if(!name)ok=false;
+   var pOk=/^1[3-9]\d{9}$/.test(phone);
+   document.getElementById('errPhone').classList.toggle('show',!pOk);if(!pOk)ok=false;
+   if(!ok)return;
+   var nights=+document.getElementById('nights').value,
+     guests=document.getElementById('guests').value,
+     date=document.getElementById('inDate').value;
+   document.getElementById('bookSummary').innerHTML=
+    '营地：<b>'+campName+'</b><br>入住：<b>'+date+'</b> · '+nights+' 晚<br>人数：<b>'+guests+' 人</b><br>主订人：<b>'+name+'</b><br>联系电话：<b>'+phone+'</b>'+
+    '<div class="price-line"><span>合计</span><span class="total">¥'+(price*nights).toLocaleString()+'</span></div>';
+   showStep(3);nextB.textContent='提交预约';
+  }else if(step===3){
+   nextB.disabled=true;nextB.textContent='✓ 预约成功';
+   showToast('预约已提交！管家将在 2 小时内联系您');
+   setTimeout(function(){overlay.classList.remove('open');nextB.disabled=false},2000);
+  }
+ });
+ prevB.addEventListener('click',function(){showStep(step-1);nextB.textContent='下一步'});
+
+ // newsletter
+ document.getElementById('newsForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var em=document.getElementById('newsEmail').value.trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){showToast('请输入有效的邮箱地址');return}
+  document.getElementById('newsEmail').value='';
+  showToast('订阅成功！荒野的下一帧会寄到你邮箱');
+ });
+})();
+</script>
+</body>
+</html>

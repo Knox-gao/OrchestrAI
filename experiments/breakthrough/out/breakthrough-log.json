@@ -1,0 +1,90 @@
+{
+ "calls": [
+  {
+   "step": "plan",
+   "ms": 28850,
+   "tokens": 2132
+  },
+  {
+   "step": "codegen",
+   "ms": 73757,
+   "tokens": 8590,
+   "outputLen": 19521
+  },
+  {
+   "step": "diagnose:1",
+   "ms": 6591,
+   "tokens": 379,
+   "issues": 4
+  },
+  {
+   "step": "fix:1",
+   "ms": 40420,
+   "tokens": 3132,
+   "outputLen": 9153
+  },
+  {
+   "step": "diagnose:2",
+   "ms": 4405,
+   "tokens": 288,
+   "issues": 4
+  },
+  {
+   "step": "fix:2",
+   "ms": 24545,
+   "tokens": 1991,
+   "outputLen": 5666
+  },
+  {
+   "step": "diagnose:3",
+   "ms": 4927,
+   "tokens": 266,
+   "issues": 4
+  },
+  {
+   "step": "fix:3",
+   "ms": 14279,
+   "tokens": 1196,
+   "outputLen": 3075
+  }
+ ],
+ "rounds": [
+  {
+   "round": 1,
+   "probe": {
+    "sections": 4,
+    "raw": 21690,
+    "errors": [
+     "probe_parse_failed"
+    ]
+   }
+  },
+  {
+   "round": 2,
+   "probe": {
+    "sections": 4,
+    "raw": 11248,
+    "errors": [
+     "probe_parse_failed"
+    ]
+   }
+  },
+  {
+   "round": 3,
+   "probe": {
+    "sections": 4,
+    "raw": 7657,
+    "errors": [
+     "probe_parse_failed"
+    ]
+   }
+  }
+ ],
+ "final": {
+  "sections": 2,
+  "raw": 5081,
+  "errors": [
+   "probe_parse_failed"
+  ]
+ }
+}

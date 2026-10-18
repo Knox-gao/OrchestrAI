@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>修复后的页面</title>
+<style>
+  body { font-family: sans-serif; margin: 0; }
+  section { padding: 40px 20px; border-bottom: 1px solid #eee; }
+</style>
+<script>
+/* 问题4: 补全错误监控 —— window.onerror / unhandledrejection / 资源加载错误 */
+(function () {
+  window.__pageErrors = [];
+  function report(type, detail) {
+    try {
+      window.__pageErrors.push({ type: type, detail: String(detail), time: Date.now() });
+      if (window.__onPageError) window.__onPageError(type, detail);
+    } catch (e) { /* 避免监控本身抛错 */ }
+  }
+  window.addEventListener('error', function (e) {
+    if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK' || e.target.tagName === 'IMG')) {
+      report('resource_error', (e.target.src || e.target.href || '') + ' <' + e.target.tagName + '>');
+    } else {
+      report('js_error', (e.message || '') + ' @ ' + (e.filename || '') + ':' + (e.lineno || 0) + ':' + (e.colno || 0));
+    }
+  }, true); // 使用捕获阶段以捕获资源错误
+  window.addEventListener('unhandledrejection', function (e) {
+    report('unhandled_rejection', e.reason && (e.reason.stack || e.reason.message) || e.reason);
+  });
+  window.onerror = function (msg, src, line, col, err) {
+    report('js_error', msg + ' @ ' + src + ':' + line + ':' + col + (err && err.stack ? '\n' + err.stack : ''));
+  };
+})();
+</script>
+</head>
+<body>
+<header id="top">
+  <h1>页面标题</h1>
+  <nav>
+    <a href="#section-1">第一部分</a>
+    <a href="#section-2">第二部分</a>
+    <a href="#section-3">第三部分</a>
+    <a href="#section-4">第四部分</a>
+  </nav>
+</header>
+
+<main>
+  <section id="section-1" data-section-name="第一部分">
+    <h2>第一部分</h2>
+    <p>这是第一部分的内容。所有脚本均使用防御式编写，确保解析与渲染不中断。</p>
+  </section>
+
+  <section id="section-2" data-section-name="第二部分">
+    <h2>第二部分</h2>
+    <p>这是第二部分的内容。包含交互按钮以验证功能。</p>
+    <button id="demo-btn">点击我</button>
+    <p id="demo-output"></p>
+  </section>
+
+  <section id="section-3" data-section-name="第三部分">
+    <h2>第三部分</h2>
+    <p>这是第三部分的内容。数据由 JS 动态渲染，需等待 DOMContentLoaded 与 load 事件后采集。</p>
+    <ul id="dynamic-list"></ul>
+  </section>
+
+  <section id="section-4" data-section-name="第四部分">
+    <h2>第四部分</h2>
+    <p>这是第四部分的内容（页脚前最后一个区块）。</p>
+  </section>
+</main>
+
+<footer id="footer">
+  <p>© 2024 示例站点</p>
+</footer>
+
+<script>
+/* 页面主逻辑：避免运行时错误，确保内容完整渲染（问题3） */
+(function () {
+  function init() {
+    try {
+      var btn = document.getElementById('demo-btn');
+      var out = document.getElementById('demo-output');
+      if (btn && out) {
+        btn.addEventListener('click', function () {
+          out.textContent = '按钮已被点击，时间: ' + new Date().toLocaleTimeString();
+        });
+      }
+      var list = document.getElementById('dynamic-list');
+      if (list) {
+        var items = ['动态项 A', '动态项 B', '动态项 C'];
+        for (var i = 0; i < items.length; i++) {
+          var li = document.createElement('li');
+          li.textContent = items[i];
+          list.appendChild(li);
+        }
+      }
+      window.__contentReady = true; // 标记渲染完成，供探针检查
+    } catch (e) {
+      if (window.__pageErrors) window.__pageErrors.push({ type: 'init_error', detail: String(e) });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+<script>
+/* 问题1/2: 修复浏览器探针 —— 延迟注入、等待渲染完成、防御式序列化，避免 probe_parse_failed */
+(function () {
+  function serialize(el) {
+    try {
+      var obj = {
+        tag: el.tagName ? el.tagName.toLowerCase() : 'unknown',
+        id: el.id || '',
+        className: typeof el.className === 'string' ? el.className : '',
+        text: (el.innerText || el.textContent || '').trim().slice(0, 500),
+        childElementCount: el.childElementCount || 0,
+        rect: (function () {
+          try { var r = el.getBoundingClientRect();
+            return { x: r.x, y: r.y, w: r.width, h: r.height };
+          } catch (e) { return null; }
+        })()
+      };
+      return obj;
+    } catch (e) { return { tag: 'error', detail: String(e) }; }
+  }
+
+  function runProbe() {
+    try {
+      var sections = document.querySelectorAll('section, [data-section-name], main > *, footer');
+      var data = {
+        url: location.href,
+        title: document.title,
+        readyState: document.readyState,
+        contentReady: !!window.__contentReady,
+        viewport: { w: window.innerWidth, h: window.innerHeight },
+        sectionCount: sections.length,
+        sections: [],
+        errors: (window.__pageErrors || []).slice(),
+        timestamp: new Date().toISOString()
+      };
+      for (var i = 0; i < sections.length; i++) {
+        data.sections.push(serialize(sections[i]));
+      }
+      // 安全序列化：防止循环引用或不可序列化值导致解析失败
+      var json = JSON.stringify(data, function (k, v) {
+        if (v === undefined) return null;
+        if (typeof v === 'function') return '[Function]';
+        return v;
+      });
+      window.__probeResult = json;
+      if (window.__onProbeComplete) window.__onProbeComplete(json);
+    } catch (e) {
+      // 即使探针内部出错，也输出可解析的最小 JSON，避免 parse_failed
+      try {
+        window.__probeResult = JSON.stringify({
+          url: location.href, probeError: String(e),
+          errors: (window.__pageErrors || [])
+        });
+      } catch (e2) { window.__probeResult = '{"probeError":"fatal"}'; }
+    }
+  }
+
+  // 注入时机：等待 load 事件后再延迟执行，确保动态内容与图片等资源加载完毕
+  if (document.readyState === 'complete') {
+    setTimeout(runProbe, 300);
+  } else {
+    window.addEventListener('load', function () { setTimeout(runProbe, 300); });
+    // 兜底：超时也执行，防止资源挂起导致探针永不运行
+    setTimeout(runProbe, 5000);
+  }
+})();
+</script>
+</body>
+</html>

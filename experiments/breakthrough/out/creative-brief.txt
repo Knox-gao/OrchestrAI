@@ -1,0 +1,74 @@
+**核心创意概念：**「荒野如剧场」——把每次露营拍成一部只属于你的电影，网站本身就是一场镜头语言驱动的荒野漫游。
+
+页面结构：
+1. 首页 Hero | 3秒建立电影感氛围 | 全屏视频/深色森林、衬线大标题、镜头光晕
+2. 品牌哲学 | 讲清“为什么是我们” | 大字排版、胶片颗粒、滚动渐显
+3. 营地探索 | 浏览四大营地并筛选 | 全宽卡片横滑、电影海报式构图
+4. 预约流程 | 3步完成预订（选营地→日期人数→确认） | 分步向导、琥珀色CTA、表单卡片
+5. 瞬间画廊 | 社会证明与情感共鸣 | 不规则拼贴网格、悬停放大
+6. 页脚 | 转化收口与导航 | 极简深色、newsletter输入
+
+下面是完整可运行的单文件网站（含预约向导交互）：
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILDFRAME · 荒野如剧场</title>
+<style>
+:root{--ink:#0d120e;--paper:#f4f1e8;--amber:#d9a441;--moss:#5d7052;--serif:'Songti SC',Georgia,serif;--sans:'PingFang SC',Helvetica,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--paper);font-family:var(--sans);overflow-x:hidden}
+.grain{position:fixed;inset:0;pointer-events:none;z-index:99;opacity:.07;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+nav{position:fixed;top:0;width:100%;display:flex;justify-content:space-between;align-items:center;padding:22px 6vw;z-index:50;mix-blend-mode:difference}
+.logo{font-family:var(--serif);font-size:20px;letter-spacing:.4em}
+nav a{color:var(--paper);text-decoration:none;margin-left:32px;font-size:13px;letter-spacing:.2em;opacity:.8}
+nav a:hover{opacity:1}
+.hero{height:100vh;position:relative;display:flex;align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 120%,#2a3a28 0%,#0d120e 65%)}
+.hero::before{content:'';position:absolute;inset:0;background:
+ radial-gradient(circle at 20% 30%,rgba(217,164,65,.12),transparent 40%),
+ radial-gradient(circle at 80% 20%,rgba(93,112,82,.15),transparent 45%)}
+.hero h1{font-family:var(--serif);font-size:clamp(48px,9vw,120px);letter-spacing:.15em;position:relative;animation:rise 1.4s ease both}
+.hero p{margin-top:24px;letter-spacing:.5em;font-size:14px;opacity:.6;animation:rise 1.4s .3s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+.hero .cta{display:inline-block;margin-top:48px;padding:16px 52px;border:1px solid var(--amber);color:var(--amber);text-decoration:none;letter-spacing:.3em;font-size:13px;transition:.3s;animation:rise 1.4s .6s ease both}
+.hero .cta:hover{background:var(--amber);color:var(--ink)}
+.philo{padding:20vh 8vw;display:grid;grid-template-columns:1fr 1fr;gap:6vw;align-items:center}
+.philo h2{font-family:var(--serif);font-size:clamp(30px,4vw,54px);line-height:1.6}
+.philo p{opacity:.65;line-height:2;margin-top:24px;font-size:15px}
+.reveal{opacity:0;transform:translateY(50px);transition:1s ease}
+.reveal.on{opacity:1;transform:none}
+.camps{padding:12vh 6vw}
+.sec-title{font-family:var(--serif);font-size:clamp(28px,4vw,46px);text-align:center;letter-spacing:.2em;margin-bottom:12px}
+.sec-sub{text-align:center;opacity:.5;font-size:13px;letter-spacing:.4em;margin-bottom:64px}
+.filters{display:flex;justify-content:center;gap:16px;margin-bottom:48px;flex-wrap:wrap}
+.filters button{background:none;border:1px solid #3a453a;color:var(--paper);padding:10px 28px;letter-spacing:.2em;font-size:13px;cursor:pointer;transition:.3s}
+.filters button.act,.filters button:hover{border-color:var(--amber);color:var(--amber)}
+.camp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;max-width:1300px;margin:0 auto}
+.camp{position:relative;height:440px;overflow:hidden;cursor:pointer;filter:grayscale(.3);transition:.5s}
+.camp:hover{filter:none}
+.camp .bg{position:absolute;inset:0;transition:1s}
+.camp:hover .bg{transform:scale(1.08)}
+.camp .info{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:32px;background:linear-gradient(transparent 30%,rgba(13,18,14,.9))}
+.camp h3{font-family:var(--serif);font-size:26px;letter-spacing:.1em}
+.camp .meta{font-size:12px;letter-spacing:.2em;color:var(--amber);margin-top:8px}
+.camp .tag{position:absolute;top:20px;left:20px;font-size:11px;letter-spacing:.3em;border:1px solid var(--paper);padding:6px 14px}
+.gallery{padding:12vh 6vw}
+.g-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:180px;gap:12px;max-width:1300px;margin:0 auto}
+.g-item{overflow:hidden;position:relative}
+.g-item img{width:100%;height:100%;object-fit:cover;transition:.8s;filter:saturate(.8)}
+.g-item:hover img{transform:scale(1.1);filter:saturate(1.2)}
+.g-item:nth-child(1){grid-column:span 2;grid-row:span 2}
+.g-item:nth-child(4){grid-row:span 2}
+.overlay{position:fixed;inset:0;background:rgba(13,18,14,.96);z-index:100;display:none;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:#161d17;border:1px solid #2c362c;padding:48px;width:min(480px,92vw);max-height:88vh;overflow-y:auto}
+.modal h3{font-family:var(--serif);letter-spacing:.15em;margin-bottom:8px}
+.modal .sub{opacity:.5;font-size:13px;margin-bottom:32px;letter-spacing:.15em}
+.modal label{display:block;font-size:12px;letter-spacing:.25em;opacity:.6;margin:20px 0 8px}
+.modal input,.modal select{width:100%;background:#0d120e;border:1px solid #3a453a;color:var(--paper);padding:13px;font-size:14px;font-family:var(--sans)}
+.modal .btns{display:flex;gap:12px;margin-top:36px}
+.modal button{flex:1;padding:15px;letter-spacing:.25em;font-size:13px;cursor:pointer;border:1px solid var(--amber);background:var(--amber);color:var(--ink);transition
