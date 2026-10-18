@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>拾光 · 豆样色卡 — 咖啡烘焙工作室（隐喻版）</title>
+<style>
+:root {
+  --paper:#f3ead9; --wood:#7a5a3a; --ink:#2d241a; --dim:rgba(45,36,26,.66); --line:rgba(45,36,26,.16);
+  --roast:linear-gradient(180deg,#e8d3a8 0%,#c89b62 35%,#8a5a33 70%,#3d2a1a 100%);
+  --mono:ui-monospace,'Cascadia Mono',monospace;
+}
+* { margin:0; box-sizing:border-box; }
+html,body { height:100%; }
+body { background:var(--paper); color:var(--ink); font-family:Georgia,'Songti SC',serif; overflow-x:hidden; }
+.wrap { display:grid; grid-template-columns:clamp(120px,16vw,190px) 1fr; min-height:100vh; }
+/* 左：烘焙度色带（挂架纵梁） */
+.band { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; border-right:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(232,211,168,.25),rgba(61,42,26,.1)); }
+.band .t { padding:26px 14px 12px; writing-mode:vertical-rl; letter-spacing:.4em; font-size:12px; color:var(--dim); }
+.swatches { flex:1; display:flex; flex-direction:column; }
+.sw { flex:1; border:none; cursor:pointer; position:relative; transition:flex .18s; outline:1px solid rgba(45,36,26,.08); }
+.sw span { position:absolute; left:10px; top:8px; font:400 9px/1 var(--mono); color:rgba(255,252,240,.75); letter-spacing:.14em; }
+.sw.on { outline:2px solid var(--ink); outline-offset:-2px; }
+/* 右：豆样挂签墙 */
+.wall { padding:clamp(22px,4vh,44px) clamp(22px,4vw,52px); }
+header h1 { font-weight:400; font-size:clamp(26px,3.4vw,44px); letter-spacing:.3em; }
+header .en { font:400 10px/1 var(--mono); letter-spacing:.34em; color:var(--dim); margin-top:10px; }
+header .goal { margin-top:14px; font-size:13.5px; color:var(--dim); letter-spacing:.06em; }
+.filter-tip { margin:18px 0 8px; font:400 10.5px/1 var(--mono); letter-spacing:.2em; color:var(--dim); }
+.tags { display:flex; flex-wrap:wrap; gap:14px; margin-top:clamp(18px,3vh,30px); }
+.tag { width:clamp(200px,26vw,258px); background:#faf4e7; border:1px solid var(--line); border-top:4px solid var(--c);
+  padding:16px 18px 14px; position:relative; box-shadow:2px 3px 0 rgba(45,36,26,.08); transition:transform .15s, opacity .2s; }
+.tag:hover { transform:translateY(-4px) rotate(-.6deg); }
+.tag.hide { display:none; }
+.tag .hole { position:absolute; top:-9px; left:50%; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:var(--paper); border:1px solid var(--line); }
+.tag h3 { font-size:17px; letter-spacing:.1em; }
+.tag .r { font:400 9.5px/1 var(--mono); letter-spacing:.2em; color:var(--dim); margin:6px 0 10px; }
+.tag .f { font-size:12.5px; color:var(--dim); line-height:1.8; }
+.tag .stamp { position:absolute; right:14px; top:14px; width:34px; height:34px; border-radius:50%; background:var(--c); color:#faf4e7;
+  display:flex; align-items:center; justify-content:center; font:600 12px/1 var(--mono); transform:rotate(8deg); }
+/* 待填样签（课程预约） */
+.blank { margin-top:clamp(26px,4vh,40px); background:#faf4e7; border:1px dashed var(--ink); padding:22px 24px; max-width:560px; }
+.blank .k { font:500 10px/1 var(--mono); letter-spacing:.3em; color:var(--wood); margin-bottom:10px; }
+.blank h2 { font-weight:400; font-size:21px; letter-spacing:.16em; }
+.blank p { font-size:13px; color:var(--dim); margin:8px 0 14px; }
+.blank form { display:flex; flex-wrap:wrap; gap:10px; }
+.blank input, .blank select, .blank button { font:400 13px/1 Georgia,serif; padding:10px 14px; border:1px solid var(--ink); background:transparent; border-radius:0; }
+.blank input { flex:1; min-width:130px; }
+.blank button { background:var(--ink); color:var(--paper); cursor:pointer; letter-spacing:.2em; }
+.blank .ok { margin-top:10px; font:400 11px/1 var(--mono); color:#4a6b3a; letter-spacing:.14em; display:none; }
+footer { grid-column:1 / -1; padding:16px 24px 26px; font:400 9.5px/1.8 var(--mono); color:var(--dim); letter-spacing:.2em; }
+@media (max-width:760px) {
+  .wrap { grid-template-columns:1fr; }
+  .band { position:sticky; top:0; height:64px; flex-direction:row; border-right:none; border-bottom:1px solid var(--line); }
+  .band .t { writing-mode:horizontal-tb; padding:10px 14px; align-self:center; }
+  .swatches { flex-direction:row; }
+  .sw span { left:4px; top:auto; bottom:4px; }
+  .tags { justify-content:center; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="band">
+    <div class="t">烘焙度 · ROAST SCALE</div>
+    <div class="swatches">
+      <button class="sw on" data-f="浅" style="background:#e8d3a8"><span>浅 LIGHT</span></button>
+      <button class="sw on" data-f="中" style="background:#b98a52"><span>中 MEDIUM</span></button>
+      <button class="sw on" data-f="深" style="background:#5a3c24"><span>深 DARK</span></button>
+    </div>
+  </nav>
+  <main class="wall">
+    <header>
+      <h1>拾光 · 豆样色卡</h1>
+      <div class="en">SHIGUANG ROASTERY — 隐喻：挂起的烘焙度样签</div>
+      <div class="goal">周末手冲课程 · 每席 6 人 · 点击左侧色块按烘焙度抽签</div>
+    </header>
+    <div class="filter-tip" id="tip">全部样签 · 4 枚</div>
+    <div class="tags" id="tags"></div>
+    <section class="blank">
+      <div class="k">BLANK TAG — 待填样签 · 周末手冲课程</div>
+      <h2>留下你的样签</h2>
+      <p>烘焙师按色卡翻找豆样——报名就是留下你的那一枚空白签。</p>
+      <form id="f">
+        <input id="name" placeholder="姓名" required>
+        <select id="slot"><option>周六 14:00</option><option>周日 10:00</option><option>周日 15:00</option></select>
+        <button type="submit">挂签预约</button>
+      </form>
+      <div class="ok" id="ok">✓ 已挂签——回执见控制台（示例，未发送真实请求）</div>
+    </section>
+  </main>
+</div>
+<footer>示例豆单与课程信息 · 隐喻推导见 metaphor-briefs.json · 目标：3 次点击内完成预约</footer>
+<script type="module">
+const BEANS = [
+  { n:'埃塞 耶加雪菲', r:'浅 LIGHT · 水洗', f:'茉莉与柑橘，明亮果酸，口感轻盈如晨光。', c:'#e8d3a8', k: '浅' },
+  { n:'巴拿马 瑰夏', r:'浅 LIGHT · 日晒', f:'花香浓郁，蜜桃甜感，余韵悠长。', c:'#e0c894', k: '浅' },
+  { n:'哥伦比亚 薇拉', r:'中 MEDIUM · 水洗', f:'焦糖与红果，均衡圆润，适手冲入门。', c:'#b98a52', k: '中' },
+  { n:'曼特宁 林东', r:'深 DARK · 湿刨', f:'草本与黑巧，醇厚低酸，回甘沉静。', c:'#5a3c24', k: '深' },
+];
+const tags = document.getElementById('tags');
+for (const b of BEANS) {
+  const el = document.createElement('article');
+  el.className = 'tag'; el.style.setProperty('--c', b.c); el.dataset.k = b.k;
+  el.innerHTML = `<span class="hole"></span><h3>${b.n}</h3><div class="r">${b.r}</div><div class="f">${b.f}</div><span class="stamp">${b.k}</span>`;
+  tags.appendChild(el);
+}
+// 色块筛选 = 抽签
+const active = new Set(['浅', '中', '深']);
+for (const sw of document.querySelectorAll('.sw')) {
+  sw.addEventListener('click', () => {
+    const k = sw.dataset.f;
+    if (active.has(k) && active.size === 1) return; // 至少留一档
+    active.has(k) ? active.delete(k) : active.add(k);
+    sw.classList.toggle('on', active.has(k));
+    const t0 = performance.now();
+    document.querySelectorAll('.tag').forEach((t) => t.classList.toggle('hide', !active.has(t.dataset.k)));
+    document.getElementById('tip').textContent = (active.size === 3 ? '全部样签' : [...active].join('／') + ' 焙') + ` · ${document.querySelectorAll('.tag:not(.hide)').length} 枚`;
+    console.debug('[抽签] 筛选', Math.round(performance.now() - t0), 'ms（验收线 500ms）');
+  });
+}
+// 预约（3 次点击内：点姓名→填→提交 = 2 次点击 + 输入）
+document.getElementById('f').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('name').value.trim();
+  if (!name) return;
+  document.getElementById('ok').style.display = 'block';
+  document.getElementById('ok').textContent = `✓ ${name} 的样签已挂上（${document.getElementById('slot').value}）——示例回执`;
+  console.debug('[预约]', name, document.getElementById('slot').value);
+});
+</script>
+</body>
+</html>
