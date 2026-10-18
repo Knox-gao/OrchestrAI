@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>星轨档案馆 · STELLAR LEDGER</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body class="sl">
+<canvas id="sky" aria-label="可交互星图：拖动巡天，点击恒星查看档案"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="masthead">
+  <div class="kick">ORCHESTRAI ORIGINAL · 阶段三原型</div>
+  <h1 class="mast-title">星轨档案<span class="en">STELLAR LEDGER</span></h1>
+  <p class="mast-sub">全天亮星光谱档案馆 —— 拖动巡天 · 点击星辰 · 数据即主角</p>
+  <div class="mast-meta">
+    <span>收录 <b id="count-star">–</b> 颗亮星</span>
+    <span>光谱七型 <b>O–M</b></span>
+    <span>示例数据 · 公开星表常识口径</span>
+  </div>
+</header>
+
+<nav class="legend" id="legend" aria-label="光谱型过滤">
+  <button class="lg on" data-spec="O"><i style="--c:#9bb0ff"></i>O</button>
+  <button class="lg on" data-spec="B"><i style="--c:#aabfff"></i>B</button>
+  <button class="lg on" data-spec="A"><i style="--c:#cad7ff"></i>A</button>
+  <button class="lg on" data-spec="F"><i style="--c:#f8f7ff"></i>F</button>
+  <button class="lg on" data-spec="G"><i style="--c:#fff4ea"></i>G</button>
+  <button class="lg on" data-spec="K"><i style="--c:#ffd2a1"></i>K</button>
+  <button class="lg on" data-spec="M"><i style="--c:#ffcc6f"></i>M</button>
+  <span class="lg-note" id="lg-note">全部显示</span>
+</nav>
+
+<aside class="card" id="card" aria-live="polite">
+  <button class="card-x" id="card-x" title="关闭 (Esc)">✕</button>
+  <div class="card-kick" id="c-bayer">—</div>
+  <h2 class="card-name"><span id="c-name">—</span><span class="en" id="c-en"></span></h2>
+  <dl class="card-grid">
+    <div><dt>视星等</dt><dd id="c-mag">—</dd></div>
+    <div><dt>距离</dt><dd id="c-dist">—</dd></div>
+    <div><dt>光谱型</dt><dd id="c-spec">—</dd></div>
+    <div><dt>色温表征</dt><dd><i class="swatch" id="c-swatch"></i><span id="c-specname">—</span></dd></div>
+  </dl>
+  <p class="card-note" id="c-note">—</p>
+  <div class="card-src">示例数据 · 公开星表常识口径（非精确归算）</div>
+</aside>
+
+<footer class="colophon">
+  <span>ORCHESTRAI · 原型 v1 · 概念「以档案排印让星等与光谱自己成为英雄」</span>
+  <span class="mono">拖动 = 巡天 · 点击 = 档案 · O–M = 过滤</span>
+</footer>
+<script type="module" src="./app.mjs"></script>
+</body>
+</html>

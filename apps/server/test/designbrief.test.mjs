@@ -8,13 +8,20 @@ const mkBrief = (over = {}) => ({
   positioning: { audience: 'a', mission: 'm', conversion: 'c' },
   brandKeywords: ['k'],
   references: [{ site: 's', takeaway: 't' }],
+  concept: '以档案排印让数据成为主角',
   directions: [
-    { name: 'A', layoutStrategy: 'editorial', heroComposition: 'h1', density: '低', typography: { display: '衬线', body: 'x' }, imageUse: '大图', color: { bg: '浅', accent: '#1a1a1a', mood: 'm' }, motion: 'mo1', rhythm: 'r1' },
-    { name: 'B', layoutStrategy: 'workbench', heroComposition: 'h2', density: '高', typography: { display: '等宽', body: 'x' }, imageUse: '缩略', color: { bg: '深', accent: '#c8a96a', mood: 'm' }, motion: 'mo2', rhythm: 'r2' },
+    { name: 'A', layoutStrategy: 'editorial', heroStrategy: 'ledger-label', heroComposition: 'h1', density: '低', typography: { display: '衬线', body: 'x', data: '等宽' }, imageUse: '大图', color: { bg: '浅', accent: '#1a1a1a', mood: 'm' }, motion: 'mo1', rhythm: 'r1' },
+    { name: 'B', layoutStrategy: 'workbench', heroStrategy: 'data-first', heroComposition: 'h2', density: '高', typography: { display: '等宽', body: 'x', data: '等宽' }, imageUse: '缩略', color: { bg: '深', accent: '#c8a96a', mood: 'm' }, motion: 'mo2', rhythm: 'r2' },
   ],
+  artDirection: { graphics: '程序化星域', dataViz: '星等→点径', imagery: '不用位图' },
+  iaNarrative: '概念→清单→详情',
+  densityBudget: '3-5',
   tokens: { maxWidth: '1240px', grid: 'g', spacingScale: 's', radius: '0', breakpoints: 'b' },
+  motionPurpose: { whitelist: ['进场淡入:建立层级'], avoid: '视差滚动:干扰数据阅读' },
+  mobileStrategy: '单列重组，星图置顶',
   imageDirection: { style: 's', mood: 'm', composition: 'c', palette: 'p', avoid: 'a' },
   a11y: { contrast: 'c', minBodyPx: '14' },
+  acceptance: ['首屏无滚动可辨主题', '点击任一恒星出数据卡'],
   ...over,
 });
 
@@ -43,6 +50,21 @@ test('schema 校验：缺字段/非法枚举/非法色值/差异不足全部报�
   bad3.directions[1] = { ...bad3.directions[0], name: 'B', color: { ...bad3.directions[0].color, accent: '#c8a96a' } };
   assert.ok(validateBrief(bad3).errors.some((e) => e.includes('差异不足')), '仅换色必须被拒');
   assert.equal(validateBrief(mkBrief()).ok, true, '完整 Brief 通过');
+});
+
+test('决策字段校验：heroStrategy 枚举/动效白名单≤3/验收条件≥2（缺陷检测点）', () => {
+  const badHero = mkBrief({ directions: [mkBrief().directions[0], { ...mkBrief().directions[1], heroStrategy: 'cinematic' }] });
+  assert.ok(validateBrief(badHero).errors.some((e) => e.includes('heroStrategy 非法枚举')));
+  const badMotion = mkBrief({ motionPurpose: { whitelist: ['a:1', 'b:2', 'c:3', 'd:4'], avoid: 'x' } });
+  assert.ok(validateBrief(badMotion).errors.some((e) => e.includes('whitelist 最多 3 项')));
+  const badAcc = mkBrief({ acceptance: ['只有一条'] });
+  assert.ok(validateBrief(badAcc).errors.some((e) => e.includes('acceptance 至少 2 条')));
+  const noConcept = mkBrief({ concept: '' });
+  assert.ok(validateBrief(noConcept).errors.some((e) => e.includes('concept')));
+  // 双方向 hero+layout 全同 → 构图无实质差异拒绝
+  const sameHero = mkBrief();
+  sameHero.directions[1] = { ...sameHero.directions[1], heroStrategy: 'ledger-label', layoutStrategy: 'editorial', heroComposition: 'h9', density: '高', motion: 'x', rhythm: 'y', imageUse: 'z' };
+  assert.ok(validateBrief(sameHero).errors.some((e) => e.includes('构图策略无实质差异')));
 });
 
 test('tokens：宽度解析与字体气质映射 + CSS 变量输出', () => {

@@ -1,0 +1,91 @@
+{
+ "label": "ledger-v1",
+ "at": "2026-10-18T00:55:04.033Z",
+ "commit": "67fb2fa",
+ "requirement": "星轨档案馆原型",
+ "viewports": [
+  {
+   "viewport": {
+    "name": "desktop",
+    "w": 1440,
+    "h": 900
+   },
+   "base": "http://127.0.0.1:8957/",
+   "screenshot": {
+    "status": "ok",
+    "file": "ledger-v1-desktop.png",
+    "bytes": 109804,
+    "ms": 2729
+   },
+   "probe": {
+    "status": "ok",
+    "metrics": {
+     "required": 0,
+     "requiredFailed": 0,
+     "lazy": 0,
+     "lazyFailed": 0,
+     "overflowX": false,
+     "scrollW": 1406,
+     "clientW": 1406,
+     "pageH": 803,
+     "buttons": 8
+    }
+   },
+   "images": {
+    "status": "ok",
+    "note": "页面无必需图片",
+    "required": 0,
+    "requiredFailed": 0
+   },
+   "overflow": {
+    "status": "ok",
+    "scrollW": 1406,
+    "clientW": 1406
+   }
+  },
+  {
+   "viewport": {
+    "name": "mobile",
+    "w": 390,
+    "h": 844
+   },
+   "base": "http://127.0.0.1:8957/",
+   "screenshot": {
+    "status": "ok",
+    "file": "ledger-v1-mobile.png",
+    "bytes": 64557,
+    "ms": 2920
+   },
+   "probe": {
+    "status": "ok",
+    "metrics": {
+     "required": 0,
+     "requiredFailed": 0,
+     "lazy": 0,
+     "lazyFailed": 0,
+     "overflowX": false,
+     "scrollW": 518,
+     "clientW": 518,
+     "pageH": 747,
+     "buttons": 8
+    }
+   },
+   "images": {
+    "status": "ok",
+    "note": "页面无必需图片",
+    "required": 0,
+    "requiredFailed": 0
+   },
+   "overflow": {
+    "status": "ok",
+    "scrollW": 518,
+    "clientW": 518
+   }
+  }
+ ],
+ "gate": {
+  "pass": true,
+  "status": "pass",
+  "reason": "渲染成功：截图生成 + 首屏必需图片全部加载 + 无横向溢出（不构成视觉质量结论）"
+ }
+}

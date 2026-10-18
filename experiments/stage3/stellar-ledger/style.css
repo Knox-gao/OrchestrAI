@@ -1,0 +1,95 @@
+/* 星轨档案馆 —— 概念：以档案排印让星等与光谱自己成为英雄
+   Tokens：#050505 档案黑 / #e7e1d5 暖纸墨 / #d4b784 档案金 / 光谱七色
+   排印：IBM Plex Mono（数据·标签）/ Inter（正文）；标题=细字重大字距（ledger-label 气质）
+   动效白名单（仅 3 项）：星点渐次点亮（进场层级）/ 卡片滑入（聚焦反馈）/ 焦点呼吸（选中指示） */
+:root {
+  --bg: #050505; --ink: #e7e1d5; --ink-dim: rgba(231, 225, 213, .62);
+  --ink-faint: rgba(231, 225, 213, .38); --gold: #d4b784; --line: rgba(231, 225, 213, .14);
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --sans: 'Inter', 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+* { margin: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body.sl {
+  background: var(--bg); color: var(--ink); font-family: var(--sans);
+  overflow: hidden; font-size: 15px;
+}
+#sky { position: fixed; inset: 0; display: block; cursor: grab; touch-action: none; }
+#sky.grabbing { cursor: grabbing; }
+.grain {
+  position: fixed; inset: 0; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+  background-image: radial-gradient(circle, #fff 0.5px, transparent 0.6px); background-size: 3px 3px;
+}
+
+/* ---- masthead：ledger-label 首屏层（小字·大字距·双语） ---- */
+.masthead { position: fixed; top: clamp(18px, 4vh, 44px); left: clamp(18px, 4vw, 52px); max-width: min(560px, 72vw); pointer-events: none; }
+.kick { font: 400 10px/1 var(--mono); letter-spacing: .42em; color: var(--gold); margin-bottom: 14px; text-transform: uppercase; opacity: 0; animation: fadeUp .8s .1s cubic-bezier(.16,1,.3,1) forwards; }
+.mast-title { font-family: var(--sans); font-weight: 300; font-size: clamp(34px, 5vw, 64px); letter-spacing: .3em; line-height: 1.1; color: var(--ink); opacity: 0; animation: fadeUp .8s .25s cubic-bezier(.16,1,.3,1) forwards; }
+.mast-title .en { display: block; font: 300 clamp(11px, 1.2vw, 14px)/1 var(--mono); letter-spacing: .58em; color: var(--ink-faint); margin-top: 10px; }
+.mast-sub { margin-top: 16px; color: var(--ink-dim); font-size: 13px; letter-spacing: .12em; opacity: 0; animation: fadeUp .8s .4s cubic-bezier(.16,1,.3,1) forwards; }
+.mast-meta { display: flex; gap: 22px; margin-top: 18px; font: 400 10.5px/1.6 var(--mono); letter-spacing: .14em; color: var(--ink-faint); opacity: 0; animation: fadeUp .8s .55s cubic-bezier(.16,1,.3,1) forwards; }
+.mast-meta b { color: var(--gold); font-weight: 500; }
+
+/* ---- 光谱图例 ---- */
+.legend { position: fixed; left: clamp(18px, 4vw, 52px); bottom: clamp(16px, 4vh, 40px); display: flex; align-items: center; gap: 6px; z-index: 6; }
+.lg {
+  width: 40px; height: 44px; background: rgba(5, 5, 5, .55); border: 1px solid var(--line);
+  color: var(--ink-dim); font: 500 13px/1 var(--mono); cursor: pointer; position: relative;
+  backdrop-filter: blur(6px); transition: border-color .15s, color .15s; padding: 0;
+}
+.lg i { display: block; width: 14px; height: 3px; background: var(--c); margin: 0 auto 7px; opacity: .9; }
+.lg:hover { border-color: rgba(212, 183, 132, .5); color: var(--ink); }
+.lg.on { color: var(--ink); border-color: rgba(212, 183, 132, .65); }
+.lg:not(.on) { opacity: .32; }
+.lg:not(.on) i { filter: grayscale(.8); }
+.lg-note { font: 400 10px/1 var(--mono); letter-spacing: .18em; color: var(--ink-faint); margin-left: 12px; }
+
+/* ---- 档案卡（出处化点击内容） ---- */
+.card {
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(400px, 92vw); z-index: 10;
+  background: linear-gradient(200deg, rgba(8, 8, 7, .93), rgba(5, 5, 5, .96));
+  border-left: 1px solid var(--line); box-shadow: -40px 0 90px rgba(0, 0, 0, .55);
+  padding: 46px 34px 30px; transform: translateX(102%); transition: transform .45s cubic-bezier(.22, 1, .36, 1);
+  backdrop-filter: blur(14px); overflow-y: auto;
+}
+.card.open { transform: translateX(0); }
+.card-x { position: absolute; top: 16px; right: 16px; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: none; color: var(--ink-dim); font-size: 14px; cursor: pointer; }
+.card-x:hover { color: var(--ink); border-color: var(--gold); }
+.card-kick { font: 400 10px/1 var(--mono); letter-spacing: .34em; color: var(--gold); margin-bottom: 12px; }
+.card-name { font-weight: 300; font-size: 40px; letter-spacing: .14em; line-height: 1.1; }
+.card-name .en { display: block; font: 300 12px/1 var(--mono); letter-spacing: .3em; color: var(--ink-faint); margin-top: 8px; }
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 22px 0 18px; }
+.card-grid > div { background: #070706; padding: 12px 14px; }
+.card-grid dt { font: 400 9px/1 var(--mono); letter-spacing: .24em; color: var(--ink-faint); margin-bottom: 6px; text-transform: uppercase; }
+.card-grid dd { font: 400 17px/1 var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #fff; margin-right: 8px; vertical-align: -1px; box-shadow: 0 0 10px currentColor; }
+.card-note { color: var(--ink-dim); font-size: 13.5px; line-height: 2; letter-spacing: .02em; }
+.card-src { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); font: 400 9.5px/1.7 var(--mono); letter-spacing: .14em; color: var(--ink-faint); }
+
+.colophon {
+  position: fixed; right: clamp(18px, 3vw, 40px); bottom: clamp(16px, 4vh, 40px); text-align: right;
+  font: 400 9.5px/1.9 var(--mono); letter-spacing: .16em; color: var(--ink-faint); pointer-events: none;
+}
+.colophon .mono { color: var(--ink-dim); }
+
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* ---- 移动端（Brief.mobileStrategy：星图满屏、图例横滚吸底、档案卡改底部抽屉） ---- */
+@media (max-width: 760px) {
+  body.sl { overflow: hidden; }
+  .masthead { top: 20px; left: 20px; right: 20px; max-width: none; }
+  .mast-title { font-size: 30px; letter-spacing: .24em; }
+  .mast-meta { flex-wrap: wrap; gap: 10px 16px; }
+  .legend { left: 0; right: 0; bottom: 0; padding: 12px 16px calc(18px + env(safe-area-inset-bottom)); overflow-x: auto; background: linear-gradient(transparent, rgba(5, 5, 5, .9) 40%); scrollbar-width: none; }
+  .legend::-webkit-scrollbar { display: none; }
+  .lg { flex: 0 0 auto; }
+  .lg-note { display: none; }
+  .card { top: auto; left: 0; right: 0; width: 100%; max-height: 72vh; border-left: none; border-top: 1px solid var(--line); border-radius: 14px 14px 0 0; transform: translateY(102%); padding: 46px 24px 26px; }
+  .card.open { transform: translateY(0); }
+  .card-name { font-size: 30px; }
+  .colophon { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kick, .mast-title, .mast-sub, .mast-meta { animation: none; opacity: 1; }
+  .card { transition: none; }
+}

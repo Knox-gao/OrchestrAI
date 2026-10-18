@@ -15,15 +15,24 @@ const SYSTEM = `你是 OrchestrAI 的首席产品设计师。为网站需求输�
 1. directions 必须包含 2 个实质差异方向——在布局策略、首屏构图、内容密度、图片使用、页面节奏、动效上至少 4 项不同；只换颜色/圆角不算差异。
 2. layoutStrategy 只能取：${LAYOUT_ENUM.join(' / ')}。
 3. accent 必须是纯色值 "#RRGGBB"，不得附加任何文字说明。
-4. 文字具体可执行，禁止空话。
+4. 文字具体可执行，禁止空话；concept 必须是一句可指导实现的设计概念（不是口号）。
+5. heroStrategy 只能取：immersive-fullbleed(全屏沉浸图) / ledger-label(档案标签式小字大字距) / data-first(数据先行) / typographic(纯排印)。
+6. motionWhitelist 是允许的动效清单（最多 3 项），动效必须有目的（如"进场建立层级"），清单外一律不做。
 
 JSON 结构：
 {"positioning":{"audience":"","mission":"","conversion":""},"brandKeywords":[],
  "references":[{"site":"","takeaway":""}],
- "directions":[{"name":"","layoutStrategy":"","heroComposition":"","density":"","typography":{"display":"","body":""},"imageUse":"","color":{"bg":"","accent":"#RRGGBB","mood":""},"motion":"","rhythm":""},{"第二个方向"}],
+ "concept":"一句核心设计概念（如：以天文档案的克制排印让数据自己成为英雄）",
+ "directions":[{"name":"","layoutStrategy":"","heroStrategy":"","heroComposition":"","density":"","typography":{"display":"","body":"","data":""},"imageUse":"","color":{"bg":"","accent":"#RRGGBB","mood":""},"motion":"","rhythm":""},{"第二个方向"}],
+ "artDirection":{"graphics":"程序化图形语言（星域/光谱/网格等）或'无'","dataViz":"数据可视化原则（数值→视觉映射规则）","imagery":"位图策略（真实采集/程序化替代/不用位图）"},
+ "iaNarrative":"信息架构叙事顺序（一屏一句话概括）",
+ "densityBudget":"密度预算（首屏信息单元数范围，如 3-5）",
  "tokens":{"maxWidth":"","grid":"","spacingScale":"","radius":"","breakpoints":""},
+ "motionPurpose":{"whitelist":["最多3项，每项=动效名:目的"],"avoid":"禁止的动效及原因"},
+ "mobileStrategy":"移动端显式决策（不是压缩：哪些元素重组/降级/保留）",
  "imageDirection":{"style":"","mood":"","composition":"","palette":"","avoid":""},
- "a11y":{"contrast":"","minBodyPx":""}}
+ "a11y":{"contrast":"","minBodyPx":""},
+ "acceptance":["验收条件1","验收条件2"]}
 重要：输出精简且完整收尾，必须以最后一个 } 结束。`;
 
 /** 严格提取合法主色：容忍"附注污染"（"#1A1A1A 近黑+细线"→#1A1A1A）；无合法值 → null */
@@ -51,7 +60,8 @@ export function normalizeBrief(raw) {
   return { brief, notes };
 }
 
-const DIFF_DIMS = ['layoutStrategy', 'heroComposition', 'density', 'imageUse', 'motion', 'rhythm'];
+const DIFF_DIMS = ['layoutStrategy', 'heroComposition', 'heroStrategy', 'density', 'imageUse', 'motion', 'rhythm'];
+const HERO_ENUM = ['immersive-fullbleed', 'ledger-label', 'data-first', 'typographic'];
 
 /** schema 校验：返回 {ok, errors[]}——缺字段/非法枚举/非法色值/双方向差异不足都会列出，不静默 */
 export function validateBrief(b) {
@@ -59,9 +69,14 @@ export function validateBrief(b) {
   const req = [
     'positioning.audience', 'positioning.mission', 'positioning.conversion', 'brandKeywords',
     'references.0.site', 'references.0.takeaway',
+    'concept',
+    'artDirection.graphics', 'artDirection.dataViz', 'artDirection.imagery',
+    'iaNarrative', 'densityBudget',
     'tokens.maxWidth', 'tokens.grid', 'tokens.spacingScale', 'tokens.radius', 'tokens.breakpoints',
+    'motionPurpose.whitelist', 'motionPurpose.avoid',
+    'mobileStrategy',
     'imageDirection.style', 'imageDirection.mood', 'imageDirection.composition', 'imageDirection.palette', 'imageDirection.avoid',
-    'a11y.contrast', 'a11y.minBodyPx',
+    'a11y.contrast', 'a11y.minBodyPx', 'acceptance',
   ];
   for (const p of req) {
     const v = get(b, p);
@@ -69,20 +84,30 @@ export function validateBrief(b) {
       errors.push(`缺失必填字段：${p}`);
     }
   }
+  if (Array.isArray(b?.motionPurpose?.whitelist) && b.motionPurpose.whitelist.length > 3) {
+    errors.push(`motionPurpose.whitelist 最多 3 项（当前 ${b.motionPurpose.whitelist.length}）——动效白名单克制原则`);
+  }
+  if (Array.isArray(b?.acceptance) && b.acceptance.length < 2) {
+    errors.push('acceptance 至少 2 条可检验的验收条件');
+  }
   if (!Array.isArray(b?.directions) || b.directions.length < 2) {
     errors.push('directions 必须包含 2 个方向');
   } else {
     b.directions.forEach((d, i) => {
-      for (const p of ['name', 'layoutStrategy', 'heroComposition', 'density', 'typography.display', 'imageUse', 'color.bg', 'color.accent', 'motion', 'rhythm']) {
+      for (const p of ['name', 'layoutStrategy', 'heroStrategy', 'heroComposition', 'density', 'typography.display', 'imageUse', 'color.bg', 'color.accent', 'motion', 'rhythm']) {
         const v = get(d, p);
         if (v === undefined || v === null || String(v).trim() === '') errors.push(`directions[${i}] 缺失：${p}`);
       }
       if (!LAYOUT_ENUM.includes(d.layoutStrategy)) errors.push(`directions[${i}].layoutStrategy 非法枚举：${d.layoutStrategy}`);
+      if (!HERO_ENUM.includes(d.heroStrategy)) errors.push(`directions[${i}].heroStrategy 非法枚举：${d.heroStrategy}`);
       if (!/^#[0-9a-fA-F]{6}$/.test(String(d?.color?.accent ?? ''))) errors.push(`directions[${i}].accent 非法色值：${d?.color?.accent}`);
     });
     const [a, c] = b.directions;
     const diff = DIFF_DIMS.filter((k) => String(a?.[k] ?? '') !== String(c?.[k] ?? ''));
-    if (diff.length < 3) errors.push(`双方向实质差异不足（仅 ${diff.length}/6 维不同：${diff.join(',')}）——换色不算差异`);
+    if (diff.length < 3) errors.push(`双方向实质差异不足（仅 ${diff.length}/7 维不同：${diff.join(',')}）——换色不算差异`);
+    if (a?.heroStrategy === c?.heroStrategy && a?.layoutStrategy === c?.layoutStrategy) {
+      errors.push('双方向的 heroStrategy 与 layoutStrategy 全同——构图策略无实质差异');
+    }
   }
   return { ok: errors.length === 0, errors };
 }
