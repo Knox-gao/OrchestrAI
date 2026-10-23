@@ -11,8 +11,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { launchCdp, captureAtViewport } from './cdp-viewport.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
@@ -40,17 +40,6 @@ function edgeBin() {
   return process.env.RENDERCHECK_EDGE || 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 }
 
-function edge(env, args, timeoutMs) {
-  return new Promise((resolve) => {
-    const bin = edgeBin();
-    if (!fs.existsSync(bin)) return resolve({ error: 'env', detail: `未找到浏览器：${bin}` });
-    execFile(bin, args, { timeout: timeoutMs, maxBuffer: 24 * 1024 * 1024 }, (e, stdout) => {
-      if (e) return resolve({ error: 'timeout-or-crash', detail: String(e.message ?? e).slice(0, 120) });
-      resolve({ stdout });
-    });
-  });
-}
-
 /** 本地静态服务 + 探针注入（仅对页面 HTML 注入，其余资源原样） */
 function serveWs(wsDir, port) {
   const server = http.createServer((req, res) => {
@@ -76,14 +65,20 @@ function serveWs(wsDir, port) {
 /**
  * @param {{wsDir?: string, url?: string, label: string, outDir: string,
  *          viewports?: Array<{name:string,w:number,h:number}>, timeoutMs?: number,
- *          commit?: string, requirement?: string}} opts
+ *          commit?: string, requirement?: string, desktopOnly?: boolean}} opts
  * @returns {Promise<{gate: {pass: boolean, status: 'pass'|'fail'|'not_run', reason: string}, viewports: Array<Object>}>}
  *   结果同时落盘 outDir/rendercheck.json（含截图路径/指标/时间/提交标识）
+ *
+ * 内测版范围：只验收桌面版网页。默认单视口 1440×900；
+ * 传入 desktopOnly:false 可附移动视口，但移动视口不参与门禁判定（仅诊断信息）。
  */
 export async function renderCheck(opts) {
   const {
     wsDir = null, url = null, label = 'page', outDir,
-    viewports = [{ name: 'desktop', w: 1440, h: 900 }, { name: 'mobile', w: 390, h: 844 }],
+    desktopOnly = true,
+    viewports = desktopOnly
+      ? [{ name: 'desktop', w: 1440, h: 900 }]
+      : [{ name: 'desktop', w: 1440, h: 900 }, { name: 'mobile', w: 390, h: 844 }],
     timeoutMs = 45_000, commit = '', requirement = '',
   } = opts;
   fs.mkdirSync(outDir, { recursive: true });
@@ -100,58 +95,108 @@ export async function renderCheck(opts) {
     return report;
   }
 
+  // 精确视口：CDP Emulation.setDeviceMetricsOverride（--window-size 会被浏览器最小宽度钳制，见 cdp-viewport.mjs 注释）
+  let cdp = null;
   try {
-    for (const vp of viewports) {
-      const shot = path.join(outDir, `${label}-${vp.name}.png`);
-      const t0 = performance.now();
-      const sr = await edge(process.env, [
-        '--headless=new', '--disable-gpu', `--screenshot=${shot}`,
-        `--window-size=${vp.w},${vp.h}`, '--virtual-time-budget=9000', base,
-      ], timeoutMs);
-      const screenshot = fs.existsSync(shot)
-        ? { status: 'ok', file: path.basename(shot), bytes: fs.statSync(shot).size, ms: Math.round(performance.now() - t0) }
-        : { status: sr.error === 'env' ? 'skipped' : 'fail', reason: sr.detail ?? '截图未生成' };
+    if (!fs.existsSync(edgeBin())) {
+      report.gate = { pass: false, status: 'not_run', reason: `渲染环境不可用：未找到浏览器 ${edgeBin()}` };
+      fs.writeFileSync(path.join(outDir, `${label}-rendercheck.json`), JSON.stringify(report, null, 1));
+      return report;
+    }
+    try {
+      cdp = await launchCdp({ edgeBin: edgeBin(), timeoutMs });
+    } catch (e) {
+      report.gate = { pass: false, status: 'not_run', reason: `渲染环境不可用：CDP 启动失败（${String(e.message ?? e).slice(0, 100)}）` };
+      fs.writeFileSync(path.join(outDir, `${label}-rendercheck.json`), JSON.stringify(report, null, 1));
+      return report;
+    }
 
-      let probe = { status: 'skipped', reason: '无工作区（探针需注入本地页面）' };
-      let images = { status: 'skipped', reason: '同上' };
-      let overflow = { status: 'skipped', reason: '同上' };
-      if (wsDir) {
-        const dr = await edge(process.env, [
-          '--headless=new', '--disable-gpu', '--dump-dom',
-          `--window-size=${vp.w},${vp.h}`, '--virtual-time-budget=9000', base,
-        ], timeoutMs);
-        const m = dr.stdout?.match(/RC::(\{[^<]*)/);
-        if (!dr.stdout) probe = { status: dr.error === 'env' ? 'skipped' : 'fail', reason: dr.detail ?? 'dump-dom 失败' };
-        else if (!m) probe = { status: 'invalid', reason: '探针指标未出现在 DOM（页面异常或脚本被 CSP 拦截）' };
-        else {
-          const met = JSON.parse(m[1]);
-          probe = { status: 'ok', metrics: met };
-          images = met.required === 0
-            ? { status: 'ok', note: '页面无必需图片', required: 0, requiredFailed: 0 }
-            : (met.requiredFailed > 0
-              ? { status: 'fail', required: met.required, requiredFailed: met.requiredFailed, note: '首屏必需图片未加载（懒加载图不计入）' }
-              : { status: 'ok', required: met.required, requiredFailed: 0, lazy: met.lazy, lazyFailed: met.lazyFailed });
-          overflow = met.overflowX
-            ? { status: 'fail', scrollW: met.scrollW, clientW: met.clientW }
-            : { status: 'ok', scrollW: met.scrollW, clientW: met.clientW };
-        }
+    for (const vp of viewports) {
+      const isMobile = vp.name === 'mobile' || vp.w <= 600;
+      const t0 = performance.now();
+      const cap = await captureAtViewport(cdp, {
+        url: base, width: vp.w, height: vp.h, mobile: isMobile, waitMs: 1600,
+      });
+
+      if (!cap.ok) {
+        report.viewports.push({
+          viewport: vp, base,
+          screenshot: { status: 'fail', reason: cap.error ?? '截图失败' },
+          probe: { status: 'fail', reason: cap.error ?? '探针失败' },
+          images: { status: 'skipped', reason: '页面未加载' },
+          overflow: { status: 'skipped', reason: '页面未加载' },
+          viewportMatch: { status: 'skipped' },
+        });
+        continue;
       }
-      report.viewports.push({ viewport: vp, base, screenshot, probe, images, overflow });
+
+      // 落盘截图
+      const shotFile = `${label}-${vp.name}.png`;
+      fs.writeFileSync(path.join(outDir, shotFile), cap.shot);
+      const screenshot = { status: 'ok', file: shotFile, bytes: cap.shot.length, ms: Math.round(performance.now() - t0) };
+
+      const m = cap.metrics;
+      // 视口一致性断言（关键回归）：目标宽 vs 实际布局宽（容忍滚动条 ≤ 20px）+ 截图宽度必须等于目标宽
+      const vpDelta = Math.abs(m.clientW - vp.w);
+      const tolerance = isMobile ? 1 : 20;   // 桌面可能有 15px 滚动条
+      const viewportOk = vpDelta <= tolerance;
+      const shotOk = cap.shotW === vp.w;
+      const viewportMatch = viewportOk && shotOk
+        ? { status: 'ok', targetW: vp.w, clientW: m.clientW, shotW: cap.shotW, delta: vpDelta }
+        : {
+            status: 'fail',
+            targetW: vp.w, clientW: m.clientW, shotW: cap.shotW, delta: vpDelta,
+            reason: !viewportOk
+              ? `实际布局视口 ${m.clientW}px 与目标 ${vp.w}px 偏差 ${vpDelta}px（视口模拟失真，检测结果不可信）`
+              : `截图宽 ${cap.shotW}px ≠ 目标 ${vp.w}px`,
+          };
+
+      const probe = { status: 'ok', metrics: m };
+      const images = (m.required ?? 0) === 0
+        ? { status: 'ok', note: '页面无必需图片', required: 0, requiredFailed: 0 }
+        : ((m.requiredFailed ?? 0) > 0
+          ? { status: 'fail', required: m.required, requiredFailed: m.requiredFailed, note: '首屏必需图片未加载（懒加载图不计入）' }
+          : { status: 'ok', required: m.required, requiredFailed: 0, lazy: m.lazy, lazyFailed: m.lazyFailed });
+
+      // 横向溢出：同时用 scrollW>clientW 与「有元素右边缘超出布局视口」两条独立判据
+      const overflowFail = m.overflowX || m.clippedCount > 0;
+      const overflow = overflowFail
+        ? {
+            status: 'fail', scrollW: m.scrollW, clientW: m.clientW,
+            clippedCount: m.clippedCount, clippedSample: m.clippedSample,
+            note: m.overflowX ? '页面存在横向溢出' : `有 ${m.clippedCount} 个元素超出布局视口（被裁切）`,
+          }
+        : { status: 'ok', scrollW: m.scrollW, clientW: m.clientW, clippedCount: 0 };
+
+      report.viewports.push({
+        viewport: vp, base, screenshot, probe, images, overflow, viewportMatch,
+        metaViewport: m.metaViewport, h1: m.h1, buttons: m.buttons,
+        engine: 'cdp-emulation',
+      });
     }
   } finally {
+    if (cdp) await cdp.close();
     if (server) server.close();
   }
 
-  // 门禁合成：任一视口 screenshot fail / images fail / overflow fail / probe invalid → fail；
-  // 环境缺失（全部 skipped）→ not_run；其余 → pass。
+  // 门禁合成：只由桌面视口决定（内测版仅支持桌面网页）。
+  // 若调用方额外传入移动视口，其结果记为诊断信息，不参与阻断。
   const v = report.viewports;
-  const anyFail = v.some((x) => x.screenshot.status === 'fail' || x.images.status === 'fail' || x.overflow.status === 'fail' || x.probe.status === 'invalid' || x.probe.status === 'fail');
-  const allSkipped = v.every((x) => x.screenshot.status !== 'ok' && x.probe.status !== 'ok');
+  const blocking = v.filter((x) => x.viewport.name === 'desktop');
+  for (const x of v) {
+    if (x.viewport.name !== 'desktop') x.blocking = false; // 非桌面视口：仅诊断
+  }
+  const anyFail = blocking.some((x) => x.screenshot?.status === 'fail' || x.images?.status === 'fail'
+    || x.overflow?.status === 'fail' || x.probe?.status === 'fail' || x.viewportMatch?.status === 'fail');
+  const allSkipped = blocking.length > 0 && blocking.every((x) => x.screenshot?.status !== 'ok' && x.probe?.status !== 'ok');
   report.gate = anyFail
-    ? { pass: false, status: 'fail', reason: '存在渲染缺陷（见各视口明细：截图失败/必需图片未加载/横向溢出/探针失效）' }
+    ? {
+        pass: false, status: 'fail',
+        reason: '存在桌面渲染缺陷（截图失败/必需图片未加载/横向溢出/视口失真/探针失效）',
+      }
     : allSkipped
       ? { pass: false, status: 'not_run', reason: '渲染环境不可用（浏览器缺失或未注入探针），本轮未执行——不判通过' }
-      : { pass: true, status: 'pass', reason: '渲染成功：截图生成 + 首屏必需图片全部加载 + 无横向溢出（不构成视觉质量结论）' };
+      : { pass: true, status: 'pass', reason: '桌面渲染通过：精确视口截图 + 首屏必需图片全部加载 + 无横向溢出/元素裁切（不构成视觉质量结论）' };
   fs.writeFileSync(path.join(outDir, `${label}-rendercheck.json`), JSON.stringify(report, null, 1));
   return report;
 }

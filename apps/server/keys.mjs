@@ -3,12 +3,17 @@
  * - 明文只存本地 apps/server/keys.json（已 gitignore）
  * - 对外接口只返回掩码（前 4 位 + ***）
  * - 不写入日志 / 事件 / 导出 ZIP
+ * - ORCHESTRAI_KEYS_FILE 可重定向到隔离路径（E2E/交接验收用，禁止读取正式库）
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'keys.json');
+const FILE = process.env.ORCHESTRAI_KEYS_FILE
+  ? path.resolve(process.env.ORCHESTRAI_KEYS_FILE)
+  : path.join(path.dirname(fileURLToPath(import.meta.url)), 'keys.json');
+
+export const KEYS_FILE = FILE;
 
 export const PROVIDERS = [
   { id: 'pexels', label: 'Pexels', purpose: '高质量图库照片（生成展馆/图库时优先使用）', url: 'https://www.pexels.com/api/' },

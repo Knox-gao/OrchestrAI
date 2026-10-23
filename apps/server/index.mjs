@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPipeline } from './pipeline.mjs';
+import { preflight, choicesToDirective } from './preflight.mjs';
 import { zipSync } from './zip.mjs';
 import { buildExport } from './packaging.mjs';
 import { PROVIDERS, maskedKeys, setKey, deleteKey, addCustom, removeCustom, setCustomModel } from './keys.mjs';
@@ -172,7 +173,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && /^\/api\/projects\/[\w-]+\/export$/.test(url.pathname)) {
       const id = url.pathname.split('/').at(-2);
       const fmt = url.searchParams.get('fmt') ?? 'zip';
-      if (!['zip', 'exe', 'apk'].includes(fmt)) return json(res, 400, { error: 'fmt must be zip|exe|apk' });
+      // 内测版范围：只交付桌面版网页（ZIP）。原生应用打包（exe/apk）不在内测版范围内。
+      if (fmt === 'exe' || fmt === 'apk') {
+        return json(res, 409, {
+          error: '本版本只支持生成网页（桌面版），不提供 .exe / .apk 原生应用打包',
+          supported: ['zip'],
+        });
+      }
+      if (fmt !== 'zip') return json(res, 400, { error: 'fmt must be zip' });
       const dir = path.join(WORKSPACES, id);
       const metaPath = path.join(dir, 'project.json');
       if (!fs.existsSync(metaPath)) return json(res, 404, { error: 'project not found' });
@@ -207,6 +215,15 @@ const server = http.createServer(async (req, res) => {
         return json(res, 422, { error: `解析失败：${String(e?.message ?? e)}` });
       }
     }
+    if (req.method === 'POST' && url.pathname === '/api/preflight') {
+      const raw = await readBody(req);
+      const body = JSON.parse((raw.toString('utf-8') || '{}') || '{}');
+      const requirement = String(body.requirement ?? body.sentence ?? '').trim();
+      if (!requirement) return json(res, 400, { error: 'requirement required' });
+      const llm = typeof body.llm === 'string' && body.llm ? body.llm : 'auto';
+      const r = await preflight(requirement.slice(0, 4000), llm);
+      return json(res, 200, r);
+    }
     if (req.method === 'POST' && url.pathname === '/api/generate') {
       const raw = await readBody(req);
       const body = JSON.parse((raw.toString('utf-8') || '{}') || '{}');
@@ -218,10 +235,13 @@ const server = http.createServer(async (req, res) => {
       const fx = typeof body.fx === 'string' && body.fx ? body.fx : undefined;
       const styleDescription = typeof body.styleDescription === 'string' ? body.styleDescription.trim().slice(0, 120) : undefined;
       const llm = typeof body.llm === 'string' && body.llm ? body.llm : 'auto';
+      // 内测版：把用户在 preflight 中的选择并入需求（写成明确指令，由模型遵循）
+      const directive = choicesToDirective(body.choices);
+      const requirementWithChoices = directive ? `${requirement}\n\n${directive}` : requirement;
       const jobId = 'J' + Date.now().toString(36).toUpperCase();
-      const job = { id: jobId, status: 'running', phase: '排队中…', startedAt: Date.now(), result: null, error: null };
+      const job = { id: jobId, status: 'running', phase: '排队中…', startedAt: Date.now(), result: null, error: null, choices: body.choices ?? null };
       JOBS.set(jobId, job);
-      runPipeline(requirement, style, fx, name || undefined, styleDescription, (phase) => { job.phase = phase; }, llm)
+      runPipeline(requirementWithChoices, style, fx, name || undefined, styleDescription, (phase) => { job.phase = phase; }, llm)
         .then((result) => { job.status = 'done'; job.phase = '完成'; job.result = result; })
         .catch((e) => { job.status = 'error'; job.phase = '失败'; job.error = String(e?.message ?? e); });
       return json(res, 202, { jobId });

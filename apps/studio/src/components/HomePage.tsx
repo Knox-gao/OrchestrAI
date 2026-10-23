@@ -183,8 +183,8 @@ export function HomePage({
       {showKeys && <KeySettings onClose={() => setShowKeys(false)} />}
       <div className="home-hero">
         <div className="home-badge">⚡ 真实生成 · {styleCount ? `${styleCount} 种风格 · ` : ''}事件溯源 · 门禁保障</div>
-        <h1>OrchestrAI<span> · Agent 软件研发工作室</span></h1>
-        <p>描述你想要的软件，OrchestrAI 组织 Agent 完成真实交付<br />真实生成文件 · 真实执行测试 · 网络采集真实素材 · 可安装（PWA / .exe / .apk）</p>
+        <h1>OrchestrAI<span> · 一句话生成网站</span></h1>
+        <p>描述你想要的网站，OrchestrAI 组织 Agent 完成真实交付<br />真实生成文件 · 真实执行测试 · 网络采集真实素材 · 交付桌面版网页（内测版）</p>
         <div className="home-input">
           <input
             value={text}

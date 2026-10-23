@@ -1,194 +1,182 @@
-# OrchestrAI · 多 Agent 软件研发工作室
+# OrchestrAI
 
-> **OrchestrAI** —— 像管理一家软件公司一样，组织 AI Agent 完成**真实可验证**的软件交付。
-> 描述你想要的软件，OrchestrAI 组织多 Agent 真实生成文件、真实执行测试、采集真实素材、交付可用预览。
+**一句话生成网站。** 你只描述想要什么，OrchestrAI 组织一组 Agent 完成真实的需求理解、页面生成、质量门禁、浏览器验收与网页 ZIP 交付。
 
-对应《项目开发流程与 MVP 实施计划 V1.0》的 **P0 + P1 + P2（单 Agent 真实闭环）** 里程碑。
+> **当前版本：内测版（Private Beta）**
+> - ✅ 只生成**桌面版网页**（不生成移动端页面、不打包 .exe / .apk）
+> - ✅ **必须使用你自己的 API 模型**（无模型时直接阻断，只产出模板页没有意义）
+> - ✅ AI 遇到主观审美选择时会**先问你**（字体气质 / 视觉风格 / 页面方向 / 文案调性），而不是替你做主
+
+---
 
 ## 快速开始
 
 ```bash
-npm install          # Node >= 20
-npm test             # 核心包 21 个单元测试（状态机 / 门禁 / 剧本回放）
-npm run selftest     # 生成器自检：4 模板 × 正常/缺陷变体真实跑 node --test（8/8）
-npm run server       # 启动真实生成服务（http://127.0.0.1:8787）
-npm run dev          # 启动工作室 UI（http://127.0.0.1:5175，已代理 /api 与 /preview）
+# 1. 安装依赖（Node 20+）
+npm install
+
+# 2. 启动生成服务
+node apps/server/index.mjs          # → http://127.0.0.1:8787
+
+# 3. 启动前端工作室
+npm run dev                          # → http://127.0.0.1:5175
 ```
 
-打开 [http://127.0.0.1:5175](http://127.0.0.1:5175) 进入 **OrchestrAI 项目主页**：
+### 配置你自己的模型（必做）
 
-1. **给项目起个名字**（选风格与动效）→ 创建项目；
-2. 进入工作室后在**需求输入区**描述需求——支持直接输入，或 📎 附加 **Word(.docx) / .txt / .md** 需求文档（服务端零依赖解析，docx 提取正文段落）；
-3. 点「按需求生成」（工作台**右下角 📞 圆形按钮**随时展开**拟短信对话面板**：消息流实时反馈阶段、📎 附件、**主模型切换**（自动/规则/指定网关）、🎨 风格、✨ 动效，面板内 ⏸ 可暂停回放）。完成后自动播放事件回放（也可单步）。
+打开工作室首页右上角 **🔑 API Key** → **自定义服务**，填写：
 
-「我的项目」卡片进入历史项目（事件溯源瞬时恢复终态）；也可观看演示剧本了解完整多 Agent 协作流程。
-
-> 播放控制说明：正式版本（真实生成）不含倍速/单步控制；倍速（1x/2x/4x）与单步仅在「演示剧本」模式下提供。
-
-## 核心能力：一句话 → 你的 App
-
-**真实发生的事情**（不是模拟动画）：
-
-1. **意图识别**：一句话解析为应用类型 / 标题 / 功能集（`做一个番茄钟` → pomodoro 模板 + 你的标题）
-2. **真实写盘**：`index.html / style.css / app.mjs / logic.mjs / test/logic.test.mjs / package.json` 写入 `workspaces/<项目ID>/`
-3. **真实测试**：`node --test` 子进程执行，退出码 / 通过数 / 耗时 / 完整输出落盘 `workspaces/_logs/*.log`
-4. **门禁拦截**：测试失败 → 主管退回 → 修复 → 按影响范围重跑 → 通过才允许交付（见下）
-5. **真实交付**：项目元数据（`project.json`）与事件时间线（`timeline.json`）持久化，主页随时进入；预览服务直接可用
-
-## 动效引擎（三级）
-
-生成的 App 可携带零依赖动效层（颜色自动跟随风格强调色）：
-
-| 级别 | 内容 |
+| 字段 | 说明 |
 |---|---|
-| 关闭 | 无动效（禅意/极简友好） |
-| 柔和 | 卡片进场淡入 + 3D 微倾 |
-| 炫动 | + 全屏**粒子场（自动避让鼠标）** + 光标拖尾 + 点击涟漪 |
+| 服务名称 | 任意，如 `my-deepseek` |
+| 接口地址 | OpenAI 兼容地址，如 `https://api.deepseek.com/v1` |
+| API Key | 你的密钥 |
+| 模型名 | 如 `deepseek-chat`、`gpt-4o-mini`、`glm-4-flash` |
 
-入口：主页设置卡片的「动效」区；一句话点菜（「有**粒子特效**的」→ 炫动，「**安静极简**」→ 关闭）；API `fx` 参数。无障碍：系统开启「减少动效」时自动熔断，URL 加 `?fx=force` 可强制开启（用户自主选择优先）。
+也可以用内置选项：智谱 GLM / OpenAI / Anthropic。
 
-## 148 种视觉风格
+密钥只存本机 `apps/server/keys.json`（已在 `.gitignore`），接口只返回掩码，不写日志、不进入交付 ZIP。
 
-每个生成的 App 可以选择不同视觉风格（参考 stylekit.top 分类学的组合式风格引擎）：
+### 生成一个网站
 
-- **16 个精工基底**：暗夜霓虹 / 新野兽派 / 编辑杂志 / 新拟物派 / 毛玻璃 / 粘土拟态 / 极光渐变 / 复古报纸 / 终端绿屏 / 像素游戏 / 和风禅意 / 鎏金奢华 / 企业简洁 / Notion 风 / 柔和界面 / 自然有机
-- **× 9 种色彩气质**：曜黑 / 绯红 / 蜜橙 / 鎏金 / 青翠 / 天青 / 紫晶 / 桃粉 / 苔绿
-- **+ 4 个工作室联名** = **148 种**（`GET /api/styles` 返回全目录）
+1. 首页输入项目名 → 创建
+2. 左下角 💬 面板输入需求（支持 `.docx` / `.txt` / `.md` 附件）
+3. AI 若需要你拍板审美，会弹出选择卡 → 选完开始
+4. 生成完成后在「预览」页签查看，或下载网页 ZIP
 
-四种用法：
+---
 
-1. 主页**创作风格卡片**：精选标签 + 148 全量下拉；
-2. **自由文字描述**：在描述框写下「深色玻璃质感、紫色调、圆角」——五维特征解析（色彩/明暗/质感/圆角/字体）落到风格引擎并叠加自定义覆盖层（支持十六进制色值）；
-3. 一句话点风格（「做一个**终端风格**的番茄钟」自动检测）；
-4. API `style` / `styleDescription` 参数。PWA 主题色、图标颜色、manifest 全部跟随风格派生。
+## 内测版的三条硬规则
 
-## 当前内置 8 个应用模板
+### 1. 只交付桌面版网页
 
-| 一句话提到 | 生成 | 核心功能 |
+- `rendercheck` 只跑 **1440×900** 单视口，作为交付阻断门禁
+- 移动视口能力保留但**不参与门禁**（仅诊断用，传入 `desktopOnly: false` 时）
+- `.exe` / `.apk` 导出接口返回 **409**，UI 已移除对应按钮
+
+理由：内测阶段先在一个明确的交付形态上做到可靠，比同时兼顾多端更有价值。
+
+### 2. 必须自带模型
+
+无可用模型配置时，生成**直接阻断**并给出配置指引（`gate: model_required`），不会静默降级成模板页。
+
+```js
+// apps/server/pipeline.mjs
+if (!gw) {
+  // 发射 gate_result(model_required, passed:false) → delivered:false → 终止
+}
+```
+
+理由：模板页与本项目的目标（按需创作）相悖，产出低质页面比不产出更糟。
+
+### 3. AI 选择必须问人
+
+生成前会先调用 `/api/preflight`：AI 判断是否有**主观审美选择**需要用户拍板。
+
+```bash
+POST /api/preflight
+{ "requirement": "做一个咖啡店官网", "llm": "auto" }
+→ { "ok": true, "questions": [
+      { "id": "font", "title": "标题字体气质",
+        "options": [{"value":"serif","label":"典雅衬线","hint":"适合文化/高端品牌"}, ...] }
+   ] }
+```
+
+用户选完后 `/api/generate` 会带上 `choices`，并把选择写成明确指令注入需求。每个问题都提供「让你决定」跳过项。
+
+理由：审美是用户的权利，不是模型的默认值。
+
+---
+
+## 架构
+
+```
+需求输入
+  ↓
+/api/preflight        AI 判断是否需要用户拍板（字体/风格/方向/调性）
+  ↓ (用户选择)
+pipeline.mjs
+  ├─ 模型网关守卫      无模型 → 阻断
+  ├─ 意图解析 (LLM)    类型 / 标题 / 功能 / 数据集
+  ├─ Design Brief      双方向设计简报 + schema 校验
+  ├─ 模板渲染          8 模板（todo/pomodoro/counter/notes/gallery/countdown/landing/atlas）
+  ├─ 静态门禁          quality.mjs
+  ├─ 单元门禁          runner.mjs（真实 node --test）
+  ├─ 视觉审查          visualaudit.mjs（按键绑定 / 素材完整）
+  ├─ 渲染门禁          rendercheck.mjs（CDP 精确视口 1440×900）
+  └─ 交付              delivered / previewUrl / ZIP
+```
+
+```
+apps/server/          生成服务（零依赖 Node）
+  pipeline.mjs        生成流水线
+  preflight.mjs       开工前确认（AI 选择问用户）
+  cdp-viewport.mjs    CDP 精确视口（修复 --window-size 钳制）
+  rendercheck.mjs     渲染门禁
+  keys.mjs            密钥存储（ORCHESTRAI_KEYS_FILE 可重定向）
+  generator/          模板与风格引擎
+    styles.mjs        148 种风格（16 基底 × 9 色彩）
+    designbrief.mjs   结构化设计简报
+    layouts/          布局原语
+    templates/        8 个应用模板
+  scraper.mjs         真实图片采集（Bing / Reddit / DDG / Wikimedia）
+  proxy.mjs           系统代理探测 + CONNECT 隧道
+
+apps/studio/          React + Vite 工作室前端
+  components/ChoiceModal.tsx   AI 选择卡
+  components/ChatDock.tsx      需求输入面板
+  components/HomePage.tsx      项目首页
+
+packages/core/        TypeScript 域内核（事件溯源状态机，23 测试）
+docs/                 研究报告与实验记录
+experiments/          设计/图片/生成实验（隔离，不影响正式管线）
+```
+
+---
+
+## 测试
+
+```bash
+npm test                          # 核心域内核（vitest，23 项）
+node --test apps/server/test/     # 服务端测试（21 项）
+node apps/server/selftest.mjs     # 模板自检（16 项，含缺陷注入）
+npm run build                     # 前端构建
+```
+
+渲染门禁需要本机有 Edge（或设 `RENDERCHECK_EDGE` 指向 Chromium 内核浏览器）。
+
+---
+
+## 环境变量
+
+| 变量 | 默认 | 说明 |
 |---|---|---|
-| 任务 / 待办 / 清单 | 任务清单 | 增删 / 完成切换 / 三态筛选 / 持久化 |
-| 番茄 / 计时 / 专注 | 番茄钟 | 25+5 自动切换 / 会话统计 |
-| 计数 / 打卡 / 统计 | 计数器 | 自定义步进 / 撤销 / 历史 |
-| 笔记 / 备忘 / 速记 | 速记本 | 增删改 / 时间排序 / 字数统计 |
-| 倒数日 / 生日 / 纪念日 | 倒数日 | 多事件倒数 / 大数字聚焦 / 最近置顶 / 持久化 |
-| 展馆 / 画廊 / 图库 / 相册 / 图鉴 | 展馆·图鉴 | 图鉴=**全屏海报舞台**（剧照背景+超大斜体逐字标题+跑马灯色带+胶片导航+档案抽屉+视差）；图库=照片墙+灯箱；**AI 视觉设计简报自动定制主题风格** |
-| 介绍页 / 官网 / 宣传页 / 专题 | 产品介绍页 | Hero + 特性卡片 + 参数表 + 锚点导航（**AI 撰写文案**） |
-| 图谱 / 三维 / 星图 / 演变史 / 博物馆 | **沉浸图谱** | 档案馆级三维星图：程序化行星纹理（条纹/大陆云层/陨坑）/ 土星环 / 太阳日冕 / 银河星域 / 轨道拖尾 / 拖拽缩放 / 聚焦跟踪相机 / 时间轴回放 / 档案卡（**AI 联网生成真实数据集**，对标沉浸式数据可视化大作） |
+| `PORT` | `8787` | 服务端口 |
+| `ORCHESTRAI_KEYS_FILE` | `apps/server/keys.json` | 密钥库路径（E2E 隔离用） |
+| `ORCHESTRAI_RENDERCHECK` | 开 | 设 `off` 关闭渲染门禁 |
+| `RENDERCHECK_EDGE` | Edge 默认路径 | 浏览器可执行文件 |
 
-### 网络素材采集（展馆模板）
+---
 
-输入「**做法拉利展馆**」，设计师 Agent 会真实联网采集照片并嵌入应用：
+## 设计原则
 
-- **图源适配器链**：Pexels（需 Key）→ Unsplash（需 Key）→ **Bing 图片搜索**（免 Key，采用 GitHub bing-image-downloader 类项目的标准做法：`images/async` 接口 + `m="{murl,...}"` 属性解析；仅照片+大图过滤、查询词相关性过滤、原图优先/缩略图回退）→ Wikimedia Commons（免 Key，授权清晰）
-- 图片真实下载到工作区 `images/`（导出 ZIP 自带、SW 离线缓存），**保留来源站署名**（灯箱内展示）
-- 网络全部不可达时诚实兜底：生成 6 张本地示意卡，并在「已知限制」中明确披露
+1. **测试必须真跑** — 退出码 + 日志落盘，模型自述不算证据
+2. **门禁未过不得交付** — 静态 / 单元 / 视觉 / 渲染四道门禁，任一失败即阻断
+3. **变更必须留痕** — 事件流 + 版本链，历史不删除
+4. **AI 不做用户的选择** — 主观审美必须先问，技术决策模型自主
 
-实测示例：「做法拉利展馆」→ 主题词提取「法拉利」→ 8~10 张真实车型照片（F8 Tributo / Roma / F80 / LaFerrari…）落盘工作区并渲染进照片墙。
+---
 
-### 图鉴模式（一组对象的介绍 + 配图）
+## 已知限制（内测版）
 
-输入「**生成漫威的所有超级英雄的介绍网页，要求带照片和介绍**」，AI 联网产出 15 个英雄清单（名称/副题/50-90 字真实介绍），再**逐对象定向采集**对应真实照片（并发 + 限流回退 + 失败对象保留介绍用示意卡）：
+- 只支持桌面版网页；移动端未纳入交付范围
+- 依赖模型能力：模型越强，产出质量越高；弱模型仍可能出现结构单薄
+- 图片采集依赖网络与图源可用性
+- 不提供真实支付 / 后端业务逻辑（生成的站点为静态网页）
+- `.exe` / `.apk` 打包已移出本版本范围
 
-- 卡片：竖版人像 + 标题 + 金色副题 + 两行摘要；灯箱：大图 + 右侧介绍面板（完整介绍/计数/来源署名）
-- 采集质量三防线：完整实体词相关性过滤（前缀匹配会把"钢铁侠"配成炼钢厂图——实测教训）、宁缺毋滥不补无关图、对象名单实体词优先于多词混排查询
-- 实测：15 英雄 14 张真实网络照片 + 15 段查证介绍，视觉质检达到专业图鉴产品水准
+---
 
-### API Key 自助接入
+## License
 
-主页右上角「🔑 API Key」可配置你自己的密钥（Pexels / Unsplash / 智谱 GLM / OpenAI / Anthropic）：
-
-- 密钥仅存本机 `apps/server/keys.json`（gitignore），接口只回掩码（`TEST***ef`）
-- 不进入日志、事件流与导出包；配置图库 Key 后展馆生成自动升级为高质量真实照片
-
-**意图理解两级**：配置了 GLM/OpenAI/自定义网关 Key（🔑 面板）→ **AI 理解需求**（支持任意表述，如「iPhone 17 Pro Max 产品介绍页」会命中产品页模板并由 AI 撰写文案）；未配置或调用失败 → 关键词规则识别（事件日志会明确标注是 AI 还是规则、失败原因）。未命中时兜底生成「产品介绍页」或任务清单。
-
-### 质量门禁（交付前全部真实执行）
-
-1. **静态质量门禁**：PWA 清单 / Service Worker / 192+512 图标 / 测试文件齐全，PNG 魔数与尺寸校验，index.html 安装标记检查
-2. **真实测试门禁**：`node --test` 子进程，退出码即证据，日志落盘
-
-### 安装与打包（.exe / .apk）
-
-预览页签提供三个真实入口：
-
-- **安装为应用（PWA）**：Windows 浏览器「安装应用」→ 桌面/开始菜单独立应用；Android Chrome「添加到主屏幕」→ 系统安装真正的 WebAPK（.apk）
-- **📦 .exe 打包工程**：ZIP 内含 Electron 工程（`electron/package.json` 预配置 electron-builder NSIS+portable），解压后 `npm install && npm run dist` 即产出 Windows 安装包
-- **📦 .apk 打包工程**：ZIP 内含 TWA 工程与 assetlinks 模板 + bubblewrap 构建指南；也可按 README 的零工具链路径直接生成 WebAPK
-- **⬇ 完整源码 ZIP**：全部源码 + 测试 + PWA 资产
-
-### 门禁演示：预设缺陷
-
-在需求里带上 **「预设缺陷」**（例：`做一个喝水打卡计数器，带预设缺陷`），系统会真的往生成代码里植入一个 bug：
-
-```
-第一次 node --test → exit 1（缺陷用例真实失败，日志落盘）
-→ 门禁拦截，禁止交付 → 主管退回 T1 → 重写 logic.mjs
-→ 第二次 node --test → exit 0（6/6 通过，取代 TR-01）
-→ 交付 1.0.0（交付清单注明含一次真实缺陷修复记录）
-```
-
-这正是本项目四条铁律的第一条：**测试结论只能来自真实运行的测试记录，模型自述不算证据**。
-
-## 工程原则
-
-**成品优先**：改善任何能力前，先在 GitHub/npm 搜有没有维护中的成品（关键词 + 场景对齐）；有则直接采用或借鉴其实现，自研是最后手段。采用前必查三件事：维护状态（归档/最后提交）、架构兼容（语言/依赖/部署形态）、场景匹配（它解决的问题是不是我们的问题）。
-- 已入库存证：portia 与 pyspider 虽有 9.5k/16.8k star，但均已官方归档（2026-06 / 2024-06）、且是"定向网站抓取框架"而非开放图源搜索，评估后未采用；DDG 图源适配器则直接借鉴活跃成品 duckduckgo-images-api 的 vqd+i.js 手法实现。
-
-## 四条铁律 → 可验证的实现
-
-| 铁律 | 在代码里 | 在界面上 |
-|---|---|---|
-| 测试必须真跑 | `runNodeTests()`：真实子进程 + 退出码 + 日志落盘 | 「测试」页每条记录带 exit 标记与日志路径 |
-| 门禁未过不得交付 | `deliveryBlockers()` + 单元测试证明失败时阻断项非空 | 失败 → 退回（看板 ×2 ↻）→ 修复 → 重跑通过才交付 |
-| 变更必须留痕 | `ChangeRequest` + `RequirementVersion` supersede 链 | 「变更」页影响分析；旧版本保留可查 |
-| 动画不是事实 | UI 只消费事件流（`agent_state_changed` 唯一驱动） | 名牌 = 角色 + 状态灯 + 任务号，像素采样验证一致性 |
-
-## 仓库结构
-
-```
-packages/core/          领域内核（纯 TS，无 UI 依赖）
-  src/types.ts          Project / RequirementVersion / Task / AgentRun / Artifact / TestRun / Approval / ChangeRequest
-  src/events.ts         规范化事件（UI 与后台唯一的通信语言）
-  src/machine.ts        任务状态机（含 done→rework 回归重开）
-  src/gates.ts          deliveryBlockers 交付门禁
-  src/eventLog.ts       追加式事件日志（唯一事实来源）
-  src/state.ts          reducer：事件流 → 状态重建（崩溃可恢复）
-  src/engine.ts         演播引擎（暂停点 / 倍速 / 单步 / play() 外部事件注入口）
-  src/scenario.ts       演示剧本（多 Agent 协作全流程）
-apps/studio/            工作室 UI（Vite + React + TS）
-  src/pixart/           原创像素美术：9 角色 / 办公室 / 状态气泡 / 像素完美渲染
-  src/components/       五区布局 + 预览页签（内嵌生成的 App）
-apps/server/            真实生成服务（零依赖 Node）
-  generator/            意图识别 + 4 应用模板（每个含正常/缺陷变体 + 测试）
-  generator/pwa.mjs     PWA 资产（manifest / service worker / SW 注册头）
-  generator/png.mjs     零依赖 PNG 编码器（程序化生成应用图标）
-  generator/quality.mjs 静态质量门禁（资源完整性检查）
-  runner.mjs            真实测试运行器（node --test 子进程 + 日志落盘）
-  pipeline.mjs          一句话 → 事件队列的真实流水线（静态门禁 + 测试门禁）
-  packaging.mjs         Electron(.exe) / TWA(.apk) 打包工程生成
-  zip.mjs               零依赖 ZIP 打包器
-  index.mjs             HTTP 服务（/api/generate + /api/projects + /export + /preview）
-  selftest.mjs          生成器自检（8/8：每模板 PASS + 缺陷必须 FAIL + 静态门禁）
-workspaces/             生成产物（真实文件 + 测试日志，gitignore）
-gui-test-screenshots/   GUI 实测截图证据
-docs/                   研究与工程报告、原始计划提取稿
-```
-
-## 画质说明
-
-像素办公室采用**像素完美渲染**：画布背板 = 显示尺寸 × devicePixelRatio，办公室按整数倍缩放居中绘制，`image-rendering: pixelated`——任何窗口尺寸下像素边缘严格锐利。
-
-## 已知限制
-
-- 模板化生成：当前 4 类应用 + 兜底；任意需求需 P4 的 Model Gateway（大模型解析 + 代码生成）——引擎 `play()` 注入口已就绪，接入即用
-- 演示模式中的 Agent 行为是确定性剧本；真实模式的"Agent"是模板流水线（真实 I/O，非 LLM 推理）
-- 计时器类生成的 App 在被遮挡的窗口里会被浏览器节流（前台使用正常）
-- 桌面外壳（Electron）未接入，当前以浏览器形态运行
-- 像素美术参考「Pixel Agents」的交互理念，全部角色/图块/动画为本项目原创，未使用其任何资产
-
-## 路线图
-
-- ~~P0 产品定义 / P1 交互原型 / P2 单 Agent 真实闭环~~ ✅
-- **P3**：真实持久化（SQLite）+ 崩溃恢复 + 失败重试；多需求并行
-- **P4**：Model Gateway + Provider Adapter —— 大模型替换模板生成（任意需求）、意图解析升级、成本统计
-- **P5-P7**：变更影响分析自动化、质量门禁（lint/type/E2E）、Electron 外壳、封闭试用
+[MIT](./LICENSE)

@@ -168,7 +168,7 @@ export function ChatDock({
               ))}
               {engine?.state.delivery && (
                 <div className="bubble sys ok">
-                  🎉 打开「预览」页签使用生成的应用，或回到主页导出 .exe / .apk 打包工程。
+                  🎉 打开「预览」页签查看生成的网站，或下载网页 ZIP（解压即可独立运行）。
                 </div>
               )}
             </div>

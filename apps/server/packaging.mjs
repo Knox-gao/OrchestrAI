@@ -103,6 +103,19 @@ function readmeFor(fmt, meta) {
 }
 
 /**
+ * W5【交付卫生】：排除内部诊断日志，避免把构建机信息带进交付包。
+ * - timeline.json：门禁时间线，含构建机绝对路径
+ * - _rendercheck/：渲染探针 JSON 与截图，属内部诊断
+ * project.json 保留（工程元数据，无绝对路径）。
+ */
+function isInternalLog(rel) {
+  const p = rel.replaceAll('\\', '/');
+  return p === 'timeline.json'
+    || p.startsWith('_rendercheck/')
+    || p === 'assets.json';           // 素材注册表含来源工作区相对路径，非交付所需
+}
+
+/**
  * 组装导出 entries
  * @param {'zip'|'exe'|'apk'} fmt
  */
@@ -110,6 +123,7 @@ export function buildExport(fmt, meta, workspaceDir) {
   const entries = [];
   const appPrefix = fmt === 'zip' ? '' : 'app/';
   for (const [rel, buf] of collectDir(workspaceDir)) {
+    if (isInternalLog(rel)) continue;
     entries.push([appPrefix + rel, buf]);
   }
   if (fmt === 'exe') {

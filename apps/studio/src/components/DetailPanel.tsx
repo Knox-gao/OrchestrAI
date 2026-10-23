@@ -60,33 +60,31 @@ export function DetailPanel({
   );
 }
 
-/* ---------- 预览（真实模式：生成的 App 直接可用） ---------- */
+/* ---------- 预览（真实模式：生成的网站直接可用） ---------- */
 function PreviewView({ url, name, projectId }: { url: string; name: string; projectId: string }) {
-  const dl = (fmt: 'zip' | 'exe' | 'apk') =>
-    `/api/projects/${encodeURIComponent(projectId)}/export?fmt=${fmt}`;
+  const zipHref = `/api/projects/${encodeURIComponent(projectId)}/export?fmt=zip`;
   return (
     <>
       <div className="sect">
-        <h4>🎉 {name || '你的 App'} · 在线预览</h4>
+        <h4>🎉 {name || '你的网站'} · 在线预览</h4>
         <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.6 }}>
-          这是刚从你的一句话<b>真实生成</b>的应用（文件已写入工作区，测试真实通过）。可以直接在下方使用，或
+          这是刚从你的一句话<b>真实生成</b>的网站（文件已写入工作区，测试真实通过）。可以直接在下方使用，或
           <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--cyan)' }}>在新标签页打开 ↗</a>。
         </p>
       </div>
       <div className="sect export-sect">
-        <h4>安装与打包</h4>
+        <h4>下载与独立运行</h4>
         <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginBottom: 8, lineHeight: 1.7 }}>
-          本应用是 PWA：浏览器菜单「安装应用」即可装进桌面/开始菜单（Windows）或主屏（Android，Chrome 会生成真正的 WebAPK）。
+          内测版只交付<b>桌面版网页</b>。下载 ZIP 解压后即可独立运行，不需要安装任何运行时；
+          本版不提供 .exe / .apk 原生应用打包。
         </p>
         <div className="export-btns">
-          <a className="btn" href={dl('exe')} title="下载 Electron 工程：npm install && npm run dist 产出 Windows .exe">📦 .exe 打包工程</a>
-          <a className="btn" href={dl('apk')} title="TWA 工程 + PWA 安装指南（bubblewrap 产出 .apk）">📦 .apk 打包工程</a>
-          <a className="btn" href={dl('zip')} title="完整源码 ZIP（PWA + 测试）">⬇ 完整源码 ZIP</a>
+          <a className="btn" href={zipHref} title="下载网页 ZIP（解压即可独立运行，含随包测试）">⬇ 下载网页 ZIP（推荐）</a>
         </div>
       </div>
       <iframe
         src={url}
-        title="生成的应用预览"
+        title="生成的网站预览"
         className="preview-frame"
         sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
       />

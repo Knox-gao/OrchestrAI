@@ -56,6 +56,26 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
 
   // ---- P4 Model Gateway：配置了 LLM Key 则用 AI 理解需求（失败安全回退规则） ----
   const gw = pickGateway(llmChoice);
+
+  // ---- 内测版硬约束：必须使用用户自定义模型 ----
+  // 理由：无模型时只能产模板化低质页面，与"按需创作"目标相悖，故直接阻断而非静默降级。
+  if (!gw) {
+    const reason = llmChoice === 'rule'
+      ? '内测版要求使用自定义 API 模型：当前选择了「规则识别」模式，只能产出模板页。请在 🔑 主模型面板配置自己的 API（地址 + Key + 模型名）后重试。'
+      : '内测版要求使用自定义 API 模型：未检测到可用模型配置。请在 🔑 主模型面板填入你自己的 API 地址、Key 与模型名后重试（无模型只能生成低质量模板网页，故不提供降级生成）。';
+    emit(180, [
+      { type: 'log', level: 'error', from: 'supervisor', message: `⛔ ${reason}` },
+      { type: 'gate_result', gate: 'model_required', passed: false, detail: reason },
+      { type: 'task_status_changed', taskId: 'T0', from: 'pending', to: 'blocked', reason: '缺少用户自定义模型配置' },
+    ]);
+    persistProject(cues, {
+      projectId, spec, sentence, files: {}, ws, projectTitle,
+      delivered: false, deliveryVersion: null, previewUrl: null,
+      testSummary: reason, hadDefectFix: false, firstOk: false,
+    });
+    return { projectId, cues, previewUrl: null, workspace: ws, failed: true, blocked: 'model_required', reason };
+  }
+
   if (gw) {
     onPhase?.(`AI 理解需求中（${gw.label ?? gw.provider}/${gw.model}）…`);
     // 统一重试保险：① 调用异常（网络/限流/JSON 截断解析失败）② 解析成功但数据集不完整（atlas 对象空 / gallery 图鉴 items 空）
@@ -512,8 +532,24 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     { type: 'agent_state_changed', role: 'supervisor', status: 'idle' },
   ]);
 
+  // ---- W2【交付可靠性】必需的素材缺失 → 阻断交付（不能把缺图的页面当完整交付）----
+  // 说明：死按钮启发式仍为告警不阻断（避免误伤）；此处仅拦「清单引用但产物不存在」的硬缺失。
+  if (audit.missingImages.length > 0) {
+    const reason = `视觉审查阻断：${audit.missingImages.length} 个必需素材缺失（${audit.missingImages.slice(0, 3).join('、')}）`;
+    emit(292, [
+      { type: 'log', level: 'error', from: 'supervisor', message: `⛔ ${reason}——终止交付，不回退规则` },
+      { type: 'task_status_changed', taskId: 'T3', from: 'pending', to: 'blocked', reason },
+    ]);
+    persistProject(cues, {
+      projectId, spec, sentence, files, ws, projectTitle,
+      delivered: false, deliveryVersion: null, previewUrl: null,
+      testSummary: reason, hadDefectFix: !firstOk, firstOk,
+    });
+    return { projectId, cues, previewUrl: null, workspace: ws, failed: true };
+  }
+
   // ---- 渲染门禁（Gate 4/6 证据）：Edge headless 双视口截图 + DOM 探针（必需图片/横向溢出）----
-  // 开关 ORCHESTRAI_RENDERCHECK=off；环境缺失 → not_run 如实披露（不假绿）；fail → 事件 error + 摘要注明（阶段三收紧为阻断）。
+  // 开关 ORCHESTRAI_RENDERCHECK=off；环境缺失 → not_run 如实披露（不假绿）；fail → 阻断交付（W1）。
   let renderGate = null;
   if (process.env.ORCHESTRAI_RENDERCHECK !== 'off') {
     onPhase?.('渲染门禁：桌面/移动双视口截图与探针检查…');
@@ -529,6 +565,21 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       renderGate = { gate: { pass: false, status: 'not_run', reason: String(e?.message ?? e).slice(0, 120) } };
       emit(295, [{ type: 'log', level: 'warn', from: 'supervisor', message: `🖥 渲染门禁未执行：${renderGate.gate.reason}` }]);
     }
+  }
+
+  // ---- W1【交付可靠性】渲染门禁 fail → 阻断交付（截图失败/必需图未加载/横向溢出/视口失真）----
+  if (renderGate?.gate.status === 'fail') {
+    const reason = `渲染门禁阻断：${renderGate.gate.reason}`;
+    emit(296, [
+      { type: 'log', level: 'error', from: 'supervisor', message: `⛔ ${reason}——终止交付，不回退规则` },
+      { type: 'task_status_changed', taskId: 'T3', from: 'pending', to: 'blocked', reason },
+    ]);
+    persistProject(cues, {
+      projectId, spec, sentence, files, ws, projectTitle,
+      delivered: false, deliveryVersion: null, previewUrl: null,
+      testSummary: reason, hadDefectFix: !firstOk, firstOk,
+    });
+    return { projectId, cues, previewUrl: null, workspace: ws, failed: true };
   }
 
   // ---- 交付（T3）----

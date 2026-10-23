@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { initialState, type AgentRole } from '@studio/core';
-import { fetchProject, generateApp, useStudioApp } from './useStudio';
+import { fetchProject, generateApp, runPreflight, useStudioApp } from './useStudio';
 import { TopBar } from './components/TopBar';
 import { TaskBoard } from './components/TaskBoard';
 import { PixelOffice } from './components/PixelOffice';
 import { DetailPanel, type TabKey } from './components/DetailPanel';
 import { ChatDock } from './components/ChatDock';
 import { HomePage } from './components/HomePage';
+import { ChoiceModal, type ChoiceQuestion } from './components/ChoiceModal';
 
 export type Mode = 'demo' | 'real';
 
@@ -30,9 +31,12 @@ export default function App() {
   const [model, setModel] = useState('auto');
   const [dockOpen, setDockOpen] = useState(false);
   const [phase, setPhase] = useState<string | null>(null);
+  /** 开工前确认（内测版：AI 的主观审美选择交给用户拍板） */
+  const [pendingChoice, setPendingChoice] = useState<{ requirement: string; questions: ChoiceQuestion[] } | null>(null);
+  const [choices, setChoices] = useState<Record<string, string>>({});
 
   /** 需求生成：真实流水线 → 新引擎播放（服务端每次生成都创建新项目） */
-  const submitReal = async (requirement: string) => {
+  const submitReal = async (requirement: string, answers: Record<string, string> = {}) => {
     const useName = projectName || (engine?.state.projectName ?? '');
     setGenerating(true);
     setPhase('创建任务…');
@@ -41,7 +45,7 @@ export default function App() {
     setTab('events');
     try {
       setPhase('创建任务…');
-    const result = await generateApp(requirement, styleSel, fxSel, useName || undefined, styleDescSel || undefined, (p) => setPhase(p), model);
+      const result = await generateApp(requirement, styleSel, fxSel, useName || undefined, styleDescSel || undefined, (p) => setPhase(p), model, answers);
       playInNew(result.cues);
       setPreviewUrl(result.previewUrl);
     } catch (e) {
@@ -50,6 +54,32 @@ export default function App() {
       setGenerating(false);
       setPhase(null);
     }
+  };
+
+  /**
+   * 开工前确认：先问 AI「有没有必须用户拍板的审美选择」。
+   * - 有 → 弹选择卡，用户选完再生成
+   * - 无 / 模型未配置 → 直接生成（缺模型时管线会明确阻断并提示配 Key）
+   */
+  const submitWithPreflight = async (requirement: string) => {
+    setGenError(null);
+    setChoices({});
+    let pf;
+    try {
+      pf = await runPreflight(requirement, model);
+    } catch {
+      return void submitReal(requirement);   // 确认环节异常不阻断主流程
+    }
+    if (pf.ok && pf.questions.length > 0) {
+      setPendingChoice({ requirement, questions: pf.questions });
+      return;
+    }
+    if (pf.reason && !pf.ok && pf.viaLLM === false) {
+      // 模型未配置：直接走生成，由管线给出明确的"请配置模型"阻断提示
+      setGenError(pf.reason);
+      return void submitReal(requirement);
+    }
+    return void submitReal(requirement);
   };
 
   /** 进入历史项目：拉取时间线，瞬时恢复终态 */
@@ -95,8 +125,23 @@ export default function App() {
     );
   }
 
+  const choiceModal = pendingChoice ? (
+    <ChoiceModal
+      questions={pendingChoice.questions}
+      busy={generating}
+      onCancel={() => setPendingChoice(null)}
+      onConfirm={(answers) => {
+        const req = pendingChoice.requirement;
+        setChoices(answers);
+        setPendingChoice(null);
+        void submitReal(req, answers);
+      }}
+    />
+  ) : null;
+
   return (
     <>
+      {choiceModal}
       {genError && (
         <div className="gen-error">
           {genError}
@@ -137,7 +182,7 @@ export default function App() {
           styleDesc={styleDescSel} setStyleDesc={setStyleDescSel}
           model={model} setModel={setModel}
           open={dockOpen} setOpen={setDockOpen}
-          onSubmitReal={(req) => void submitReal(req)}
+          onSubmitReal={(req) => void submitWithPreflight(req)}
         />
       </div>
     </>

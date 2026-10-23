@@ -15,3 +15,10 @@ experiments/**/shots/
 # 截图证据目录（大文件；需入库的单张用 git add -f 显式存证）
 gui-test-screenshots/
 Thumbs.db
+
+# 交接/审查临时产物
+experiments-shots.zip
+OrchestrAI-*.zip
+_handoff-review/
+
+# 旧版 README 保留在仓库中（不忽略）

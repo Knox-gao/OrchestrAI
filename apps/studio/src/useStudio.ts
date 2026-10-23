@@ -78,10 +78,23 @@ export async function fetchStyles(): Promise<{ count: number; styles: StyleEntry
   return res.json();
 }
 
+export interface PreflightQuestion { id: string; title: string; reason?: string; options: { value: string; label: string; hint?: string }[] }
+export interface PreflightResult { ok: boolean; viaLLM: boolean; questions: PreflightQuestion[]; reason?: string }
+
+/** 开工前确认：AI 需要主观选择时先问用户（模型未配置时返回 ok:false） */
+export async function runPreflight(requirement: string, model = 'auto'): Promise<PreflightResult> {
+  const res = await fetch('/api/preflight', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requirement, llm: model }),
+  });
+  if (!res.ok) return { ok: false, viaLLM: false, questions: [], reason: `确认失败（${res.status}）` };
+  return (await res.json()) as PreflightResult;
+}
+
 export async function generateApp(
   requirement: string, style?: string, fx?: string, name?: string,
   styleDescription?: string, onPhase?: (phase: string, elapsedMs: number) => void,
-  model = 'auto',
+  model = 'auto', choices?: Record<string, string>,
 ): Promise<GenerateResult> {
   const res = await fetch('/api/generate', {
     method: 'POST',
@@ -89,6 +102,7 @@ export async function generateApp(
     body: JSON.stringify({
       requirement, ...(name ? { name } : {}), ...(style ? { style } : {}),
       ...(fx ? { fx } : {}), ...(styleDescription ? { styleDescription } : {}),
+      llm: model, ...(choices && Object.keys(choices).length ? { choices } : {}),
     }),
   });
   if (!res.ok) {
