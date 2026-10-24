@@ -1,0 +1,94 @@
+{
+  "marks": [
+    {
+      "label": "scene:home",
+      "t": 3.4
+    },
+    {
+      "label": "scene:pick-style",
+      "t": 7.048,
+      "at": {
+        "x": 0.882,
+        "y": 0.5001
+      }
+    },
+    {
+      "label": "scene:create-project",
+      "t": 12.837,
+      "at": {
+        "x": 0.4564,
+        "y": 0.4998
+      }
+    },
+    {
+      "label": "scene:studio",
+      "t": 15.053
+    },
+    {
+      "label": "scene:requirement-typed",
+      "t": 23.678
+    },
+    {
+      "label": "scene:back-home",
+      "t": 25.22,
+      "at": {
+        "x": 0.0404,
+        "y": 0.0399
+      }
+    },
+    {
+      "label": "scene:library",
+      "t": 29.847
+    },
+    {
+      "label": "scene:open-delivered",
+      "t": 31.642,
+      "at": {
+        "x": 0.6134,
+        "y": 0.8974
+      }
+    },
+    {
+      "label": "scene:delivered-project",
+      "t": 34.855
+    },
+    {
+      "label": "scene:tab-test",
+      "t": 36.475,
+      "at": {
+        "x": 0.8562,
+        "y": 0.1043
+      }
+    },
+    {
+      "label": "scene:tab-events",
+      "t": 41.108,
+      "at": {
+        "x": 0.9487,
+        "y": 0.1043
+      }
+    },
+    {
+      "label": "scene:tab-preview",
+      "t": 45.956,
+      "at": {
+        "x": 0.7568,
+        "y": 0.1043
+      }
+    },
+    {
+      "label": "scene:preview-embed",
+      "t": 49.957
+    },
+    {
+      "label": "scene:site-full",
+      "t": 52.649,
+      "url": "http://localhost:5175/preview/PMVM8NC9A/"
+    },
+    {
+      "label": "scene:end",
+      "t": 70.306
+    }
+  ],
+  "ok": true
+}

@@ -34,3 +34,12 @@ OrchestrAI-*.zip
 _handoff-review/
 
 # 旧版 README 保留在仓库中（不忽略）
+
+# 演示录屏中间产物（成片在 demo/，中间文件不入库）
+recordings/
+tmp/
+# 演示成片：体积大，留在本机，用 scripts/ 里的脚本可复现
+demo/*.mp4
+__pycache__/
+*.pyc
+@AutomationLog.txt
