@@ -76,6 +76,46 @@ export function assessPagePlanVisualComposition(plan, requirement = '', { includ
   };
 }
 
+/**
+ * 为系统兜底补的图位构造可搜的 searchQuery。
+ *
+ * 为什么不能直接拼正文：实测 `§title + description + "establishing photograph"`
+ * 这种长句在 Bing/DDG/Wikimedia 上一张都搜不到，页面只能退化成矢量插画。
+ * 图库是按对象检索的，2-3 个具体名词才有效。
+ *
+ * 中文标题无法可靠切词，所以：保留标题里的中文主体（去掉标点与从句），
+ * 再拼一个通用但具体的场景词。英文标题直接取实词。
+ */
+export function fallbackImageQuery({ title, sectionTitle, variant = 0 }) {
+  const raw = String(sectionTitle || title || '').trim();
+  // 只取主标题：去掉破折号/冒号/竖线之后的解释性从句
+  const head = raw.split(/[—–|:：·・]|(?<=[\u4e00-\u9fff])，|,\s/)[0].trim() || raw;
+
+  // 中文主体：取最长的一段连续中文（中文没有词边界，切词会更糟）
+  const cjkRuns = head.match(/[\u4e00-\u9fff]{2,}/g) ?? [];
+  const cjk = cjkRuns.sort((a, b) => b.length - a.length)[0]?.slice(0, 12) ?? '';
+
+  // 英文主体：跳过虚词与泛化动词，保留专有名词/名词，最多 3 个
+  const EN_SKIP = /^(?:the|and|for|with|from|this|that|how|why|what|when|a|an|of|in|on|at|to|is|are|was|were|be|been|being|our|your|their|its|it|as|by|or|but|not|all|we|you|they|i)$/i;
+  // 用 Unicode 字母类，避免 Kávé 这类重音词被切成半截（实测只剩 'hely'）
+  const enWords = (head.match(/[\p{L}][\p{L}0-9'’-]{2,}/gu) ?? [])
+    .filter((w) => !EN_SKIP.test(w))
+    // 动名词通常是动作描述而非检索对象
+    .filter((w) => !(w.length > 5 && /ing$/i.test(w)))
+    // 排除含汉字的片段：\p{L} 会把中文也匹配进来，导致中英重复拼接
+    .filter((w) => !/[一-鿿]/.test(w));
+  // 专有名词（首字母大写或含数字）优先
+  const proper = enWords.filter((w) => /^[A-Z]/.test(w) || /[0-9]/.test(w));
+  const en = [...proper, ...enWords.filter((w) => !proper.includes(w))].slice(0, 3).join(' ');
+
+  const subject = [cjk, en].filter(Boolean).join(' ').trim().slice(0, 60);
+  if (subject.length >= 4) return subject;
+
+  // 主体实在太短才补场景词，且必须是具体名词
+  const scenes = ['product photo', 'interior photo', 'workspace photo'];
+  return [subject, scenes[variant % scenes.length]].filter(Boolean).join(' ').trim();
+}
+
 function injectTopicImagesToTarget(plan, requirement) {
   if (explicitlyTextOnly(requirement)) return plan;
   const assessment = assessPagePlanVisualComposition(plan, requirement);
@@ -126,9 +166,6 @@ function injectTopicImagesToTarget(plan, requirement) {
     walk(items);
     return count;
   };
-  const collectBrief = (items) => (items ?? []).flatMap((node) => [
-    node.text, node.title, node.description, node.eyebrow,
-  ].filter(Boolean)).join(' ');
   let added = 0;
   const prioritizedSections = [
     ...visibleSections.filter((section) => section.variant === 'hero'),
@@ -140,15 +177,14 @@ function injectTopicImagesToTarget(plan, requirement) {
     let imageId = added === 0 ? id : `topic-illustration-${suffix++}`;
     while (usedIds.has(imageId)) imageId = `topic-illustration-${suffix++}`;
     usedIds.add(imageId);
-    const subject = [title, section.title, String(section.description ?? '').slice(0, 65), collectBrief(section.children).slice(0, 45)]
-      .filter(Boolean).join(' ').replace(/\s+/g, ' ').slice(0, 145);
-    const composition = added === 0 ? 'establishing photograph, wide editorial composition' : `editorial photograph, distinct scene and angle ${added + 1}`;
+    // 只用标题里的主体，不拼 description —— 正文长句搜不到任何图
+    const searchQuery = fallbackImageQuery({ title, sectionTitle: section.title, variant: added });
     const image = {
       id: imageId,
       type: 'image',
       alt: `${section.title || title}主题配图`.slice(0, 300),
       caption: section.title || title,
-      searchQuery: `${subject} ${composition}`.slice(0, 240),
+      searchQuery,
     };
     const firstAction = section.children.findIndex((node) => node.type === 'link');
     const firstContent = section.children.findIndex((node) => node.type === 'text' || node.type === 'container');
@@ -167,7 +203,7 @@ function injectTopicImagesToTarget(plan, requirement) {
       type: 'image',
       alt: `${title}主题细节配图 ${added + 1}`.slice(0, 300),
       caption: `${title} · 视觉细节 ${added + 1}`,
-      searchQuery: `${title} ${String(requirement ?? '').slice(0, 100)} ${added % 2 ? 'close-up editorial photograph, tactile detail' : 'environmental editorial photograph, wide scene'}`.replace(/\s+/g, ' ').slice(0, 240),
+      searchQuery: fallbackImageQuery({ title, sectionTitle: title, variant: added }),
     });
     added++;
   }
@@ -273,7 +309,13 @@ If the user payload contains previousValidationIssue, treat its value only as un
 const SYSTEM_PROMPT = `You are the structural creative director for OrchestrAI. Return exactly one JSON object: no prose, no markdown fences, no HTML, no CSS, no JavaScript, no executable code.
 Design a desktop-first website using the OrchestrAI PagePlan v1 declarative schema. The plan must express the actual information architecture and composition in the nodes tree; do not choose a stock template and merely change its text or colors.
 Allowed node types are exactly the registered capability list in the user payload. Built-in types include section, container, heading, text, image, link, card, list, details, timeline, metric, callout, divider, quote, search, filter and tabs. scene3d is unavailable unless it explicitly appears in the caller-supplied capability list. Never emit a capability outside that list. Do not invent renderer capabilities.
-Node constraints: every node has a unique kebab-case id. section requires title and non-empty children; container.layout is stack/split/grid; grid columns are 2, 3 or 4; heading.level is 1/2/3; all displayed content is plain text. Unless the user explicitly requests a text-only website, you MUST include at least one image node with a specific searchQuery describing a subject that belongs on this page. For an ordinary multi-section page use 3–6 visible image nodes, about one purposeful visual per major content area; use distinct, concrete searchQuery values and scene angles, never repeat a generic query to inflate the count. Prefer authentic photos for real products, places, people, food, architecture, and vehicles; avoid unrelated stock imagery, logos, generic abstract backgrounds, AI renders, and illustrations when a real photo fits. Keep images in active page content across sections, outside details and inactive tabs. Place the strongest, most relevant illustration or photograph in the hero or first content section, with a meaningful alt and concise caption. Do not omit imagery just because the user did not say "photo" or because search may fail; the renderer creates a topic-directed vector illustration when no suitable, clear result can be sourced. Never invent image URLs or use placeholder/example domains, localhost, data: or file URLs. A page with only text, cards, metrics, a timeline, or a 3D scene is not acceptable unless text-only was explicitly requested. Every image must include meaningful alt text. Links may use fragment anchors, safe relative paths or HTTPS URLs. Never emit script nodes, inline JS, CSS strings, event-handler properties, raw HTML, data URLs, file URLs or javascript URLs. For requests requiring an actual interactive three-dimensional scene, use a scene3d node only when the capability is listed, and follow the SCENE3D rules appended below. If the scene is essential and this renderer is not listed as available, declare a blocking unsupportedRequests item rather than returning a 2D imitation.
+Node constraints: every node has a unique kebab-case id. section requires title and non-empty children; container.layout is stack/split/grid; grid columns are 2, 3 or 4; heading.level is 1/2/3; all displayed content is plain text. Unless the user explicitly requests a text-only website, you MUST include at least one image node with a specific searchQuery describing a subject that belongs on this page. For an ordinary multi-section page use 3–6 visible image nodes, about one purposeful visual per major content area; use distinct, concrete searchQuery values and scene angles, never repeat a generic query to inflate the count.
+
+searchQuery MUST BE A SHORT OBJECT PHRASE, 2-4 words, naming the physical thing to photograph. Image search matches on objects, not on mood:
+  GOOD: "coffee shop interior" | "control room monitors" | "neon light installation" | "concert stage lights" | "desk setup" | "ferrari showroom" | "aurora borealis" | "drawing tablet"
+  BAD (measured to return ZERO usable photos): "designer working at desk with glowing screens at night" | "minimal coffee shop neon sign at night" | "dark control room with large data dashboard screens" | "neon light trails long exposure on dark stage" | "aurora gradient poster design on dark wall"
+Why the bad ones fail: a search engine treats every extra adjective (minimal / glowing / dark / at night / long exposure) as another required term, so a 7-word phrase matches nothing. The mood you want is already carried by the site theme, not by the photo query.
+Rules: (1) no mood or style adjectives, no "at night", no "long exposure", no "glowing"; (2) no "-ing" action phrases such as "designer working"; (3) prefer a concrete noun head plus one qualifier, e.g. "coffee shop interior" not "coffee"; (4) if the subject is a real named product, place, or brand, include that name verbatim; (5) one image per distinct subject — do not vary only the adjectives. Prefer authentic photos for real products, places, people, food, architecture, and vehicles; avoid unrelated stock imagery, logos, generic abstract backgrounds, AI renders, and illustrations when a real photo fits. Keep images in active page content across sections, outside details and inactive tabs. Place the strongest, most relevant illustration or photograph in the hero or first content section, with a meaningful alt and concise caption. Do not omit imagery just because the user did not say "photo" or because search may fail; the renderer creates a topic-directed vector illustration when no suitable, clear result can be sourced. Never invent image URLs or use placeholder/example domains, localhost, data: or file URLs. A page with only text, cards, metrics, a timeline, or a 3D scene is not acceptable unless text-only was explicitly requested. Every image must include meaningful alt text. Links may use fragment anchors, safe relative paths or HTTPS URLs. Never emit script nodes, inline JS, CSS strings, event-handler properties, raw HTML, data URLs, file URLs or javascript URLs. For requests requiring an actual interactive three-dimensional scene, use a scene3d node only when the capability is listed, and follow the SCENE3D rules appended below. If the scene is essential and this renderer is not listed as available, declare a blocking unsupportedRequests item rather than returning a 2D imitation.
 Create a substantive composition, not an arbitrary pile of cards. Select the appropriate page structure for the user's actual intent. Describe visual principles concretely. Preserve every explicitly locked user choice exactly. If a requested capability is not in the allowed node/extension list, do not pretend it is implemented; add an unsupportedRequests item with a requirementId, capability, reason and severity. Use blocking when the unavailable capability is essential to the user's core request; use nonblocking only when the core deliverable remains meaningfully useful.
 TYPOGRAPHY AND RHYTHM: Establish a clear reading hierarchy: one dominant hero title, section titles for major topics, and smaller headings only for genuine subsections. Keep paragraphs readable and concise; use lists, timelines, metrics, quotes, or callouts when their information shape fits. For pages with several sections, vary the composition across sections instead of repeating the same grid or panel pattern. Use card grids only for genuinely parallel items such as products, people, or options; do not turn narrative, process, or editorial content into generic cards. Use hero, plain, panel, and contrast section variants with intent, and avoid wrapping every section in a panel. Do not invent content or add visual components merely to force variety.
 Output top-level fields: schemaVersion, meta, userConstraints, designIntent, theme, nodes, unsupportedRequests. Each unsupportedRequests item must contain {requirementId, capability, reason, severity}, where severity is blocking or nonblocking. When the request requires a capability that is not in the provided registered capability list, disclose it. A core requested capability that cannot be implemented must use severity=blocking. Do not author your own "known limitations" / "未实现" section or callout inside nodes: the renderer appends one limitations block derived from unsupportedRequests, so authoring your own would duplicate it. The caller will resolve locked choices and canonical theme tokens before validation, so do not reinterpret user choices.

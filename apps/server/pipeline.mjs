@@ -73,16 +73,122 @@ function imageSearchTargets(query) {
   return [...new Set([text, ...subjectTokens].filter(Boolean))];
 }
 
+/**
+ * 图库搜索的"降噪"词表：这些词让查询从 12 张变成 0 张（实测）。
+ * 图库按对象检索，形容词会被当成额外的必需词。
+ */
+const IMAGE_QUERY_STOPWORDS = new Set([
+  // 介词与虚词
+  'a', 'an', 'the', 'of', 'with', 'on', 'in', 'at', 'by', 'for', 'to', 'from', 'and', 'or',
+  'into', 'over', 'under', 'near', 'inside', 'outside', 'around',
+  // 氛围与风格形容词
+  'minimal', 'minimalist', 'modern', 'luxury', 'luxurious', 'elegant', 'premium',
+  'dark', 'light', 'bright', 'moody', 'glowing', 'glow', 'neon', 'vibrant', 'colorful',
+  'soft', 'warm', 'cool', 'clean', 'simple', 'bold', 'cozy', 'cinematic', 'dramatic',
+  'abstract', 'aesthetic', 'futuristic', 'retro', 'vintage', 'sleek', 'stunning',
+  // 时间与场景修饰
+  'night', 'day', 'evening', 'morning', 'sunset', 'sunrise', 'nighttime', 'daytime',
+  // 摄影术语
+  'long', 'exposure', 'close', 'closeup', 'wide', 'angle', 'shot', 'view', 'scene',
+  'large', 'small', 'big', 'tiny', 'new', 'old', 'main', 'full', 'entire', 'whole', 'data',
+  'photo', 'photograph', 'photography', 'image', 'picture', 'wallpaper', 'background',
+  'high', 'low', 'blurred', 'sharp', 'detailed', 'detail', 'texture',
+  // 动作（-ing 形式通常不能当检索对象）
+  'working', 'sketching', 'reacting', 'glowing', 'standing', 'sitting', 'running',
+]);
+
+const BRAND_PATTERN = /\b(?:Toyota|Nissan|Honda|Mazda|Subaru|Mitsubishi|Porsche|BMW|Mercedes|Ford|Ferrari|Lamborghini|Volkswagen|Audi|Volvo|Peugeot|Renault|Hyundai|Kia|Tesla|Marvel|Disney)\b/i;
+
+/**
+ * 把长句压成 2-3 个具体名词。
+ *
+ * 不是简单地取前 N 个词 —— 那会得到 designer working at。
+ * 而是先剔除形容词/介词/动名词，再保留最有检索价值的名词。
+ */
+export function shortenImageQuery(query, maxWords = 3) {
+  const candidates = buildImageQueryCandidates(query, maxWords);
+  return candidates[0] ?? '';
+}
+
+/**
+ * 从长句生成按检索价值排序的短查询候选。
+ *
+ * 为什么不是简单截断：实测 `dark control room with large data dashboard screens`
+ * 截前 3 个会得到 `control room large`（混进形容词），而真正能搜到图的是
+ * `control room monitors`。所以要从保留词里枚举组合、按结构打分。
+ *
+ * 打分依据（全部来自实测对照）：
+ *   + 品牌/车型编号        检索唯一性最高
+ *   + 名词-名词组合        "coffee shop" / "stage lights" 命中率最高
+ *   - 形容词在首位         "large dashboard" 不如 "dashboard screens"
+ *   - 词数偏离 2          图库对 2 词查询最友好
+ */
+export function buildImageQueryCandidates(query, maxWords = 3) {
+  const text = String(query ?? '').trim();
+  if (!text) return [];
+  // 中文不做英文式压缩（无空格分词），原样作为唯一候选
+  if (!/[A-Za-z]/.test(text)) return [text];
+
+  const words = text.split(/[\s,，、]+/).filter(Boolean);
+  const kept = words.filter((w) => {
+    const low = w.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (!low) return false;
+    if (IMAGE_QUERY_STOPWORDS.has(low)) return false;
+    if (low.length > 5 && low.endsWith('ing')) return false;
+    return true;
+  });
+  if (!kept.length) return [];
+
+  const score = (phrase) => {
+    const parts = phrase.split(' ');
+    let s = 0;
+    // 词数越接近 2 越好；3 词次之
+    if (parts.length === 2) s += 30;
+    else if (parts.length === 3) s += 18;
+    else s -= 10;
+    for (const p of parts) {
+      if (BRAND_PATTERN.test(p)) s += 60;
+      else if (/[A-Za-z]+\d|[0-9][A-Za-z]/.test(p)) s += 40;
+      // 首词是形容词性修饰时降权（large / data 这类做头词不如做尾词）
+    }
+    if (parts.length >= 2 && /^(?:large|small|big|tiny|new|old|main|full|high|low)$/i.test(parts[0])) s -= 15;
+    return s;
+  };
+
+  const phraseCandidates = new Set();
+  // 相邻二元组（保留原语序，语义最完整）
+  for (let i = 0; i + 1 < kept.length; i += 1) phraseCandidates.add(`${kept[i]} ${kept[i + 1]}`);
+  // 相邻三元组
+  if (maxWords >= 3) {
+    for (let i = 0; i + 2 < kept.length; i += 1) phraseCandidates.add(`${kept[i]} ${kept[i + 1]} ${kept[i + 2]}`);
+  }
+  // 首词 + 末词（跨距组合常能救回 "neon ... stage" → "neon stage"）
+  if (kept.length >= 3) phraseCandidates.add(`${kept[0]} ${kept[kept.length - 1]}`);
+
+  const ranked = [...phraseCandidates]
+    .filter((p) => p !== text)
+    .map((p) => ({ p, s: score(p) }))
+    .sort((a, b) => b.s - a.s)
+    .map((x) => x.p);
+  // 去重且保持顺序
+  return [...new Set(ranked)];
+}
+
 function imageSearchQueryCascade(query) {
   const text = String(query ?? '').trim();
   const modelAnchors = text.match(/\b(?:[A-Za-z]+\d+[A-Za-z0-9-]*|\d+[A-Za-z][A-Za-z0-9-]*)\b/g) ?? [];
-  const make = text.match(/\b(?:Toyota|Nissan|Honda|Mazda|Subaru|Mitsubishi|Porsche|BMW|Mercedes|Ford|Ferrari|Lamborghini|Volkswagen|Audi|Volvo|Peugeot|Renault|Hyundai|Kia)\b/i)?.[0];
+  const make = BRAND_PATTERN.exec(text)?.[0];
   const english = extractEnglishTokens(text);
   const queries = [text, english];
   for (const anchor of modelAnchors) {
     if (make) queries.push(`${make} ${anchor}`);
     queries.push(anchor);
   }
+  // 长短兜底：模型写好长句时，用压缩后的 2-3 个名词再试一次
+  const shortened3 = shortenImageQuery(text, 3);
+  const shortened2 = shortenImageQuery(text, 2);
+  if (shortened3) queries.push(shortened3);
+  if (shortened2 && shortened2 !== shortened3) queries.push(shortened2);
   return [...new Set(queries.map((item) => item.trim()).filter(Boolean))];
 }
 
