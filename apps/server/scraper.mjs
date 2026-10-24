@@ -183,6 +183,100 @@ async function wikipediaPortraitCandidates(enTitle, count) {
  * 质量控制：qft 仅照片+大图过滤；候选需与查询词相关（标题或来源页命中）。
  * 原图优先，失败回退缩略图；署名为来源站点域名。
  */
+/**
+ * 构造 Bing 图片相关性判定（导出以便回归测试）。
+ *
+ * 为什么不用"最长的词"做锚点：实测 `ferrari showroom architecture` 的 35 条候选里
+ * 有 26 条真带 ferrari，但最长词 architecture 命中 0 条 → 26 张真法拉利照被整批
+ * 丢弃 → 退化成矢量插画。这是"图片总被替换成矢量插画"的主因之一。
+ *
+ * 两段式：严格（主体词 + 一个实词）优先；严格全空时，若主体词是品牌/车型编号
+ * 这类专有名词，才退回"只要求主体词"。普通名词（aurora / car / studio）太泛，
+ * 会和同名品牌撞车，不享受放宽。
+ *
+ * @param {string} query 搜索词
+ * @returns {{anchor: string|null, anchorIsProperNoun: boolean, enTokens: string[],
+ *   cjkTokens: string[], contentTokens: string[], secondaries: string[],
+ *   hitStrict: (title: string, page: string) => boolean,
+ *   hitRelaxed: (title: string, page: string) => boolean}}
+ */
+export function buildBingRelevance(query) {
+  const spaceTokens = String(query).split(/[\s,，、]+/).map((s) => s.trim()).filter((s) => s.length >= 2);
+  const enTokens = spaceTokens.filter((t) => /[a-z-]/i.test(t)).map((t) => t.toLowerCase());
+  const cjkTokens = spaceTokens.filter((t) => /^[\u4e00-\u9fff]+$/.test(t));
+  const wordHit = (hay, tk) => {
+    const escaped = tk.replace(/[.*+?^${}()|[\]\\]/g, (m) => `\\${m}`);
+    const re = tk.includes('-') ? new RegExp(escaped, 'i') : new RegExp('\\b' + escaped + '\\b', 'i');
+    return re.test(hay);
+  };
+
+  // 与画面对象无关的修饰语：不能当主体词，也不能单独满足"第二个词"
+  const MODIFIER_TOKENS = new Set([
+    'architecture', 'interior', 'exterior', 'design', 'designs', 'poster', 'posters',
+    'gradient', 'glowing', 'glow', 'dark', 'light', 'bright', 'moody', 'minimal',
+    'minimalist', 'modern', 'luxury', 'luxurious', 'elegant', 'premium', 'abstract',
+    'close', 'closeup', 'wide', 'angle', 'view', 'shot', 'photo', 'photography',
+    'image', 'picture', 'scene', 'background', 'wallpaper', 'style', 'styled',
+    'aesthetic', 'cinematic', 'dramatic', 'atmosphere', 'ambient', 'theme', 'themed',
+    'night', 'day', 'evening', 'morning', 'sunset', 'sunrise', 'detail', 'details',
+    'texture', 'toned', 'colored', 'blurred', 'sharp', 'high', 'low', 'full', 'with',
+    'from', 'that', 'this', 'and', 'the', 'for', 'on', 'at', 'of', 'in', 'by',
+    'workspace', 'workspaces', 'sketches', 'sketch', 'dual', 'monitors', 'monitor',
+    'neon', 'vibrant', 'cozy', 'clean', 'simple', 'bold', 'soft', 'warm', 'cool',
+  ]);
+
+  const BRAND_TOKENS = new Set([
+    'ferrari', 'lamborghini', 'porsche', 'toyota', 'nissan', 'honda', 'mazda', 'subaru',
+    'mitsubishi', 'bmw', 'mercedes', 'audi', 'volkswagen', 'volvo', 'ford', 'chevrolet',
+    'tesla', 'bugatti', 'mclaren', 'aston', 'jaguar', 'land', 'rover', 'lexus', 'infiniti',
+    'rolls', 'bentley', 'maserati', 'alfa', 'peugeot', 'renault', 'hyundai', 'kia',
+    'marvel', 'disney', 'lego', 'apple', 'sony', 'samsung', 'ikea', 'nike', 'adidas',
+  ]);
+  const isModelCode = (tk) => /(?:[a-z]+\d+[a-z0-9-]*|\d+[a-z][a-z0-9-]*)/.test(tk);
+
+  const contentTokens = enTokens.filter((tk) => !MODIFIER_TOKENS.has(tk));
+  const anchor =
+    enTokens.find((tk) => BRAND_TOKENS.has(tk) || isModelCode(tk))
+    ?? contentTokens.find((tk) => tk.length >= 4)
+    ?? contentTokens[0]
+    ?? [...enTokens].sort((a, b) => b.length - a.length)[0]
+    ?? null;
+
+  const secondaries = contentTokens.filter((tk) => tk !== anchor);
+  const needsSecondary = enTokens.length >= 3 && secondaries.length > 0;
+
+  /** 严格判定：主体词 + 一个额外实词。 */
+  const hitStrict = (title, page) => {
+    const hay = `${title} ${page}`.toLowerCase();
+    if (cjkTokens.some((tk) => hay.includes(tk))) return true;
+    if (enTokens.length === 0 || !anchor) return false;
+    if (!wordHit(hay, anchor)) return false;
+    if (needsSecondary) return secondaries.some((tk) => wordHit(hay, tk));
+    return true;
+  };
+
+  /**
+   * 放宽判定：只要主体词命中。
+   *
+   * 仅在严格判定一张都没选中时回退。理由："ferrari showroom architecture" 这类
+   * 查询里主体词（品牌）命中已足以保证图与页面主题相关 —— 标题没写 showroom
+   * 不代表这张法拉利照片不能用在法拉利展馆页。实测 26/35 条真带 brand 却因
+   * 缺修饰词被整批判死，最后退化成矢量插画，那是更糟的结果。
+   */
+  // 只有专有名词（品牌/车型编号）才够格单独作为主体证明；
+  // 普通名词（aurora / car / studio）太泛，会撞上同名品牌或无关内容。
+  const anchorIsProperNoun = Boolean(anchor) && (BRAND_TOKENS.has(anchor) || isModelCode(anchor));
+
+  const hitRelaxed = (title, page) => {
+    const hay = `${title} ${page}`.toLowerCase();
+    if (cjkTokens.some((tk) => hay.includes(tk))) return true;
+    if (!anchorIsProperNoun) return false;
+    if (enTokens.length === 0) return false;
+    return wordHit(hay, anchor);
+  };
+  return { anchor, anchorIsProperNoun, enTokens, cjkTokens, contentTokens, secondaries, needsSecondary, hitStrict, hitRelaxed };
+}
+
 async function bingSearch(query, count) {
   const url = `https://www.bing.com/images/async?q=${encodeURIComponent(query)}&first=1&count=35`
     + `&qft=${encodeURIComponent('+filterui:photo-photo+filterui:imagesize-large')}&adlt=moderate`;
@@ -198,30 +292,20 @@ async function bingSearch(query, count) {
     html = await res.text();
   } finally { clearTimeout(t); }
 
-  // 相关性过滤（v3）：完整中文词命中 / 最长英文 token 必须命中（最具体的词——
-  // "Rocket Raccoon Marvel" 若只中泛词 rocket 会放进"中国火箭发射"图，实测教训）。
-  // 英文用词边界匹配；≥3 个英文 token 时再要求命中其中第二个。
+  // 相关性过滤（v4）：用「主体词」而不是「最长词」做锚点。
+  //
+  // v3 的教训：最长词常常是修饰语（architecture / glowing / sketches），
+  // 真实照片的标题里根本不会出现，于是整批相关图被误杀。实测
+  // "ferrari showroom architecture" 的 35 条候选里有 26 条真带 ferrari，
+  // 却因为最长词 architecture 命中 0 条而全部丢弃，最终退化成矢量插画。
+  //
+  // v4 规则：
+  //   1) 中文查询：任一完整中文词命中即可（原逻辑不变）。
+  //   2) 英文查询：主体词必须命中。主体词按优先级取：
+  //        品牌/车型词 > 第一个 ≥4 字母的实词 > 最长实词 > 最长词。
+  //   3) 多词查询仍要求额外命中一个**非修饰**词，修饰语单列成表不计入。
   // 宁缺毋滥：不足 count 时不再用无关候选补量（垃圾图比少图伤害更大）。
-  const spaceTokens = String(query).split(/[\s,，、]+/).map((s) => s.trim()).filter((s) => s.length >= 2);
-  const enTokens = spaceTokens.filter((t) => /[a-z-]/i.test(t)).map((t) => t.toLowerCase());
-  const cjkTokens = spaceTokens.filter((t) => /^[\u4e00-\u9fff]+$/.test(t));
-  const longest = [...enTokens].sort((a, b) => b.length - a.length)[0] ?? null;
-  const wordHit = (hay, tk) => {
-    const re = tk.includes('-') ? new RegExp(tk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      : new RegExp(`\\b${tk.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-    return re.test(hay);
-  };
-  const hit = (title, page) => {
-    const hay = `${title} ${page}`.toLowerCase();
-    if (cjkTokens.some((tk) => hay.includes(tk))) return true;
-    if (enTokens.length === 0 || !longest) return false;
-    if (!wordHit(hay, longest)) return false;
-    if (enTokens.length >= 3) {
-      const second = enTokens.filter((tk) => tk !== longest).some((tk) => wordHit(hay, tk));
-      return second;
-    }
-    return true;
-  };
+  const { anchor, anchorIsProperNoun, enTokens, cjkTokens, contentTokens, secondaries, needsSecondary, hitStrict, hitRelaxed } = buildBingRelevance(query);
   const all = [];
   const re = /class="iusc"[^>]*m="(\{[^"]+\})"/g;
   // 扫描候选数与下载数解耦：垃圾常霸占前排，至少评估 24 条候选再按相关性筛选
@@ -244,13 +328,16 @@ async function bingSearch(query, count) {
         author: host ? `来源站 ${host}` : 'Bing 图片搜索',
         license: 'via Bing 图片搜索',
         page,
-        relevant: hit(title, decodedPage),
+        relevant: hitStrict(title, decodedPage),
+        relevantRelaxed: hitRelaxed(title, decodedPage),
       });
     } catch { /* 忽略解析失败的候选 */ }
   }
-  const filtered = all.filter((x) => x.relevant);
+  const strict = all.filter((x) => x.relevant);
+  // 严格段全空时才退回放宽段，避免为凑数降低整体精度
+  const filtered = strict.length ? strict : all.filter((x) => x.relevantRelaxed);
   const items = filtered.slice(0, count + 2);
-  return items.map(({ relevant, ...rest }) => rest);
+  return items.map(({ relevant, relevantRelaxed, ...rest }) => rest);
 }
 
 /* ---------- 下载 ---------- */
