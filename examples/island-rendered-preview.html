@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="一座虚构海岛的探索式图文网站。岛屿场景和交互能力只在实现并通过验收后才可宣称可用。">
+<meta name="color-scheme" content="light">
+<title>果冻海岛档案</title>
+<style>:root{color-scheme:light;--pp-bg:#fff5f8;--pp-surface:#ffffff;--pp-text:#352735;--pp-muted:#765f70;--pp-accent:#cf6291;--pp-accent-soft:#f7dce8;--pp-font:'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;--pp-gap:clamp(1.4rem, 3vw, 3rem);--pp-radius:1.1rem;--pp-border:color-mix(in srgb,var(--pp-text) 13%,transparent);--pp-shadow:0 16px 48px color-mix(in srgb,var(--pp-text) 10%,transparent)}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:5rem}body{margin:0;background:var(--pp-bg);color:var(--pp-text);font-family:var(--pp-font);line-height:1.65}a{color:inherit}a:focus-visible,summary:focus-visible{outline:3px solid var(--pp-accent);outline-offset:3px}.pp-skip{position:absolute;left:-9999px;top:0;background:var(--pp-surface);padding:.7rem 1rem;z-index:20}.pp-skip:focus{left:1rem;top:1rem}.pp-header{max-width:1200px;margin:0 auto;padding:1.2rem clamp(1rem,4vw,3rem);display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid var(--pp-border)}.pp-brand{font-weight:750;text-decoration:none}.pp-nav{display:flex;gap:.7rem;flex-wrap:wrap;justify-content:flex-end}.pp-nav a{color:var(--pp-muted);font-size:.88rem;text-decoration:none;padding:.25rem .45rem}.pp-nav a:hover{color:var(--pp-text)}main{width:min(1200px,100%);margin:0 auto;padding:0 clamp(1rem,4vw,3rem)}.pp-section{padding:var(--pp-gap) 0;border-bottom:1px solid var(--pp-border);scroll-margin-top:2rem}.pp-section--hero{min-height:58vh;display:flex;flex-direction:column;justify-content:center}.pp-section--panel{padding:clamp(1.5rem,4vw,3rem);margin:var(--pp-gap) 0;background:var(--pp-surface);border:1px solid var(--pp-border);border-radius:var(--pp-radius);box-shadow:var(--pp-shadow)}.pp-section--contrast{background:var(--pp-surface);padding-inline:clamp(1rem,3vw,2.5rem);border-radius:var(--pp-radius)}.pp-eyebrow{text-transform:uppercase;letter-spacing:.13em;font:600 .74rem/1.4 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;color:var(--pp-accent);margin:0 0 .7rem}.pp-section-title{font-size:clamp(1.8rem,4.3vw,3.9rem);line-height:1.06;letter-spacing:-.035em;margin:0 0 1rem;max-width:18ch}.pp-section-description{color:var(--pp-muted);max-width:68ch;font-size:1.04rem}.pp-heading{line-height:1.15;letter-spacing:-.025em;margin:1.1rem 0 .65rem}.pp-h1{font-size:clamp(2.5rem,7vw,5.8rem);line-height:.98;max-width:13ch}.pp-h2{font-size:clamp(1.7rem,3.8vw,3.1rem)}.pp-h3{font-size:1.28rem}.pp-text{max-width:76ch;color:var(--pp-muted);white-space:pre-wrap}.pp-container{display:grid;gap:clamp(1rem,2.5vw,2rem);margin-block:1rem}.pp-stack{grid-template-columns:minmax(0,1fr)}.pp-split{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.pp-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.pp-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.pp-grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}.pp-card{min-width:0;background:var(--pp-surface);border:1px solid var(--pp-border);border-radius:var(--pp-radius);padding:clamp(1rem,2.4vw,1.7rem);box-shadow:var(--pp-shadow)}.pp-card h3{margin:.2rem 0 .55rem;line-height:1.2}.pp-card p{color:var(--pp-muted);margin:.35rem 0}.pp-image{display:block;width:100%;height:auto;max-height:620px;object-fit:cover;border-radius:var(--pp-radius);border:1px solid var(--pp-border)}.pp-figure{margin:1rem 0}.pp-caption{font-size:.82rem;color:var(--pp-muted);margin-top:.45rem}.pp-link{display:inline-flex;align-items:center;gap:.45rem;padding:.7rem 1rem;border-radius:var(--pp-radius);font-weight:650;text-decoration:none;margin:.4rem .4rem .4rem 0;border:1px solid var(--pp-border)}.pp-link--primary{background:var(--pp-accent);color:#fff;border-color:transparent}.pp-link--secondary{background:var(--pp-accent-soft);color:var(--pp-text)}.pp-link--quiet{color:var(--pp-text)}.pp-list{padding-left:1.35rem}.pp-list li+li{margin-top:.7rem}.pp-list-item-title{display:block;font-weight:700}.pp-details{border:1px solid var(--pp-border);border-radius:var(--pp-radius);padding:1rem 1.15rem;margin:.75rem 0;background:var(--pp-surface)}.pp-details summary{cursor:pointer;font-weight:700}.pp-details-body{padding-top:.7rem;color:var(--pp-muted)}.pp-timeline{list-style:none;padding:0;margin:1.2rem 0;border-left:2px solid var(--pp-border)}.pp-timeline-item{position:relative;margin:0 0 1rem 1.2rem}.pp-timeline-item:before{content:'';position:absolute;left:-1.67rem;top:.8rem;width:.7rem;height:.7rem;border-radius:50%;background:var(--pp-accent);box-shadow:0 0 0 4px var(--pp-bg)}.pp-timeline summary{display:flex;gap:1rem;align-items:baseline;flex-wrap:wrap}.pp-date{font:600 .8rem/1.4 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;color:var(--pp-accent)}.pp-metric{padding:1.2rem;border-top:2px solid var(--pp-accent);background:var(--pp-surface)}.pp-metric-value{font-size:clamp(1.8rem,4vw,3.2rem);font-weight:750;line-height:1.1}.pp-metric-label{font-weight:700}.pp-metric-detail{color:var(--pp-muted);font-size:.88rem}.pp-callout{padding:1rem 1.2rem;border-left:4px solid var(--pp-accent);background:var(--pp-accent-soft);border-radius:0 var(--pp-radius) var(--pp-radius) 0;margin:1rem 0}.pp-callout--warning{border-left-color:#b45309}.pp-callout--success{border-left-color:#15803d}.pp-quote{font-size:clamp(1.2rem,2.5vw,2rem);line-height:1.35;max-width:45ch}.pp-quote-byline{color:var(--pp-muted);font-size:.9rem}.pp-divider{border:0;border-top:1px solid var(--pp-border);margin:2rem 0}.pp-footer{max-width:1200px;margin:0 auto;padding:2rem clamp(1rem,4vw,3rem);color:var(--pp-muted);font-size:.85rem}.pp-render-error{border:2px solid #b91c1c;background:#fef2f2;color:#7f1d1d;padding:1rem;margin:1rem 0}
+.pp-scene3d{margin:clamp(1.5rem,4vw,3rem) 0;padding:clamp(1rem,2.5vw,1.6rem);border:1px solid var(--pp-border);border-radius:var(--pp-radius);background:var(--pp-surface);box-shadow:var(--pp-shadow);min-width:0}.pp-scene3d-heading h3{font-size:clamp(1.25rem,2.6vw,2rem);line-height:1.15;margin:0 0 .5rem}.pp-scene3d-description{color:var(--pp-muted);margin:.4rem 0 1rem}.pp-scene3d-stage{position:relative;min-width:0;overflow:hidden;border-radius:calc(var(--pp-radius)*.7);background:linear-gradient(140deg,#fce7f3,#dbeafe 60%,#bae6fd)}.pp-scene3d-canvas{display:block;width:100%;height:var(--pp-scene-height);touch-action:pan-y;cursor:grab;outline-offset:3px}.pp-scene3d-canvas:active{cursor:grabbing}.pp-scene3d-status{position:absolute;left:.7rem;bottom:.45rem;max-width:calc(100% - 1.4rem);margin:0;padding:.25rem .5rem;border-radius:999px;background:rgba(255,255,255,.82);color:#3f3444;font-size:.74rem;pointer-events:none}.pp-scene3d-controls{position:absolute;right:.65rem;top:.65rem;display:flex;gap:.45rem;flex-wrap:wrap;justify-content:flex-end;max-width:80%}.pp-scene3d-control,.pp-scene3d-tide{border:1px solid rgba(80,60,90,.2);border-radius:999px;background:rgba(255,255,255,.9);color:#3f3444;padding:.42rem .7rem;font:600 .78rem/1.2 var(--pp-font)}.pp-scene3d-control{cursor:pointer}.pp-scene3d-control[aria-pressed=true]{background:#352735;color:#fff}.pp-scene3d-tide{display:flex;align-items:center;gap:.35rem}.pp-scene3d-tide input{width:5rem}.pp-scene3d-inspector{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:1rem;margin-top:1rem}.pp-scene3d-inspector strong{display:block;margin-bottom:.25rem}.pp-scene3d-inspector p{margin:0;color:var(--pp-muted);white-space:pre-wrap}.pp-scene3d-object-list{display:flex;flex-wrap:wrap;gap:.45rem;align-content:start}.pp-scene3d-object{border:1px solid var(--pp-border);border-radius:999px;background:var(--pp-bg);color:var(--pp-text);padding:.42rem .7rem;font:inherit;font-size:.82rem;cursor:pointer}.pp-scene3d-object[aria-pressed=true]{background:var(--pp-accent);color:#fff;border-color:transparent}.pp-scene3d-error{margin:.75rem;padding:.75rem 1rem;background:#fff1f2;color:#881337;border:1px solid #fda4af;border-radius:.6rem;font-size:.9rem}.pp-scene3d-error[hidden]{display:none}@media(max-width:760px){.pp-scene3d-inspector{grid-template-columns:minmax(0,1fr)}.pp-scene3d-controls{max-width:95%;left:.45rem;right:.45rem;top:.45rem;justify-content:flex-end}.pp-scene3d-control,.pp-scene3d-tide{font-size:.7rem;padding:.35rem .5rem}.pp-scene3d-canvas{height:min(var(--pp-scene-height),420px)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<a class="pp-skip" href="#main">跳转到主要内容</a>
+<header class="pp-header"><a class="pp-brand" href="#main">果冻海岛档案</a><nav class="pp-nav" aria-label="页面导航"><a href="#island-intro">一座会呼吸的果冻海岛</a><a href="#island-archive">岛上的风物</a><a href="#island-history">岛屿发展记录</a></nav></header>
+<main id="main"><section id="island-intro" class="pp-section pp-section--hero" aria-labelledby="island-intro-title"><p class="pp-eyebrow">SEA JOURNAL · 07</p><h1 class="pp-section-title pp-h1" id="island-intro-title">一座会呼吸的果冻海岛</h1><p class="pp-section-description">一座虚构的海上果冻岛。下方场景由 WebGL 实时绘制，可拖拽观察并选择建筑与生物查看档案。</p><p id="island-lead" class="pp-text">从三维海岸线出发，探索灯塔、渔村、温室与奇妙生物。</p>
+<a id="island-primary-link" class="pp-link pp-link--primary" href="#island-archive">探索岛屿档案 ↓</a></section>
+<section id="island-scene-3d" class="pp-scene3d pp-scene3d--wide" aria-label="可交互的果冻海岛" data-pageplan-scene3d>
+    <div class="pp-scene3d-heading"><h3>可交互的果冻海岛</h3><p class="pp-scene3d-description">拖拽画布环绕观察，滚轮调整距离。选择灯塔、渔村、温室或生物查看档案。日夜与潮位控件会改变场景环境状态。</p></div>
+    <div class="pp-scene3d-stage" style="--pp-scene-height:560px">
+      <canvas class="pp-scene3d-canvas" data-scene3d-canvas="island-scene-3d" width="960" height="560" role="img" tabindex="0" aria-label="可交互的果冻海岛。拖拽旋转场景；滚轮缩放；选择下方对象查看档案。"></canvas>
+      <p class="pp-scene3d-status" data-scene3d-status role="status" aria-live="polite">正在初始化三维场景…</p>
+      <div class="pp-scene3d-controls" aria-label="三维场景控制"><button class="pp-scene3d-control" type="button" data-scene3d-action="reset">重置视角</button><button class="pp-scene3d-control" type="button" data-scene3d-action="auto-rotate" aria-pressed="false">自动旋转</button><button class="pp-scene3d-control" type="button" data-scene3d-action="day-night" aria-pressed="false">切换昼夜</button><label class="pp-scene3d-tide">潮位 <input type="range" min="-0.18" max="0.18" step="0.01" value="0" data-scene3d-tide aria-label="调整潮位"></label></div>
+      <div class="pp-scene3d-error" data-scene3d-error role="alert" hidden>此浏览器无法初始化 WebGL 三维场景。请更新浏览器或启用硬件加速；当前场景未被替换为静态图假装成功。</div>
+    </div>
+    <div class="pp-scene3d-inspector"><div><strong data-scene3d-selected-name>开始探索</strong><p data-scene3d-selected-description>选择场景中的可交互对象，或使用下方对象列表。键盘用户也可以使用对象列表。</p></div><div class="pp-scene3d-object-list" aria-label="可探索对象"><button class="pp-scene3d-object" type="button" data-scene3d-select="island-water">环岛海面</button><button class="pp-scene3d-object" type="button" data-scene3d-select="island-terrain">果冻岛主体</button><button class="pp-scene3d-object" type="button" data-scene3d-select="island-lighthouse">蜜糖灯塔</button><button class="pp-scene3d-object" type="button" data-scene3d-select="island-village-home">果冻渔村</button><button class="pp-scene3d-object" type="button" data-scene3d-select="island-greenhouse">玻璃温室</button><button class="pp-scene3d-object" type="button" data-scene3d-select="island-tree-crown">荧光树冠</button><button class="pp-scene3d-object" type="button" data-scene3d-select="island-jelly-whale">果冻鲸</button><button class="pp-scene3d-object" type="button" data-scene3d-select="island-float-orb">漂浮荧光球</button></div></div>
+    <script type="application/json" data-scene3d-config="island-scene-3d">{"id":"island-scene-3d","type":"scene3d","label":"可交互的果冻海岛","description":"拖拽画布环绕观察，滚轮调整距离。选择灯塔、渔村、温室或生物查看档案。日夜与潮位控件会改变场景环境状态。","height":"wide","background":"#fce7f3","cameraDistance":12.5,"controls":{"orbit":true,"zoom":true,"autoRotate":false,"dayNight":true,"tide":true},"objects":[{"id":"island-water","name":"环岛海面","shape":"disk","position":[0,-0.46,0],"scale":[12,0.05,10],"rotation":[0,0,0],"color":"#82d9f0","material":"jelly","description":"淡青色的外海包围着粉色岛屿。使用下方潮位控制可以调整水面高度。","selectable":true,"motion":"tide"},{"id":"island-terrain","name":"果冻岛主体","shape":"island","position":[0,0.08,0],"scale":[4.25,1.35,3.1],"rotation":[0,0,0],"color":"#f6a8ce","material":"jelly","description":"岛屿主体由真实 WebGL 三角网格构成，表面有不规则海岸轮廓与柔亮高光。拖拽可以从不同角度观察。","selectable":true,"motion":"none"},{"id":"island-reef-ring","name":"浅色礁环","shape":"torus","position":[0,-0.22,0],"scale":[8.4,0.1,6.1],"rotation":[0,0,0],"color":"#ffd6e7","material":"jelly","description":"围绕海岛的浅粉色礁环。","selectable":false,"motion":"none"},{"id":"island-lighthouse","name":"蜜糖灯塔","shape":"cylinder","position":[-1.65,0.91,0.1],"scale":[0.42,1.36,0.42],"rotation":[0,0,0],"color":"#fff4d6","material":"matte","description":"蜜糖灯塔位于海岛西侧，高处的暖金色灯室会在传说中的潮汐到来前亮起。","selectable":true,"motion":"none"},{"id":"island-lighthouse-roof","name":"灯塔顶棚","shape":"cone","position":[-1.65,1.68,0.1],"scale":[0.53,0.43,0.53],"rotation":[0,0,0],"color":"#e98ab8","material":"jelly","description":"灯塔的粉色尖顶。","selectable":false,"motion":"none"},{"id":"island-village-home","name":"果冻渔村","shape":"box","position":[0.7,0.84,0.1],"scale":[0.85,0.66,0.75],"rotation":[0,22,0],"color":"#f9d4e6","material":"jelly","description":"半透明圆润的小屋沿着内海湾散布，屋顶有柔软的粉色光泽。","selectable":true,"motion":"none"},{"id":"island-village-roof","name":"渔村屋顶","shape":"cone","position":[0.7,1.34,0.1],"scale":[0.66,0.48,0.66],"rotation":[0,0,0],"color":"#d96caa","material":"jelly","description":"渔村小屋的屋顶。","selectable":false,"motion":"none"},{"id":"island-greenhouse","name":"玻璃温室","shape":"box","position":[1.75,0.78,-0.95],"scale":[0.78,0.65,0.72],"rotation":[0,-16,0],"color":"#9de6db","material":"jelly","description":"薄荷色的温室保存岛上发光植物的种子。此处使用有光泽的实时三维材质表现，不宣称物理精确的光线折射。","selectable":true,"motion":"none"},{"id":"island-tree-trunk","name":"棕榈树树干","shape":"cylinder","position":[-0.55,0.8,-0.8],"scale":[0.16,0.9,0.16],"rotation":[0,0,-8],"color":"#9b695c","material":"matte","description":"一棵生长在岛屿高处的植物。","selectable":false,"motion":"none"},{"id":"island-tree-crown","name":"荧光树冠","shape":"sphere","position":[-0.55,1.37,-0.8],"scale":[0.72,0.65,0.72],"rotation":[0,0,0],"color":"#82d9a7","material":"foliage","description":"树冠在夜间会呈现柔和荧光。","selectable":true,"motion":"none"},{"id":"island-jelly-whale","name":"果冻鲸","shape":"sphere","position":[0.95,1.27,1.15],"scale":[0.92,0.48,0.45],"rotation":[0,-20,0],"color":"#8edcf2","material":"jelly","description":"果冻鲸是这座虚构海岛世界中的生物，会在外海湾缓慢迁游。","selectable":true,"motion":"none"},{"id":"island-float-orb","name":"漂浮荧光球","shape":"sphere","position":[-0.15,1.75,0.8],"scale":[0.2,0.2,0.2],"rotation":[0,0,0],"color":"#ffe28a","material":"jelly","description":"漂浮的荧光球用于点缀岛屿场景。","selectable":true,"motion":"none"},{"id":"island-rock-a","name":"珊瑚岩一","shape":"sphere","position":[-2.15,0.26,-1.1],"scale":[0.52,0.24,0.47],"rotation":[0,0,10],"color":"#c987b9","material":"matte","description":"粉紫色珊瑚岩。","selectable":false,"motion":"none"},{"id":"island-rock-b","name":"珊瑚岩二","shape":"sphere","position":[2.05,0.19,0.85],"scale":[0.43,0.2,0.37],"rotation":[0,0,-8],"color":"#e9a4c9","material":"matte","description":"浅粉色珊瑚岩。","selectable":false,"motion":"none"}]}</script>
+  </section>
+<section id="island-archive" class="pp-section pp-section--plain" aria-labelledby="island-archive-title"><p class="pp-eyebrow">FIELD NOTES</p><h2 class="pp-section-title pp-h2" id="island-archive-title">岛上的风物</h2><p class="pp-section-description">下面的内容由页面计划组合成卡片、展开档案和时间线。</p><div id="island-features-grid" class="pp-container pp-grid-3"><article id="honey-lighthouse" class="pp-card"><p class="pp-eyebrow">LANDMARK 01</p><h3>蜜糖灯塔</h3><p>灯罩会在潮汐到来前发出温暖的蜜金色微光。</p></article>
+<article id="jelly-village" class="pp-card"><p class="pp-eyebrow">SETTLEMENT 02</p><h3>果冻渔村</h3><p>半透明的圆顶小屋沿着内海湾缓缓排开。</p></article>
+<article id="glass-greenhouse" class="pp-card"><p class="pp-eyebrow">GARDEN 03</p><h3>玻璃温室</h3><p>发光的植物在这里记录每一次潮汐的颜色。</p></article></div>
+<details id="island-naturalist-note" class="pp-details"><summary>打开自然观察档案</summary><div class="pp-details-body"><p id="island-naturalist-copy" class="pp-text">果冻鲸会在外海缓慢迁徙；荧光浮游生物聚集在低浪的水湾。以上均为虚构世界观设定，不代表真实生物资料。</p></div></details></section>
+<section id="island-history" class="pp-section pp-section--panel" aria-labelledby="island-history-title"><p class="pp-eyebrow">ISLAND CHRONICLE</p><h2 class="pp-section-title pp-h2" id="island-history-title">岛屿发展记录</h2><p class="pp-section-description">时间线的展开和收起由原生 details/summary 实现，不依赖任意模型脚本。</p><ol id="island-timeline" class="pp-timeline"><li class="pp-timeline-item"><details class="pp-details" open><summary><time class="pp-date">第 01 年</time><span>荒礁出现</span></summary><div class="pp-details-body">第一片粉色礁岩从浅海中露出。</div></details></li><li class="pp-timeline-item"><details class="pp-details" open><summary><time class="pp-date">第 08 年</time><span>渔村建立</span></summary><div class="pp-details-body">居民在内海湾搭起第一排半透明小屋。</div></details></li><li class="pp-timeline-item"><details class="pp-details" open><summary><time class="pp-date">第 15 年</time><span>温室点亮</span></summary><div class="pp-details-body">玻璃温室开始记录潮汐和植物变化。</div></details></li></ol></section></main>
+<footer class="pp-footer">由 OrchestrAI 结构化渲染引擎生成 · 果冻海岛档案</footer>
+<script>(function scene3dRuntimeMain() {
+  'use strict';
+  const roots = document.querySelectorAll('[data-pageplan-scene3d]');
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const hexRgb = (hex) => [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16) / 255);
+  const norm = (a) => { const n = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / n, a[1] / n, a[2] / n]; };
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const matMul = (a, b) => {
+    const out = new Float32Array(16);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+      out[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    }
+    return out;
+  };
+  const perspective = (fovy, aspect, near, far) => {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
+  };
+  const lookAt = (eye, center, up) => {
+    const z = norm(sub(eye, center)), x = norm(cross(up, z)), y = cross(z, x);
+    return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, eye), -dot(y, eye), -dot(z, eye), 1]);
+  };
+  const rgbToCss = (rgb) => `rgb(${rgb.map((v) => Math.round(v * 255)).join(',')})`;
+  const shaderSource = {
+    vertex: `attribute vec3 aPosition; attribute vec3 aNormal; uniform mat4 uViewProjection; varying vec3 vPosition; varying vec3 vNormal; void main(){ vPosition=aPosition; vNormal=normalize(aNormal); gl_Position=uViewProjection*vec4(aPosition,1.0); }`,
+    fragment: `precision mediump float; uniform vec4 uColor; uniform float uGloss; uniform vec3 uEye; uniform float uNight; uniform float uPicking; varying vec3 vPosition; varying vec3 vNormal; void main(){ if(uPicking>0.5){gl_FragColor=vec4(uColor.rgb,1.0);return;} vec3 n=normalize(vNormal); vec3 lightDir=normalize(vec3(-0.45,0.82,0.55)); vec3 viewDir=normalize(uEye-vPosition); float diff=max(dot(n,lightDir),0.0); vec3 halfDir=normalize(lightDir+viewDir); float spec=pow(max(dot(n,halfDir),0.0),mix(10.0,72.0,uGloss))*uGloss; float rim=pow(1.0-max(dot(n,viewDir),0.0),2.4)*uGloss*0.48; float ambient=mix(0.38,0.13,uNight); vec3 base=uColor.rgb*(ambient+diff*(1.0-uNight*0.58)); vec3 glow=vec3(spec+rim); glow=glow/(1.0+glow*0.85); vec3 color=base+glow; color=color/(1.0+color*0.18); gl_FragColor=vec4(color,uColor.a); }`,
+  };
+  const compileShader = (gl, kind, source) => {
+    const shader = gl.createShader(kind); gl.shaderSource(shader, source); gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) { const message = gl.getShaderInfoLog(shader) || 'shader compile failed'; gl.deleteShader(shader); throw new Error(message); }
+    return shader;
+  };
+  const makeProgram = (gl) => {
+    const vs = compileShader(gl, gl.VERTEX_SHADER, shaderSource.vertex), fs = compileShader(gl, gl.FRAGMENT_SHADER, shaderSource.fragment);
+    const p = gl.createProgram(); gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p); gl.deleteShader(vs); gl.deleteShader(fs);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { const message = gl.getProgramInfoLog(p) || 'program link failed'; gl.deleteProgram(p); throw new Error(message); }
+    return p;
+  };
+  const triangle = (positions, normals, a, b, c, na, nb, nc) => {
+    positions.push(...a, ...b, ...c); normals.push(...na, ...nb, ...nc);
+  };
+  const face = (positions, normals, a, b, c, d, n) => { triangle(positions, normals, a, b, c, n, n, n); triangle(positions, normals, a, c, d, n, n, n); };
+  const geometry = (shape) => {
+    const p = [], n = [];
+    if (shape === 'box') {
+      face(p, n, [-.5,-.5,.5], [.5,-.5,.5], [.5,.5,.5], [-.5,.5,.5], [0,0,1]);
+      face(p, n, [.5,-.5,-.5], [-.5,-.5,-.5], [-.5,.5,-.5], [.5,.5,-.5], [0,0,-1]);
+      face(p, n, [-.5,.5,.5], [.5,.5,.5], [.5,.5,-.5], [-.5,.5,-.5], [0,1,0]);
+      face(p, n, [-.5,-.5,-.5], [.5,-.5,-.5], [.5,-.5,.5], [-.5,-.5,.5], [0,-1,0]);
+      face(p, n, [.5,-.5,.5], [.5,-.5,-.5], [.5,.5,-.5], [.5,.5,.5], [1,0,0]);
+      face(p, n, [-.5,-.5,-.5], [-.5,-.5,.5], [-.5,.5,.5], [-.5,.5,-.5], [-1,0,0]);
+    } else if (shape === 'sphere') {
+      const rings = 14, sides = 24;
+      const v = (lat, lon) => { const a = lat * Math.PI, b = lon * 2 * Math.PI; return [Math.sin(a) * Math.cos(b) * .5, Math.cos(a) * .5, Math.sin(a) * Math.sin(b) * .5]; };
+      for (let i = 0; i < rings; i++) for (let j = 0; j < sides; j++) {
+        const a = v(i / rings, j / sides), b = v((i + 1) / rings, j / sides), c = v((i + 1) / rings, (j + 1) / sides), d = v(i / rings, (j + 1) / sides);
+        const sn = (pt) => norm(pt);
+        if (i !== 0) triangle(p,n,a,b,d,sn(a),sn(b),sn(d));
+        if (i !== rings - 1) triangle(p,n,b,c,d,sn(b),sn(c),sn(d));
+      }
+    } else if (shape === 'cylinder' || shape === 'cone') {
+      const sides = 28;
+      for (let i = 0; i < sides; i++) {
+        const a = i * Math.PI * 2 / sides, b = (i + 1) * Math.PI * 2 / sides;
+        const p1 = [Math.cos(a)*.5,-.5,Math.sin(a)*.5], p2 = [Math.cos(b)*.5,-.5,Math.sin(b)*.5];
+        const top = shape === 'cylinder' ? [Math.cos(a)*.5,.5,Math.sin(a)*.5] : [0,.5,0];
+        const top2 = shape === 'cylinder' ? [Math.cos(b)*.5,.5,Math.sin(b)*.5] : [0,.5,0];
+        const na = norm([Math.cos(a), shape === 'cone' ? .5 : 0, Math.sin(a)]), nb = norm([Math.cos(b), shape === 'cone' ? .5 : 0, Math.sin(b)]);
+        triangle(p,n,p1,top,p2,na,na,nb); triangle(p,n,p2,top,top2,nb,na,nb);
+        triangle(p,n,[0,-.5,0],p2,p1,[0,-1,0],[0,-1,0],[0,-1,0]);
+        if (shape === 'cylinder') triangle(p,n,[0,.5,0],top,top2,[0,1,0],[0,1,0],[0,1,0]);
+      }
+    } else if (shape === 'torus') {
+      const major = 30, minor = 10, R = .36, r = .14;
+      const v = (u, w) => { const a=u*Math.PI*2, b=w*Math.PI*2, rr=R+r*Math.cos(b); return [rr*Math.cos(a), r*Math.sin(b), rr*Math.sin(a)]; };
+      const normal = (u, w) => { const a=u*Math.PI*2,b=w*Math.PI*2; return norm([Math.cos(b)*Math.cos(a),Math.sin(b),Math.cos(b)*Math.sin(a)]); };
+      for(let i=0;i<major;i++) for(let j=0;j<minor;j++) { const u=i/major, u1=(i+1)/major, w=j/minor, w1=(j+1)/minor; const a=v(u,w),b=v(u1,w),c=v(u1,w1),d=v(u,w1); triangle(p,n,a,b,d,normal(u,w),normal(u1,w),normal(u,w1)); triangle(p,n,b,c,d,normal(u1,w),normal(u1,w1),normal(u,w1)); }
+    } else if (shape === 'disk') {
+      const steps = 64;
+      for (let i=0;i<steps;i++) { const a=i/steps*Math.PI*2,b=(i+1)/steps*Math.PI*2; triangle(p,n,[0,0,0],[Math.cos(a)*.5,0,Math.sin(a)*.5],[Math.cos(b)*.5,0,Math.sin(b)*.5],[0,1,0],[0,1,0],[0,1,0]); }
+    } else if (shape === 'island') {
+      const radii = [.16,.3,.48,.68,.84,1], heights = [.62,.58,.47,.28,.08,-.12], sides=64;
+      const point = (ring, j) => { const a=j/sides*Math.PI*2, r=radii[ring]*(1+.055*Math.sin(3*a)+.035*Math.sin(7*a+.7)); const h=heights[ring]+.025*Math.sin(5*a+ring); return [Math.cos(a)*r,h,Math.sin(a)*r]; };
+      const center=[0,.64,0];
+      for(let j=0;j<sides;j++) triangle(p,n,center,point(0,j),point(0,j+1),[0,1,0],[0,1,0],[0,1,0]);
+      for(let r=0;r<radii.length-1;r++) for(let j=0;j<sides;j++) {
+        const a=point(r,j), b=point(r+1,j), c=point(r+1,j+1), d=point(r,j+1);
+        // 绕序必须给出朝上的法线：cross(w-u, v-u) 才是 +Y。
+        // candidate 原实现用 cross(v-u, w-u)，实测 320 个环面法线全部朝下，
+        // 顶面因此接收不到直射光、只剩 0.38 环境光，岛体渲染成灰块（详见报告 §3.3）。
+        const normalFor = (u,v,w) => norm(cross(sub(w,u),sub(v,u)));
+        const n1=normalFor(a,b,d), n2=normalFor(b,c,d); triangle(p,n,a,b,d,n1,n1,n1); triangle(p,n,b,c,d,n2,n2,n2);
+      }
+    }
+    return { positions: new Float32Array(p), normals: new Float32Array(n), count: p.length / 3 };
+  };
+  const worldPoint = (p, scale, rotation, position) => {
+    let x=p[0]*scale[0], y=p[1]*scale[1], z=p[2]*scale[2];
+    const rx=rotation[0]*Math.PI/180, ry=rotation[1]*Math.PI/180, rz=rotation[2]*Math.PI/180;
+    let yy=y*Math.cos(rx)-z*Math.sin(rx), zz=y*Math.sin(rx)+z*Math.cos(rx); y=yy; z=zz;
+    let xx=x*Math.cos(ry)+z*Math.sin(ry); zz=-x*Math.sin(ry)+z*Math.cos(ry); x=xx; z=zz;
+    xx=x*Math.cos(rz)-y*Math.sin(rz); yy=x*Math.sin(rz)+y*Math.cos(rz); x=xx; y=yy;
+    return [x+position[0],y+position[1],z+position[2]];
+  };
+  const worldNormal = (n, scale, rotation) => {
+    let x=n[0]/scale[0], y=n[1]/scale[1], z=n[2]/scale[2];
+    const rx=rotation[0]*Math.PI/180, ry=rotation[1]*Math.PI/180, rz=rotation[2]*Math.PI/180;
+    let yy=y*Math.cos(rx)-z*Math.sin(rx), zz=y*Math.sin(rx)+z*Math.cos(rx); y=yy; z=zz;
+    let xx=x*Math.cos(ry)+z*Math.sin(ry); zz=-x*Math.sin(ry)+z*Math.cos(ry); x=xx; z=zz;
+    xx=x*Math.cos(rz)-y*Math.sin(rz); yy=x*Math.sin(rz)+y*Math.cos(rz); x=xx; y=yy;
+    return norm([x,y,z]);
+  };
+  const makeWorldGeometry = (base, object) => {
+    const p=new Float32Array(base.positions.length), n=new Float32Array(base.normals.length);
+    for(let i=0;i<base.positions.length;i+=3) {
+      const wp=worldPoint([base.positions[i],base.positions[i+1],base.positions[i+2]],object.scale,object.rotation,object.position);
+      const wn=worldNormal([base.normals[i],base.normals[i+1],base.normals[i+2]],object.scale,object.rotation);
+      p.set(wp,i); n.set(wn,i);
+    }
+    return { positions:p, normals:n, count:base.count };
+  };
+  const hexToClear = (hex, night) => { const a=hexRgb(hex); return night ? [0.025,0.035,0.12,1] : [a[0],a[1],a[2],1]; };
+
+  for (const root of roots) {
+    const configNode = root.querySelector('script[data-scene3d-config]');
+    const canvas = root.querySelector('[data-scene3d-canvas]');
+    const status = root.querySelector('[data-scene3d-status]');
+    const error = root.querySelector('[data-scene3d-error]');
+    if (!configNode || !canvas) continue;
+    let cfg;
+    try { cfg = JSON.parse(configNode.textContent); }
+    catch { if(status) status.textContent='三维场景配置无法读取'; if(error) error.hidden=false; root.setAttribute('data-scene3d-status','error'); continue; }
+    let gl;
+    try { gl=canvas.getContext('webgl',{alpha:false,antialias:true,depth:true,preserveDrawingBuffer:false}); }
+    catch { gl=null; }
+    if (!gl) { if(status) status.textContent='当前浏览器未能初始化 WebGL'; if(error) error.hidden=false; continue; }
+    try {
+      const program=makeProgram(gl); gl.useProgram(program);
+      const loc={position:gl.getAttribLocation(program,'aPosition'),normal:gl.getAttribLocation(program,'aNormal'),vp:gl.getUniformLocation(program,'uViewProjection'),color:gl.getUniformLocation(program,'uColor'),gloss:gl.getUniformLocation(program,'uGloss'),eye:gl.getUniformLocation(program,'uEye'),night:gl.getUniformLocation(program,'uNight'),picking:gl.getUniformLocation(program,'uPicking')};
+      const materials={ jelly:.94, matte:.22, metal:.76, foliage:.35 };
+      let selectableIndex=0;
+      const meshes=cfg.objects.map((object)=>{
+        const base=geometry(object.shape), world=makeWorldGeometry(base,object);
+        const pb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,pb); gl.bufferData(gl.ARRAY_BUFFER,world.positions,gl.STATIC_DRAW);
+        const nb=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,nb); gl.bufferData(gl.ARRAY_BUFFER,world.normals,gl.STATIC_DRAW);
+        return {object,world,pb,nb,count:world.count,color:hexRgb(object.color),gloss:materials[object.material]??.3,screen:[0,0],tideBase:object.position[1],pickId:object.selectable?++selectableIndex:0};
+      });
+      let yaw=.62, pitch=.48, distance=cfg.cameraDistance, auto=Boolean(cfg.controls.autoRotate), night=false, tide=0, dragging=false, moved=false, lastX=0,lastY=0,startX=0,startY=0,raf=0,lastFrame=0;
+      const prefersReduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(prefersReduced) auto=false;
+      const reset=()=>{yaw=.62;pitch=.48;distance=cfg.cameraDistance;draw();};
+      const resize=()=>{ const rect=canvas.getBoundingClientRect(); const dpr=Math.min(window.devicePixelRatio||1,2); const w=Math.max(1,Math.min(2048,Math.round(rect.width*dpr))), h=Math.max(1,Math.min(1200,Math.round(rect.height*dpr))); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;draw();} };
+      const setStatus=(text)=>{if(status) status.textContent=text;};
+      const setSelected=(mesh)=>{
+        const name=root.querySelector('[data-scene3d-selected-name]'), desc=root.querySelector('[data-scene3d-selected-description]');
+        if(name) name.textContent=mesh.object.name;
+        if(desc) desc.textContent=mesh.object.description || '此对象没有额外档案。';
+        root.querySelectorAll('[data-scene3d-select]').forEach((button)=>{const selected=button.getAttribute('data-scene3d-select')===mesh.object.id;button.setAttribute('aria-pressed',String(selected));});
+        meshes.forEach((m)=>{m.selected=m===mesh;}); draw();
+      };
+      const viewState=()=>{
+        const target=[0,.28,0], cp=Math.cos(pitch), eye=[target[0]+Math.sin(yaw)*cp*distance,target[1]+Math.sin(pitch)*distance,target[2]+Math.cos(yaw)*cp*distance];
+        return {eye, vp:matMul(perspective(Math.PI/4,canvas.width/Math.max(1,canvas.height),.1,100),lookAt(eye,target,[0,1,0]))};
+      };
+      function draw(){
+        if(!gl || !program || !canvas.width || !canvas.height) return;
+        const state=viewState(); gl.viewport(0,0,canvas.width,canvas.height); gl.clearColor(...hexToClear(cfg.background,night)); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.disable(gl.CULL_FACE); gl.useProgram(program);
+        gl.uniformMatrix4fv(loc.vp,false,state.vp); gl.uniform3fv(loc.eye,state.eye); gl.uniform1f(loc.night,night?1:0); gl.uniform1f(loc.picking,0);
+        for(const mesh of meshes){
+          if(mesh.object.motion==='tide') {
+            const offset=tide-(mesh.tideBase-mesh.object.position[1]);
+            if(mesh.lastTide!==offset){mesh.lastTide=offset;const movedWorld=makeWorldGeometry(geometry(mesh.object.shape),{...mesh.object,position:[mesh.object.position[0],mesh.tideBase+offset,mesh.object.position[2]]});mesh.world=movedWorld;gl.bindBuffer(gl.ARRAY_BUFFER,mesh.pb);gl.bufferData(gl.ARRAY_BUFFER,movedWorld.positions,gl.DYNAMIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,mesh.nb);gl.bufferData(gl.ARRAY_BUFFER,movedWorld.normals,gl.DYNAMIC_DRAW);}
+          }
+          gl.bindBuffer(gl.ARRAY_BUFFER,mesh.pb); gl.enableVertexAttribArray(loc.position); gl.vertexAttribPointer(loc.position,3,gl.FLOAT,false,0,0);
+          gl.bindBuffer(gl.ARRAY_BUFFER,mesh.nb); gl.enableVertexAttribArray(loc.normal); gl.vertexAttribPointer(loc.normal,3,gl.FLOAT,false,0,0);
+          let color=mesh.color; if(mesh.selected) color=[Math.min(1,color[0]*1.16+.06),Math.min(1,color[1]*1.16+.05),Math.min(1,color[2]*1.16+.05)];
+          gl.uniform4f(loc.color,color[0],color[1],color[2],1); gl.uniform1f(loc.gloss,mesh.gloss); gl.drawArrays(gl.TRIANGLES,0,mesh.count);
+          const m=mesh.object.position, clipX=state.vp[0]*m[0]+state.vp[4]*m[1]+state.vp[8]*m[2]+state.vp[12], clipY=state.vp[1]*m[0]+state.vp[5]*m[1]+state.vp[9]*m[2]+state.vp[13], clipW=state.vp[3]*m[0]+state.vp[7]*m[1]+state.vp[11]*m[2]+state.vp[15];
+          mesh.screen=clipW>0?[(clipX/clipW*.5+.5)*canvas.clientWidth,(1-(clipY/clipW*.5+.5))*canvas.clientHeight]:[-999,-999];
+        }
+      }
+      const tick=(time)=>{if(!auto){raf=0;return;}if(time-lastFrame>24){yaw+=.004;lastFrame=time;draw();}raf=requestAnimationFrame(tick);};
+      const setAuto=(value)=>{auto=value&&!prefersReduced;const btn=root.querySelector('[data-scene3d-action="auto-rotate"]');if(btn)btn.setAttribute('aria-pressed',String(auto));if(auto&&!raf)raf=requestAnimationFrame(tick);if(!auto&&raf){cancelAnimationFrame(raf);raf=0;}setStatus(prefersReduced&&value?'已启用减少动态效果设置，自动旋转未开启':(auto?'自动旋转已开启':'自动旋转已关闭'));};
+      canvas.addEventListener('pointerdown',(event)=>{if(!cfg.controls.orbit)return;dragging=true;moved=false;lastX=startX=event.clientX;lastY=startY=event.clientY;try{canvas.setPointerCapture(event.pointerId);}catch{}});
+      canvas.addEventListener('pointermove',(event)=>{if(!dragging)return;const dx=event.clientX-lastX,dy=event.clientY-lastY;if(Math.abs(event.clientX-startX)+Math.abs(event.clientY-startY)>4)moved=true;yaw+=dx*.008;pitch=clamp(pitch+dy*.006,.12,1.28);lastX=event.clientX;lastY=event.clientY;draw();});
+      const pickObject=(clientX,clientY)=>{
+        const rect=canvas.getBoundingClientRect(), x=clientX-rect.left, y=clientY-rect.top;
+        if(x<0||y<0||x>rect.width||y>rect.height||!rect.width||!rect.height)return null;
+        const state=viewState();gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.BLEND);gl.disable(gl.DITHER);gl.useProgram(program);gl.uniformMatrix4fv(loc.vp,false,state.vp);gl.uniform3fv(loc.eye,state.eye);gl.uniform1f(loc.night,night?1:0);gl.uniform1f(loc.picking,1);
+        for(const mesh of meshes){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.pb);gl.enableVertexAttribArray(loc.position);gl.vertexAttribPointer(loc.position,3,gl.FLOAT,false,0,0);gl.bindBuffer(gl.ARRAY_BUFFER,mesh.nb);gl.enableVertexAttribArray(loc.normal);gl.vertexAttribPointer(loc.normal,3,gl.FLOAT,false,0,0);gl.uniform4f(loc.color,mesh.pickId/255,0,0,1);gl.uniform1f(loc.gloss,0);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
+        const px=Math.max(0,Math.min(canvas.width-1,Math.floor(x*canvas.width/rect.width))), py=Math.max(0,Math.min(canvas.height-1,canvas.height-1-Math.floor(y*canvas.height/rect.height))), pixel=new Uint8Array(4);gl.readPixels(px,py,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);draw();return pixel[0]?meshes.find((mesh)=>mesh.pickId===pixel[0])??null:null;
+      };
+      const finishDrag=(event)=>{if(!dragging)return;dragging=false;if(!moved){const selected=pickObject(event.clientX,event.clientY);if(selected)setSelected(selected);}};
+      canvas.addEventListener('pointerup',finishDrag);canvas.addEventListener('pointercancel',()=>{dragging=false;});
+      canvas.addEventListener('wheel',(event)=>{if(!cfg.controls.zoom)return;event.preventDefault();distance=clamp(distance+Math.sign(event.deltaY)*.65,6,28);draw();},{passive:false});
+      canvas.addEventListener('keydown',(event)=>{if(event.key==='ArrowLeft')yaw-=.12;else if(event.key==='ArrowRight')yaw+=.12;else if(event.key==='ArrowUp')pitch=clamp(pitch-.08,.12,1.28);else if(event.key==='ArrowDown')pitch=clamp(pitch+.08,.12,1.28);else if(event.key==='+'||event.key==='=')distance=clamp(distance-.8,6,28);else if(event.key==='-')distance=clamp(distance+.8,6,28);else return;event.preventDefault();draw();});
+      root.querySelectorAll('[data-scene3d-select]').forEach((button)=>button.addEventListener('click',()=>{const mesh=meshes.find((item)=>item.object.id===button.getAttribute('data-scene3d-select'));if(mesh)setSelected(mesh);}));
+      root.querySelector('[data-scene3d-action="reset"]')?.addEventListener('click',reset);
+      root.querySelector('[data-scene3d-action="auto-rotate"]')?.addEventListener('click',()=>setAuto(!auto));
+      root.querySelector('[data-scene3d-action="day-night"]')?.addEventListener('click',(event)=>{night=!night;event.currentTarget.setAttribute('aria-pressed',String(night));event.currentTarget.textContent=night?'切换白昼':'切换夜晚';draw();setStatus(night?'夜景已开启':'日景已开启');});
+      root.querySelector('[data-scene3d-tide]')?.addEventListener('input',(event)=>{tide=Number(event.currentTarget.value)||0;draw();setStatus(`潮位 ${tide>=0?'+':''}${tide.toFixed(2)}`);});
+      if(typeof ResizeObserver==='function')new ResizeObserver(resize).observe(canvas);else window.addEventListener('resize',resize);
+      resize();draw();setStatus(`WebGL 三维场景已初始化：${meshes.length} 个场景对象`);
+      if(auto)setAuto(true);
+      root.setAttribute('data-scene3d-status','ready');
+    } catch (err) {
+      if(status)status.textContent='三维场景初始化失败';if(error){error.hidden=false;error.textContent='三维场景无法初始化。当前输出没有用静态图片代替真实 3D。请检查 WebGL 支持及浏览器控制台。';}
+      root.setAttribute('data-scene3d-status','error');
+    }
+  }
+})();</script>
+</body>
+</html>

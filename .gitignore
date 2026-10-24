@@ -5,6 +5,12 @@ dist/
 workspaces/
 apps/server/keys.json
 
+# ---- 密钥与环境变量（发布前审计补充：防止误提交任何形态的 env 文件）----
+.env
+.env.*
+*.env
+!.env.example
+
 # 阶段一实验：二进制样本不入库（脚本与 JSON 结论保留）
 experiments/**/node_modules/
 experiments/**/*.jpg
@@ -12,8 +18,14 @@ experiments/**/*.jpeg
 experiments/**/*.png
 experiments/**/shots/
 
-# 截图证据目录（大文件；需入库的单张用 git add -f 显式存证）
+# 截图与验收证据目录（大文件；需入库的单张用 git add -f 显式存证）
 gui-test-screenshots/
+docs/m7-b4b-evidence/
+docs/m7-b4b3d-evidence/
+docs/m7-b4bq-evidence/
+docs/m7b4c-evidence/
+docs/m7b4d-evidence/
+docs/m7b4e-evidence/
 Thumbs.db
 
 # 交接/审查临时产物

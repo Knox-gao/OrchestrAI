@@ -1,27 +1,16 @@
 /**
  * ChatDock：右下角圆形悬浮按钮 + 拟短信对话面板。
- * 汇聚：需求输入 / 文档附件 / 主模型切换 / 创作风格 / 动效选择 / 暂停回放。
+ * 汇聚：需求输入 / 文档附件 / 主模型切换 / 暂停回放。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StudioEngine } from '@studio/core';
 import { eventText } from '@studio/core';
 import type { Mode } from '../App';
 
-const STYLE_FEATURED = [
-  { id: '', name: '自动' },
-  { id: 'brutalist-crimson', name: '新野兽派' },
-  { id: 'glass-amethyst', name: '毛玻璃' },
-  { id: 'terminal-jade', name: '终端绿屏' },
-  { id: 'aurora-azure', name: '极光渐变' },
-  { id: 'studio-gold', name: '鎏金奢华' },
-];
-const FX_LEVELS = [['', '自动'], ['subtle', '柔和'], ['full', '炫动'], ['off', '关闭']] as const;
-
 interface Msg { id: number; role: 'user' | 'sys'; text: string; tone?: 'ok' | 'warn' | 'err'; }
 
 export function ChatDock({
-  engine, mode, generating, phase, projectName,
-  style, setStyle, fx, setFx, styleDesc, setStyleDesc, model, setModel,
+  engine, mode, generating, phase, projectName, model, setModel,
   open, setOpen, onSubmitReal,
 }: {
   engine: StudioEngine | null;
@@ -29,9 +18,6 @@ export function ChatDock({
   generating: boolean;
   phase: string | null;
   projectName: string;
-  style: string; setStyle: (v: string) => void;
-  fx: string; setFx: (v: string) => void;
-  styleDesc: string; setStyleDesc: (v: string) => void;
   model: string; setModel: (v: string) => void;
   open: boolean; setOpen: (v: boolean) => void;
   onSubmitReal: (requirement: string) => void;
@@ -40,7 +26,7 @@ export function ChatDock({
   const [docName, setDocName] = useState<string | null>(null);
   const [docError, setDocError] = useState<string | null>(null);
   const [models, setModels] = useState<{ id: string; label: string; configured: boolean; custom: boolean }[]>([]);
-  const [tab, setTab] = useState<'chat' | 'style' | 'model'>('chat');
+  const [tab, setTab] = useState<'chat' | 'model'>('chat');
   const [testResult, setTestResult] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const flowRef = useRef<HTMLDivElement | null>(null);
@@ -146,7 +132,7 @@ export function ChatDock({
         </div>
 
         <div className="dock-tabs">
-          {[['chat', '💬 对话'], ['style', '🎨 风格'], ['model', '🔑 主模型']].map(([id, label]) => (
+          {[['chat', '💬 对话'], ['model', '🔑 主模型']].map(([id, label]) => (
             <button key={id} className={tab === id ? 'on' : ''} onClick={() => setTab(id as typeof tab)}>{label}</button>
           ))}
         </div>
@@ -193,29 +179,6 @@ export function ChatDock({
               <button className="dock-send" disabled={!canSend} onClick={send} title="发送需求">➤</button>
             </div>
           </>
-        )}
-
-        {tab === 'style' && (
-          <div className="dock-settings">
-            <div className="dock-label">创作风格（148 种精选 + 自由描述）</div>
-            <div className="dock-chips">
-              {STYLE_FEATURED.map((s) => (
-                <span key={s.id || 'auto'} className={`chip ${style === s.id ? 'cyan' : ''}`} onClick={() => setStyle(s.id)}>{s.name}</span>
-              ))}
-            </div>
-            <input
-              className="dock-desc" value={styleDesc}
-              placeholder="或文字描述风格：深色玻璃质感、紫色调、圆角…"
-              onChange={(e) => setStyleDesc(e.target.value)}
-            />
-            <div className="dock-label" style={{ marginTop: 12 }}>动效</div>
-            <div className="dock-chips">
-              {FX_LEVELS.map(([id, name]) => (
-                <span key={id || 'fxauto'} className={`chip ${fx === id ? 'cyan' : ''}`} onClick={() => setFx(id ?? '')}>{name}</span>
-              ))}
-            </div>
-            <div className="dock-note">炫动 = 粒子避让鼠标 + 光标拖尾 + 点击涟漪</div>
-          </div>
         )}
 
         {tab === 'model' && (

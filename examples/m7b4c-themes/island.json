@@ -1,0 +1,471 @@
+{
+  "schemaVersion": "orchestrai.pageplan.v1",
+  "meta": {
+    "title": "果冻海岛",
+    "description": "方形地层底座上的分层海岛 diorama。",
+    "language": "zh-CN"
+  },
+  "userConstraints": {
+    "styleId": "neumorph-blossom",
+    "fontMood": "serif",
+    "pageDirection": "explore",
+    "locked": true
+  },
+  "designIntent": {
+    "concept": "果冻质感的热带小岛",
+    "pageDirection": "explore",
+    "visualPrinciples": [
+      "粉色新拟物，柔和高光，编辑式留白",
+      "焦点：蜜糖灯塔"
+    ]
+  },
+  "theme": {
+    "styleId": "neumorph-blossom",
+    "background": "#f7edf1",
+    "surface": "#ffffff",
+    "text": "#15171f",
+    "muted": "#747177",
+    "accent": "#ce125d",
+    "accentSoft": "#f0c6d6",
+    "fontMood": "serif",
+    "density": "airy",
+    "radius": "rounded"
+  },
+  "sceneBrief": {
+    "schemaVersion": "orchestrai.scene-brief.v1",
+    "theme": "果冻质感的热带小岛",
+    "visualStyle": "粉色新拟物，柔和高光，编辑式留白",
+    "subject": {
+      "id": "island-terrain",
+      "description": "有厚度与地层剖面的果冻岛体",
+      "silhouette": "隆起台面 + 不规则海岸 + 可见侧壁地层"
+    },
+    "secondaryFocus": [
+      "蜜糖灯塔",
+      "棕榈群",
+      "木栈桥"
+    ],
+    "composition": {
+      "cameraAngle": "isometric",
+      "subjectCoverage": [
+        0.4,
+        0.6
+      ],
+      "whitespace": "airy",
+      "focalPoint": "蜜糖灯塔"
+    },
+    "terrain": {
+      "kind": "方形地层底座",
+      "relief": "rolling",
+      "layers": [
+        "浅水潟湖",
+        "砂岸带",
+        "珊瑚沉积层",
+        "深色基岩"
+      ]
+    },
+    "objects": [
+      {
+        "id": "island-plateau",
+        "role": "accent",
+        "scaleHint": "huge",
+        "layer": "background",
+        "relation": "作为整块地台的基底"
+      },
+      {
+        "id": "island-lagoon",
+        "role": "secondary",
+        "scaleHint": "huge",
+        "layer": "background",
+        "relation": "环绕岛体的浅水潟湖"
+      },
+      {
+        "id": "island-terrain",
+        "role": "subject",
+        "scaleHint": "large",
+        "layer": "midground",
+        "relation": "居中隆起，占据画面主体"
+      },
+      {
+        "id": "island-lighthouse",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "background",
+        "relation": "岛体西侧高地，作为视觉焦点"
+      },
+      {
+        "id": "island-house",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "midground",
+        "relation": "岛体中部偏东的聚落"
+      },
+      {
+        "id": "island-palm-a",
+        "role": "accent",
+        "scaleHint": "medium",
+        "layer": "midground",
+        "relation": "岛体北侧成组棕榈"
+      },
+      {
+        "id": "island-palm-b",
+        "role": "accent",
+        "scaleHint": "medium",
+        "layer": "background",
+        "relation": "岛体东北侧棕榈"
+      },
+      {
+        "id": "island-dock",
+        "role": "accent",
+        "scaleHint": "small",
+        "layer": "foreground",
+        "relation": "从岛体东南伸入水面"
+      },
+      {
+        "id": "island-rock",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "foreground",
+        "relation": "画面左下水面上的礁石"
+      }
+    ],
+    "materials": [
+      {
+        "name": "jelly",
+        "intent": "岛体半透果冻质感"
+      },
+      {
+        "name": "water",
+        "intent": "潟湖分层水色"
+      },
+      {
+        "name": "sand",
+        "intent": "底座砂层与地层剖面"
+      },
+      {
+        "name": "foliage",
+        "intent": "棕榈羽叶哑光绿"
+      },
+      {
+        "name": "wood",
+        "intent": "栈桥暖棕木料"
+      },
+      {
+        "name": "stone",
+        "intent": "礁石冷灰粗糙"
+      },
+      {
+        "name": "matte",
+        "intent": "灯塔塔身哑光米白"
+      }
+    ],
+    "light": {
+      "direction": "左上前方主光，右下弱补光",
+      "mood": "柔和、高光克制"
+    },
+    "interaction": [
+      "拖拽旋转",
+      "点击物件查看档案",
+      "昼夜切换",
+      "潮位调整"
+    ],
+    "acceptance": [
+      "主体占画幅 40–60%",
+      "至少三层景深都有物件",
+      "水面能看出深浅层次",
+      "灯塔可点选并有档案"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "hero",
+      "type": "section",
+      "variant": "hero",
+      "eyebrow": "果冻质感的热带小岛",
+      "title": "果冻海岛",
+      "description": "方形地层底座上的分层海岛 diorama。",
+      "children": [
+        {
+          "id": "hero-text",
+          "type": "text",
+          "text": "有厚度与地层剖面的果冻岛体"
+        }
+      ]
+    },
+    {
+      "id": "scene-section",
+      "type": "section",
+      "title": "三维场景",
+      "description": "拖拽旋转、滚轮缩放；点击物件查看档案。",
+      "children": [
+        {
+          "id": "island-scene",
+          "type": "scene3d",
+          "label": "果冻海岛",
+          "description": "方形地层底座上的分层海岛。",
+          "height": "wide",
+          "background": "#f7edf1",
+          "groundColor": "#e6d3c4",
+          "cameraDistance": 13.5,
+          "shadows": true,
+          "controls": {
+            "orbit": true,
+            "zoom": true,
+            "autoRotate": false,
+            "dayNight": true,
+            "tide": true
+          },
+          "objects": [
+            {
+              "id": "island-plateau",
+              "name": "地层底座",
+              "shape": "plateau",
+              "position": [
+                0,
+                -1.16,
+                0
+              ],
+              "scale": [
+                12.6,
+                1.5,
+                10.2
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#d9c6b4",
+              "material": "sand",
+              "description": "方形地层剖面。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-lagoon",
+              "name": "潟湖",
+              "shape": "lagoon",
+              "position": [
+                0,
+                -0.62,
+                0
+              ],
+              "scale": [
+                11.4,
+                0.06,
+                9.2
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#8ad9ea",
+              "material": "water",
+              "description": "分层水面。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-terrain",
+              "name": "岛体",
+              "shape": "terrain",
+              "position": [
+                0,
+                -0.3,
+                0
+              ],
+              "scale": [
+                4.6,
+                1.55,
+                3.6
+              ],
+              "rotation": [
+                0,
+                12,
+                0
+              ],
+              "color": "#f2a0c6",
+              "material": "jelly",
+              "description": "有体积的岛体地形。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-lighthouse",
+              "name": "蜜糖灯塔",
+              "shape": "lighthouse",
+              "position": [
+                -2.15,
+                0.42,
+                0.55
+              ],
+              "scale": [
+                0.86,
+                0.86,
+                0.86
+              ],
+              "rotation": [
+                0,
+                -18,
+                0
+              ],
+              "color": "#fff3dd",
+              "material": "matte",
+              "description": "复合灯塔。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-house",
+              "name": "渔村主屋",
+              "shape": "house",
+              "position": [
+                -0.35,
+                0.3,
+                0.15
+              ],
+              "scale": [
+                1.3,
+                1.1,
+                1.22
+              ],
+              "rotation": [
+                0,
+                24,
+                0
+              ],
+              "color": "#fff0e6",
+              "material": "jelly",
+              "description": "复合民居。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-palm-a",
+              "name": "棕榈 A",
+              "shape": "tree",
+              "position": [
+                -1.85,
+                0.3,
+                -1.35
+              ],
+              "scale": [
+                1.5,
+                1.5,
+                1.5
+              ],
+              "rotation": [
+                0,
+                18,
+                0
+              ],
+              "color": "#8ecfa4",
+              "material": "foliage",
+              "description": "复合棕榈。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-palm-b",
+              "name": "棕榈 B",
+              "shape": "tree",
+              "position": [
+                1.95,
+                0.3,
+                -1.15
+              ],
+              "scale": [
+                1.3,
+                1.3,
+                1.3
+              ],
+              "rotation": [
+                0,
+                42,
+                0
+              ],
+              "color": "#a2d9ae",
+              "material": "foliage",
+              "description": "复合棕榈。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-dock",
+              "name": "木栈桥",
+              "shape": "dock",
+              "position": [
+                2.85,
+                -0.12,
+                1.15
+              ],
+              "scale": [
+                1.5,
+                1.4,
+                1.4
+              ],
+              "rotation": [
+                0,
+                -26,
+                0
+              ],
+              "color": "#b98a77",
+              "material": "wood",
+              "description": "复合栈桥。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "island-rock",
+              "name": "礁石",
+              "shape": "rock",
+              "position": [
+                -3.9,
+                0.02,
+                1.55
+              ],
+              "scale": [
+                0.6,
+                0.5,
+                0.55
+              ],
+              "rotation": [
+                12,
+                34,
+                8
+              ],
+              "color": "#c9a3b8",
+              "material": "stone",
+              "description": "复合礁石。",
+              "selectable": false,
+              "motion": "none"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "notes",
+      "type": "section",
+      "title": "关于本次生成",
+      "children": [
+        {
+          "id": "notes-list",
+          "type": "list",
+          "items": [
+            {
+              "title": "材质是风格化高光",
+              "text": "果冻质感由受控高光表现，不是物理折射。"
+            },
+            {
+              "title": "没有阴影贴图",
+              "text": "接触感来自聚合软阴影，不是 shadow mapping。"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "unsupportedRequests": []
+}

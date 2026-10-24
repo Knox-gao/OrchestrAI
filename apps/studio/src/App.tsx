@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { initialState, type AgentRole } from '@studio/core';
 import { fetchProject, generateApp, runPreflight, useStudioApp } from './useStudio';
 import { TopBar } from './components/TopBar';
@@ -31,6 +31,8 @@ export default function App() {
   const [model, setModel] = useState('auto');
   const [dockOpen, setDockOpen] = useState(false);
   const [phase, setPhase] = useState<string | null>(null);
+  const [phaseElapsedMs, setPhaseElapsedMs] = useState(0);
+  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(null);
   /** 开工前确认（内测版：AI 的主观审美选择交给用户拍板） */
   const [pendingChoice, setPendingChoice] = useState<{ requirement: string; questions: ChoiceQuestion[] } | null>(null);
   const [choices, setChoices] = useState<Record<string, string>>({});
@@ -40,12 +42,15 @@ export default function App() {
     const useName = projectName || (engine?.state.projectName ?? '');
     setGenerating(true);
     setPhase('创建任务…');
+    setGenerationStartedAt((at) => at ?? Date.now());
     setGenError(null);
     setPreviewUrl(null);
     setTab('events');
     try {
       setPhase('创建任务…');
-      const result = await generateApp(requirement, styleSel, fxSel, useName || undefined, styleDescSel || undefined, (p) => setPhase(p), model, answers);
+      const result = await generateApp(requirement, styleSel, fxSel, useName || undefined, styleDescSel || undefined, (p) => {
+        setPhase(p);
+      }, model, answers);
       playInNew(result.cues);
       setPreviewUrl(result.previewUrl);
     } catch (e) {
@@ -53,6 +58,8 @@ export default function App() {
     } finally {
       setGenerating(false);
       setPhase(null);
+      setPhaseElapsedMs(0);
+      setGenerationStartedAt(null);
     }
   };
 
@@ -64,23 +71,44 @@ export default function App() {
   const submitWithPreflight = async (requirement: string) => {
     setGenError(null);
     setChoices({});
+    setGenerating(true);
+    setPhase('模型正在分析需求…');
+    setGenerationStartedAt(Date.now());
+    setPhaseElapsedMs(0);
     let pf;
     try {
       pf = await runPreflight(requirement, model);
     } catch {
+      setGenerating(false);
+      setPhase(null);
+      setGenerationStartedAt(null);
       return void submitReal(requirement);   // 确认环节异常不阻断主流程
     }
     if (pf.ok && pf.questions.length > 0) {
+      setGenerating(false);
+      setPhase(null);
+      setGenerationStartedAt(null);
       setPendingChoice({ requirement, questions: pf.questions });
       return;
     }
-    if (pf.reason && !pf.ok && pf.viaLLM === false) {
-      // 模型未配置：直接走生成，由管线给出明确的"请配置模型"阻断提示
-      setGenError(pf.reason);
-      return void submitReal(requirement);
+    // 致命失败（额度用尽/Key 无效/未配置）：直接告知用户先修模型，不再启动生成
+    if (pf.fatal || (pf.reason && !pf.ok && pf.viaLLM === false)) {
+      setGenerating(false);
+      setPhase(null);
+      setGenerationStartedAt(null);
+      setGenError(pf.reason || '模型不可用，请先在 🔑 主模型面板配置可用的 API');
+      return;
     }
     return void submitReal(requirement);
   };
+
+  useEffect(() => {
+    if (!generating || generationStartedAt == null) return;
+    const updateElapsed = () => setPhaseElapsedMs(Date.now() - generationStartedAt);
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1000);
+    return () => window.clearInterval(timer);
+  }, [generating, generationStartedAt]);
 
   /** 进入历史项目：拉取时间线，瞬时恢复终态 */
   const enterById = async (id: string, fallbackPreviewUrl: string | null) => {
@@ -104,6 +132,9 @@ export default function App() {
     setView('home');
     setPreviewUrl(null);
     setGenerating(false);
+    setPhase(null);
+    setPhaseElapsedMs(0);
+    setGenerationStartedAt(null);
   };
 
   if (view === 'home') {
@@ -149,7 +180,7 @@ export default function App() {
         </div>
       )}
       <div className="app">
-        <TopBar engine={engine} mode={mode} onHome={goHome} fallbackName={projectName} />
+        <TopBar engine={engine} mode={mode} onHome={goHome} fallbackName={projectName} generating={generating} phase={phase} elapsedMs={phaseElapsedMs} />
         <TaskBoard
           state={engine ? engine.state : EMPTY_STATE}
           selectedTaskId={selectedTaskId}
@@ -159,6 +190,7 @@ export default function App() {
           state={engine ? engine.state : EMPTY_STATE}
           selectedAgent={selectedAgent}
           onSelectAgent={(role) => { setSelectedAgent(role); setTab('agent'); }}
+          thinking={generating}
         />
         {engine && (
           <DetailPanel
@@ -177,9 +209,6 @@ export default function App() {
           generating={generating}
           phase={phase}
           projectName={projectName}
-          style={styleSel} setStyle={setStyleSel}
-          fx={fxSel} setFx={setFxSel}
-          styleDesc={styleDescSel} setStyleDesc={setStyleDescSel}
           model={model} setModel={setModel}
           open={dockOpen} setOpen={setDockOpen}
           onSubmitReal={(req) => void submitWithPreflight(req)}

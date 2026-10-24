@@ -10,11 +10,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPipeline } from './pipeline.mjs';
-import { preflight, choicesToDirective } from './preflight.mjs';
+import { preflight, choicesToDirective, choicesToParams } from './preflight.mjs';
 import { zipSync } from './zip.mjs';
 import { buildExport } from './packaging.mjs';
 import { PROVIDERS, maskedKeys, setKey, deleteKey, addCustom, removeCustom, setCustomModel } from './keys.mjs';
-import { pickGateway, chat } from './llm.mjs';
+import { pickGateway, chat, sanitizeForOutput } from './llm.mjs';
 import { isSupported, extractText } from './docx.mjs';
 import { CATALOG, STYLE_COUNT } from './generator/styles.mjs';
 
@@ -77,6 +77,54 @@ async function readBody(req, limit = 64 * 1024) {
     chunks.push(c);
   }
   return Buffer.concat(chunks);
+}
+
+function resolveDeletableProject(id) {
+  if (typeof id !== 'string' || !/^P[A-Za-z0-9_-]{1,80}$/.test(id)) {
+    return { error: 'invalid project id', status: 400 };
+  }
+  const root = path.resolve(WORKSPACES);
+  const dir = path.resolve(root, id);
+  if (path.dirname(dir) !== root) return { error: 'invalid project path', status: 400 };
+  if (!fs.existsSync(dir)) return { error: 'project not found', status: 404 };
+  const dirStat = fs.lstatSync(dir);
+  if (!dirStat.isDirectory() || dirStat.isSymbolicLink()) return { error: 'project path is not a workspace directory', status: 400 };
+  const metaPath = path.join(dir, 'project.json');
+  if (!fs.existsSync(metaPath) || !fs.lstatSync(metaPath).isFile()) return { error: 'project metadata not found', status: 404 };
+  return { dir };
+}
+
+function removeProjectAssetReferences(id) {
+  const registry = path.join(WORKSPACES, '_assets');
+  if (!fs.existsSync(registry)) return 0;
+  const prefix = `${id}/`;
+  let removed = 0;
+  for (const entry of fs.readdirSync(registry, { withFileTypes: true })) {
+    if (!entry.isFile() || path.extname(entry.name).toLowerCase() !== '.json') continue;
+    const file = path.join(registry, entry.name);
+    let manifest;
+    try { manifest = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { continue; }
+    if (!Array.isArray(manifest?.entries)) continue;
+    const entries = manifest.entries.filter((asset) => {
+      const source = String(asset?.src ?? '').replaceAll('\\', '/').replace(/^\.\//, '');
+      return !source.startsWith(prefix);
+    });
+    const removedFromManifest = manifest.entries.length - entries.length;
+    if (!removedFromManifest) continue;
+    const temp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(temp, JSON.stringify({ ...manifest, entries }, null, 1));
+    fs.renameSync(temp, file);
+    removed += removedFromManifest;
+  }
+  return removed;
+}
+
+function isLocalOrigin(origin) {
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return ['localhost', '127.0.0.1', '[::1]'].includes(hostname.toLowerCase())
+      && (protocol === 'http:' || protocol === 'https:');
+  } catch { return false; }
 }
 
 const JOBS = new Map();
@@ -160,6 +208,37 @@ const server = http.createServer(async (req, res) => {
       projects.sort((a, b) => b.createdAt - a.createdAt);
       return json(res, 200, projects);
     }
+    if (req.method === 'POST' && url.pathname === '/api/projects/delete') {
+      const origin = req.headers.origin;
+      if (origin && !isLocalOrigin(origin)) return json(res, 403, { error: 'project deletion is only available to the local app' });
+      let body;
+      try { body = JSON.parse(await readBody(req, 256 * 1024).then((b) => b.toString('utf-8')) || '{}'); }
+      catch { return json(res, 400, { error: 'invalid JSON body' }); }
+      if (!Array.isArray(body.ids) || body.ids.length < 1 || body.ids.length > 2000) {
+        return json(res, 400, { error: 'ids must contain between 1 and 2000 project ids' });
+      }
+      const ids = [...new Set(body.ids)];
+      const targets = ids.map((id) => ({ id, ...resolveDeletableProject(id) }));
+      const invalid = targets.find((target) => target.error);
+      if (invalid) return json(res, invalid.status, { error: `${invalid.id}: ${invalid.error}` });
+
+      const deleted = [];
+      let cleanedAssetRefs = 0;
+      for (const target of targets) {
+        try {
+          fs.rmSync(target.dir, { recursive: true, force: false, maxRetries: 3, retryDelay: 100 });
+          deleted.push(target.id);
+          try { cleanedAssetRefs += removeProjectAssetReferences(target.id); }
+          catch (cleanupError) { console.warn(`[projects] removed ${target.id}, but could not clean asset references:`, cleanupError.message); }
+        } catch (e) {
+          return json(res, 500, {
+            error: `删除 ${target.id} 失败：${String(e?.message ?? e).slice(0, 160)}`,
+            deleted,
+          });
+        }
+      }
+      return json(res, 200, { ok: true, deleted, cleanedAssetRefs });
+    }
     if (req.method === 'GET' && /^\/api\/projects\/[\w-]+$/.test(url.pathname)) {
       const id = url.pathname.split('/').pop();
       const dir = path.join(WORKSPACES, id);
@@ -235,15 +314,30 @@ const server = http.createServer(async (req, res) => {
       const fx = typeof body.fx === 'string' && body.fx ? body.fx : undefined;
       const styleDescription = typeof body.styleDescription === 'string' ? body.styleDescription.trim().slice(0, 120) : undefined;
       const llm = typeof body.llm === 'string' && body.llm ? body.llm : 'auto';
-      // 内测版：把用户在 preflight 中的选择并入需求（写成明确指令，由模型遵循）
+      // 内测版：把用户在 preflight 中的选择并入需求（让模型知情）
+      // + 转成参数硬约束（防止被关键词风格识别静默覆盖）
       const directive = choicesToDirective(body.choices);
       const requirementWithChoices = directive ? `${requirement}\n\n${directive}` : requirement;
+      const choiceParams = choicesToParams(body.choices);
+      // 可信调用方声明的必需需求 ID（决定 required coverage 是否阻断交付）。
+      // 不做模糊匹配：必须是显式数组，且每项是稳定 ID 字符串。
+      const requiredRequirementIds = Array.isArray(body.requiredRequirementIds)
+        ? body.requiredRequirementIds.filter((id) => typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.test(id)).slice(0, 20)
+        : [];
       const jobId = 'J' + Date.now().toString(36).toUpperCase();
       const job = { id: jobId, status: 'running', phase: '排队中…', startedAt: Date.now(), result: null, error: null, choices: body.choices ?? null };
       JOBS.set(jobId, job);
-      runPipeline(requirementWithChoices, style, fx, name || undefined, styleDescription, (phase) => { job.phase = phase; }, llm)
+      runPipeline(requirementWithChoices, style, fx, name || undefined, styleDescription, (phase) => { job.phase = phase; }, llm, choiceParams, requiredRequirementIds)
         .then((result) => { job.status = 'done'; job.phase = '完成'; job.result = result; })
-        .catch((e) => { job.status = 'error'; job.phase = '失败'; job.error = String(e?.message ?? e); });
+        .catch((e) => {
+          // 发布前审计高危项：堆栈与上游正文一律不经 API 暴露给客户端。
+          // 堆栈只写服务端日志（便于本地排查），客户端只拿到脱敏后的短消息 + 稳定错误码。
+          job.status = 'error';
+          job.phase = '失败';
+          job.errorCode = String(e?.code ?? 'INTERNAL_ERROR');
+          job.error = sanitizeForOutput(e?.message, 240);
+          console.error('[job-error]', job.id, job.errorCode, String(e?.stack ?? '').split('\n').slice(0, 6).join(' | '));
+        });
       return json(res, 202, { jobId });
     }
     if (req.method === 'GET' && /^\/api\/jobs\/[\w-]+$/.test(url.pathname)) {
@@ -252,6 +346,8 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, {
         id: job.id, status: job.status, phase: job.phase,
         startedAt: job.startedAt, elapsedMs: Date.now() - job.startedAt,
+        // 只返回稳定错误码 + 脱敏短消息；stack/上游响应正文仅留在服务端日志。
+        errorCode: job.errorCode ?? null,
         error: job.error, result: job.status === 'done' ? job.result : null,
       });
     }

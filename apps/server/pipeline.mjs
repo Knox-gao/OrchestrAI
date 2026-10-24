@@ -7,9 +7,25 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseSentence, buildFiles, extractSubject, TEMPLATES } from './generator/index.mjs';
 import { staticCheck } from './generator/quality.mjs';
+import { staticCheckPagePlan, buildWorkspaceTest } from './generator/pageplan/pageplan-gate.mjs';
 import { runNodeTests } from './runner.mjs';
 import { collectImages, queryCascade, bestMatch, extractEnglishTokens } from './scraper.mjs';
 import { visualAudit } from './visualaudit.mjs';
+import { auditRequirementCoverage } from './reqcoverage.mjs';
+import { generatePagePlan, PagePlanGenerationError, assessPagePlanVisualComposition } from './generator/pageplan/generate.mjs';
+import { renderPagePlan, PagePlanBlockedError } from './generator/pageplan/render.mjs';
+import { SCENE3D_RUNTIME } from './generator/pageplan/scene3d.mjs';
+import { resolveThemeTokens } from './generator/pageplan/style-resolver.mjs';
+import { bundlePagePlanAssets, collectImageNodes } from './generator/pageplan/assets.mjs';
+import { createTopicIllustration } from './generator/pageplan/illustration.mjs';
+import { evaluateRequirementCoverage } from './generator/pageplan/coverage-status.mjs';
+import { crossCheckBriefAgainstScene } from './generator/pageplan/scene-brief.mjs';
+import { checkSceneGeometry, summariseSceneReview } from './generator/pageplan/scene-review.mjs';
+import { assertAssetsResolved } from './generator/pageplan/asset-resolution-gate.mjs';
+import { normalizeProviderUsage } from './generator/pageplan/usage-normalizer.mjs';
+import { CATALOG as STYLE_CATALOG } from './generator/styles.mjs';
+import { chat as llmChat, chatDetailed } from './llm.mjs';
+import { PAGEPLAN_BASE_CAPABILITIES } from './generator/pageplan/generate.mjs';
 import { loadAssets, saveAssets, assetEntry, reusableAsset, resolveSlot } from './assets.mjs';
 import { generateBrief } from './generator/designbrief.mjs';
 import { pickLayout } from './generator/layouts/index.mjs';
@@ -42,7 +58,100 @@ async function mapPool(list, limit, fn) {
   return out;
 }
 
-export async function runPipeline(requirement, styleId, fxLevel, projectTitle, styleDescription, onPhase, llmChoice = 'auto') {
+function imageSearchTargets(query) {
+  const text = String(query ?? '').trim();
+  const tokens = text.match(/[\u4e00-\u9fff]{2,}|[A-Za-z0-9][A-Za-z0-9'-]{2,}/g) ?? [];
+  const generic = new Set([
+    'photo', 'photos', 'photograph', 'photographs', 'photography', 'editorial', 'composition',
+    'wide', 'close', 'up', 'scene', 'detail', 'distinct', 'angle', 'view', 'image', 'images',
+    'picture', 'pictures', 'real', 'realistic', 'authentic', 'establishing', 'environmental', 'tactile',
+    'product', 'products', 'front', 'rear', 'back', 'side', 'view', 'portrait', 'close-up', 'tail', 'lights',
+  ]);
+  const subjectTokens = tokens.filter((token) => /[\u4e00-\u9fff]/.test(token)
+    ? token.length >= 2
+    : !generic.has(token.toLowerCase()) && (token.length >= 4 || /^\d{3,}$/.test(token) || /^[A-Z]{3,}$/.test(token)));
+  return [...new Set([text, ...subjectTokens].filter(Boolean))];
+}
+
+function imageSearchQueryCascade(query) {
+  const text = String(query ?? '').trim();
+  const modelAnchors = text.match(/\b(?:[A-Za-z]+\d+[A-Za-z0-9-]*|\d+[A-Za-z][A-Za-z0-9-]*)\b/g) ?? [];
+  const make = text.match(/\b(?:Toyota|Nissan|Honda|Mazda|Subaru|Mitsubishi|Porsche|BMW|Mercedes|Ford|Ferrari|Lamborghini|Volkswagen|Audi|Volvo|Peugeot|Renault|Hyundai|Kia)\b/i)?.[0];
+  const english = extractEnglishTokens(text);
+  const queries = [text, english];
+  for (const anchor of modelAnchors) {
+    if (make) queries.push(`${make} ${anchor}`);
+    queries.push(anchor);
+  }
+  return [...new Set(queries.map((item) => item.trim()).filter(Boolean))];
+}
+
+function imageCandidateRelevance(candidate, query) {
+  const title = String(candidate?.title ?? '').toLocaleLowerCase();
+  const page = String(candidate?.page ?? '').toLocaleLowerCase();
+  const metadata = `${title} ${page}`;
+  const generic = new Set(['photo', 'photos', 'photograph', 'photography', 'image', 'images', 'picture', 'pictures', 'real', 'authentic', 'view', 'angle', 'close', 'up', 'scene', 'detail', 'distinct', 'composition', 'wide', 'with', 'from', 'that', 'this', 'and', 'the', 'for', 'on', 'at', 'of']);
+  const tokens = String(query ?? '').match(/[\u4e00-\u9fff]{2,}|[A-Za-z0-9][A-Za-z0-9'-]{2,}/g) ?? [];
+  const unique = [...new Set(tokens.map((token) => token.toLocaleLowerCase()).filter((token) => !generic.has(token)))];
+  return unique.reduce((score, token) => {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const isCjk = /[\u4e00-\u9fff]/.test(token);
+    const hit = isCjk
+      ? title.includes(token) || page.includes(token)
+      : new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:$|[^\\p{L}\\p{N}])`, 'iu').test(title)
+        || new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?:$|[^\\p{L}\\p{N}])`, 'iu').test(page);
+    if (!hit) return score;
+    const anchor = /\d/.test(token) ? 8 : token.length >= 5 ? 3 : 1;
+    return score + anchor * (title.includes(token) ? 2 : 1);
+  }, 0);
+}
+
+const IMAGE_SCENE_CUES = [
+  { request: /\b(?:front|frontal|headlights?|headlamps?)\b|前脸|车头|大灯|翻灯/i, evidence: /\b(?:front|frontal|headlights?|headlamps?)\b|前脸|车头|大灯|翻灯/i },
+  { request: /\b(?:side|profile|side-on)\b|侧面|侧视/i, evidence: /\b(?:side|profile|side-on)\b|侧面|侧视/i },
+  { request: /\b(?:rear|back|tail lights?)\b|车尾|尾灯|后视/i, evidence: /\b(?:rear|back|tail lights?)\b|车尾|尾灯|后视/i },
+  { request: /\b(?:interior|dashboard|cockpit|steering wheel)\b|内饰|仪表盘|驾驶舱|方向盘/i, evidence: /\b(?:interior|dashboard|cockpit|steering wheel)\b|内饰|仪表盘|驾驶舱|方向盘/i },
+  { request: /\b(?:drift|drifting)\b|漂移/i, evidence: /\b(?:drift|drifting)\b|漂移/i },
+  { request: /\b(?:night|nighttime|at night)\b|夜间|夜晚|夜色/i, evidence: /\b(?:night|nighttime|at night)\b|夜间|夜晚|夜色/i },
+  { request: /\b(?:mountain road|winding road|mountain pass)\b|山道|盘山路|山路/i, evidence: /\b(?:mountain|winding road|mountain pass|mountain road)\b|山道|盘山路|山路/i },
+  { request: /\b(?:parking lot|parked|parking)\b|停车场|停放/i, evidence: /\b(?:parking lot|parked|parking)\b|停车场|停放/i },
+];
+
+function hasUnsupportedSceneDetails(candidate, query) {
+  const metadata = `${candidate?.title ?? ''} ${candidate?.page ?? ''}`;
+  return IMAGE_SCENE_CUES.some(({ request, evidence }) => request.test(String(query ?? '')) && !evidence.test(metadata));
+}
+
+function sourceTitle(candidate) {
+  return String(candidate?.title ?? '')
+    .replace(/\.(?:jpe?g|png|webp|gif|avif)$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function imageCandidateUsable(candidate, query = '') {
+  const { width = 0, height = 0 } = candidate?.dims?.tech ?? {};
+  const visualIntent = /\b(?:illustration|diagram|icon|vector|drawing|artwork)\b|插画|示意图|图标|矢量|绘画/i.test(query);
+  const metadata = `${candidate?.cand?.title ?? candidate?.title ?? ''} ${candidate?.cand?.page ?? candidate?.page ?? ''}`;
+  const disallowed = visualIntent ? /\b(?:ai[- ]?generated|watermark|wallpaper|logo|clipart)\b|人工智能生成|水印|壁纸|标志/i
+    : /\b(?:ai[- ]?generated|wallpaper|logo|clipart|vector|illustration|concept art|render(?:ed|ing)?)\b|人工智能生成|壁纸|标志|矢量插画/i;
+  const nonPhotoGameAsset = /\b(?:ETS2|ATS|Euro Truck Simulator|American Truck Simulator|Assetto Corsa|Forza Horizon|Gran Turismo|BeamNG|CarX Drift|GTA V)\b|游戏截图|游戏模组|模组下载|3D 模型下载/i.test(metadata);
+  const modelAnchors = String(query).match(/\b(?:[A-Za-z]+\d+[A-Za-z0-9-]*|\d+[A-Za-z][A-Za-z0-9-]*)\b/g) ?? [];
+  const hasExactModelAnchor = modelAnchors.length === 0 || modelAnchors.some((anchor) => {
+    const escaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^|[^A-Za-z0-9])${escaped}(?:$|[^A-Za-z0-9])`, 'i').test(metadata);
+  });
+  return !disallowed.test(metadata)
+    && !nonPhotoGameAsset
+    && hasExactModelAnchor
+    && candidate?.dims?.content?.level === 'strong'
+    && candidate?.dims?.tech?.score > 0
+    && Math.min(width, height) >= 360
+    && width * height >= 640 * 360;
+}
+
+export async function runPipeline(requirement, styleId, fxLevel, projectTitle, styleDescription, onPhase, llmChoice = 'auto', choiceParams = {}, requiredRequirementIds = []) {
   const sentence = requirement;
   const projectId = 'P' + Date.now().toString(36).toUpperCase();
   const ws = path.join(WORKSPACES, projectId);
@@ -50,12 +159,35 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
 
   let spec = parseSentence(`${projectTitle ?? ''} ${requirement}`.trim(), { styleId, fxLevel, styleDescription });
   if (projectTitle) spec.title = projectTitle;
+
+  // ---- 用户开工前选择 = 硬约束（不可被 detectStyle / LLM / 默认值静默覆盖）----
+  const lockedChoices = { ...(choiceParams ?? {}) };
+  if (lockedChoices.styleId) {
+    spec.styleId = lockedChoices.styleId;
+    spec.styleLocked = true;
+  }
+  if (lockedChoices.font) {
+    spec.fontMood = lockedChoices.font;
+    spec.fontLocked = true;
+  }
+  if (lockedChoices.direction) {
+    spec.pageDirection = lockedChoices.direction;
+    spec.directionLocked = true;
+  }
+  // 把锁定的字体气质写进自由描述，让风格引擎的六维解析也遵守（serif→衬线）
+  if (lockedChoices.font) {
+    const label = { serif: '衬线', sans: '无衬线', mono: '等宽' }[lockedChoices.font];
+    spec.styleDescription = `${spec.styleDescription ?? ''} ${label}标题`.trim();
+  }
   onPhase?.('解析需求与风格…');
   const cues = [];
   const emit = (d, events) => cues.push({ d, events });
 
   // ---- P4 Model Gateway：配置了 LLM Key 则用 AI 理解需求（失败安全回退规则） ----
   const gw = pickGateway(llmChoice);
+  // 创作型 PagePlan 为默认路径；仅在显式设置 ORCHESTRAI_PAGEPLAN=off 时退回旧模板。
+  // 否则意图解析会把 PagePlan 形状的回复判为"数据集不完整"并提前把作业标记失败。
+  const usePagePlan = process.env.ORCHESTRAI_PAGEPLAN !== 'off';
 
   // ---- 内测版硬约束：必须使用用户自定义模型 ----
   // 理由：无模型时只能产模板化低质页面，与"按需创作"目标相悖，故直接阻断而非静默降级。
@@ -76,7 +208,7 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     return { projectId, cues, previewUrl: null, workspace: ws, failed: true, blocked: 'model_required', reason };
   }
 
-  if (gw) {
+  if (gw && !usePagePlan) {
     onPhase?.(`AI 理解需求中（${gw.label ?? gw.provider}/${gw.model}）…`);
     // 统一重试保险：① 调用异常（网络/限流/JSON 截断解析失败）② 解析成功但数据集不完整（atlas 对象空 / gallery 图鉴 items 空）
     // —— 最多两次尝试，第二次仍不行才回退规则识别
@@ -150,22 +282,48 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         }
       }
     } else {
+      // 内测版硬约束：模型是本产品的核心能力，调用失败不得回退规则生成模板页。
+      // 回退会让用户拿到"看起来完成、实际是低质模板"的产物，比失败更糟。
       spec.viaLLM = false;
-      spec.llmFallbackReason = String(lastErr?.message ?? lastErr ?? '两次尝试均未返回有效数据集').slice(0, 140);
-      cues.push({ d: 200, events: [
-        { type: 'log', level: 'warn', from: 'supervisor', message: `⚠ 模型调用失败，已回退规则识别：${spec.llmFallbackReason}（可在 🔑 面板用「测试连接」排查，或稍后重试）` },
-      ] });
+      spec.llmFallbackReason = String(lastErr?.message ?? lastErr ?? '两次尝试均未返回有效数据集').slice(0, 200);
+      emit(200, [
+        { type: 'log', level: 'error', from: 'supervisor', message: `⛔ 模型调用失败，已终止（内测版不回退模板）：${spec.llmFallbackReason}` },
+        { type: 'gate_result', gate: 'model_required', passed: false, detail: `模型调用失败：${spec.llmFallbackReason.slice(0, 120)}` },
+        { type: 'task_status_changed', taskId: 'T0', from: 'pending', to: 'blocked', reason: '模型调用失败' },
+      ]);
+      persistProject(cues, {
+        projectId, spec, sentence, files: {}, ws, projectTitle,
+        delivered: false, deliveryVersion: null, previewUrl: null,
+        testSummary: `模型调用失败，未生成任何页面：${spec.llmFallbackReason.slice(0, 140)}`,
+        hadDefectFix: false, firstOk: false,
+      });
+      return {
+        projectId, cues, previewUrl: null, workspace: ws, failed: true,
+        blocked: 'model_failed',
+        reason: `模型调用失败：${spec.llmFallbackReason}。请在 🔑 主模型面板检查 API Key 额度/有效性后重试。`,
+      };
     }
   }
   if (spec.type !== 'gallery') delete spec.galleryQuery;
 
   const styleDef = getStyleDef(spec);
   spec.styleDef = styleDef;
+  // 风格来源审计：用户锁定 > 需求关键词/LLM 推断 > 默认
+  const styleOrigin = spec.styleLocked ? 'user-locked' : (spec.styleId ? 'auto-detected' : 'default');
+  spec.styleOrigin = styleOrigin;
+  if (spec.styleLocked && styleDef.id !== spec.styleId) {
+    // 引擎没能解析出用户选的风格 = 硬约束失效，宁可如实报错也不静默降级
+    throw new Error(`用户指定的视觉风格「${spec.styleId}」无法被风格引擎解析（得到 ${styleDef.id}），已终止以免交付错误设计`);
+  }
+  cues.push({ d: 150, events: [
+    { type: 'log', level: 'info', from: 'designer', message: `风格「${styleDef.name}」已就绪（来源：${{ 'user-locked': '用户在开工前指定', 'auto-detected': '按需求自动识别', default: '默认' }[styleOrigin]}）` },
+  ] });
   onPhase?.(`风格「${styleDef.name}」已就绪`);
   const usage = (i, o, c) => ({ inputTokens: i, outputTokens: o, costUsd: c });
 
   // ---- 展馆类型：先执行真实网络素材采集（designer 角色） ----
-  if (spec.type === 'gallery') {
+  // PagePlan 模式下素材由模型在节点树中直接声明，旧图源采集链不参与（否则会用模板图覆盖模型选择）。
+  if (spec.type === 'gallery' && !usePagePlan) {
     const keys = getKeys();
     const items = spec.galleryItems ?? [];
     if (items.length >= 4) {
@@ -175,7 +333,7 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       ]);
       emit(400, [
         { type: 'agent_run_started', runId: 'R-00', taskId: 'T1', role: 'designer', model: { provider: 'web', modelId: 'image-collector-v1' } },
-        { type: 'agent_step', runId: 'R-00', taskId: 'T1', role: 'designer', step: { at: 0, kind: 'tool', tool: 'web_search', detail: `为每个对象定向搜索配图（${items[0].name}、${items[1]?.name ?? ''}… 共 ${items.length} 个，Pexels → Unsplash → Bing → Wikimedia 链）` } },
+        { type: 'agent_step', runId: 'R-00', taskId: 'T1', role: 'designer', step: { at: 0, kind: 'tool', tool: 'web_search', detail: `为每个对象定向搜索配图（${items[0].name}、${items[1]?.name ?? ''}… 共 ${items.length} 个，Pexels → Unsplash → Bing → Reddit → DuckDuckGo → Wikimedia 链）` } },
       ]);
       let done = 0, okCount = 0;
       const noPhotoNames = [];
@@ -293,23 +451,50 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       ]);
       emit(400, [
         { type: 'agent_run_started', runId: 'R-00', taskId: 'T1', role: 'designer', model: { provider: 'web', modelId: 'image-collector-v1' } },
-        { type: 'agent_step', runId: 'R-00', taskId: 'T1', role: 'designer', step: { at: 0, kind: 'tool', tool: 'web_search', detail: `搜索网络图源（Pexels → Unsplash → Bing 图片 → Wikimedia 适配器链，已配置密钥的优先）` } },
+        { type: 'agent_step', runId: 'R-00', taskId: 'T1', role: 'designer', step: { at: 0, kind: 'tool', tool: 'web_search', detail: `搜索网络图源（已配置的 Pexels / Unsplash 优先，其后 Bing、Reddit、DuckDuckGo 与 Wikimedia）` } },
       ]);
       onPhase?.(`正在联网采集「${query}」照片…`);
-      const scraped = await collectImages({ query, count: 10, keys });
+      let scraped = await collectImages({ query, count: 10, keys });
       if (scraped.images.length > 0) {
-        const totalBytes = scraped.images.reduce((a, i) => a + i.buf.length, 0);
-        emit(500, [
-          { type: 'log', level: 'success', from: 'designer', message: `图源 ${scraped.provider} 采集成功：${scraped.images.length} 张（共 ${(totalBytes / 1024 / 1024).toFixed(1)}MB），全部下载到工作区并保留署名` },
-        ]);
-        spec.images = scraped.images.map((img, i) => ({
-          file: `images/img-${String(i + 1).padStart(2, '0')}.${img.ext}`,
-          title: img.title.slice(0, 60), author: img.author.slice(0, 60),
-          license: img.license.slice(0, 40), page: img.page,
-        }));
-        spec.images.forEach((m, i) => { m.buf = scraped.images[i].buf; });
-        spec.provider = scraped.provider;
-        spec.imageSource = 'network';
+        let selectedImages = [];
+        const skippedProviders = new Set();
+        for (let sourcePass = 0; sourcePass < 4; sourcePass++) {
+          const { ranked } = rankCandidates(scraped.images, { targets: imageSearchTargets(query) });
+          selectedImages = ranked.filter(imageCandidateUsable).map((candidate) => candidate.cand);
+          if (selectedImages.length || !scraped.provider || scraped.provider === 'none') break;
+          skippedProviders.add(scraped.provider);
+          scraped = await collectImages({ query, count: 10, keys, skipProviders: [...skippedProviders] });
+          if (!scraped.images.length) break;
+        }
+        if (!selectedImages.length) {
+          emit(400, [
+            { type: 'log', level: 'warn', from: 'designer', message: `搜索结果未通过主题相关性与清晰度筛选（${query.slice(0, 80)}）；使用明确标注的本地示意卡，不把弱匹配图片当真实素材。` },
+          ]);
+        }
+        const chosenImages = selectedImages.length ? selectedImages : [];
+        if (chosenImages.length) {
+          const totalBytes = chosenImages.reduce((a, i) => a + i.buf.length, 0);
+          emit(500, [
+            { type: 'log', level: 'success', from: 'designer', message: `图源 ${scraped.provider} 采集成功：${chosenImages.length} 张通过相关性与清晰度筛选（共 ${(totalBytes / 1024 / 1024).toFixed(1)}MB），全部下载到工作区并保留署名` },
+          ]);
+          spec.images = chosenImages.map((img, i) => ({
+            file: `images/img-${String(i + 1).padStart(2, '0')}.${img.ext}`,
+            title: img.title.slice(0, 60), author: img.author.slice(0, 60),
+            license: img.license.slice(0, 40), page: img.page,
+          }));
+          spec.images.forEach((m, i) => { m.buf = chosenImages[i].buf; });
+          spec.provider = scraped.provider;
+          spec.imageSource = 'network';
+        } else {
+          spec.images = Array.from({ length: 6 }, (_, i) => ({
+            file: `images/card-${String(i + 1).padStart(2, '0')}.png`,
+            title: `${query} · 示意卡 ${i + 1}`,
+            author: 'OrchestrAI 本地生成', license: '生成内容', page: '',
+            buf: placeholderCard(800, 600, spec.template.meta.accent, i),
+          }));
+          spec.provider = '本地示意卡';
+          spec.imageSource = 'placeholder';
+        }
       } else {
         // 诚实兜底：网络不可达 → 本地程序化示意卡（标签明示）
         emit(400, [
@@ -332,7 +517,418 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     }
   }
 
-  const files = buildFiles(spec, { defect: spec.plantDefect });
+  // ============================================================
+  // PagePlan 可组合渲染路径（默认启用）
+  // 回滚开关：仅 ORCHESTRAI_PAGEPLAN=off 时使用旧模板路径。
+  // 铁律：PagePlan 失败 → 直接阻断交付，绝不回退 parseSentence / pageShell。
+  // ============================================================
+  let files;
+  let pagePlanReport = null;
+  let pagePlanExpect = null;
+  if (usePagePlan) {
+    // 真实阶段进度（M7-B4C）：每一阶段都对应真实完成的工作，不伪造百分比。
+    onPhase?.('理解需求与创作意图…');
+    emit(400, [
+      { type: 'agent_state_changed', role: 'frontend', status: 'working', taskId: 'T1', detail: '由模型产出结构化 PagePlan（节点树决定布局）' },
+      { type: 'log', level: 'info', from: 'frontend', message: '🧩 启用 PagePlan 路径：模型直接决定页面结构与组成，而非只填数据' },
+    ]);
+    try {
+      onPhase?.('创作规划 + 场景生成（Scene Brief → PagePlan，单次调用）…');
+      const planResult = await generatePagePlan({
+        requirement,
+        projectTitle: projectTitle ?? spec.title,
+        gw,
+        userChoices: {
+          styleId: spec.styleLocked ? spec.styleId : undefined,
+          fontMood: spec.fontLocked ? spec.fontMood : undefined,
+          pageDirection: spec.directionLocked ? spec.pageDirection : undefined,
+        },
+        allowedStyleIds: STYLE_CATALOG.map((c) => c.id),
+        // scene3d 需显式开放（已在真实 Edge 32/32 + ZIP 18/18 验收）。
+        // 是否真产出 3D 仍由模型依据需求决定；不开放就没有该能力。
+        availableCapabilities: [...PAGEPLAN_BASE_CAPABILITIES, 'scene3d'],
+        requiredRequirementIds,
+        // 把每次尝试的失败写进事件流：否则"重试过"在产物与时间线里都不可见，
+        // 只能靠请求计数反推（本轮 E2E 就卡在这条）。
+        onAttempt: (info) => {
+          // M7-B4D：把每一轮的**原始模型文本**落到工作区 _model/ 下。
+          // 目的：事后能回答"JSON 为什么非法 / 模型到底写了什么"，而不是只有一句 reason。
+          // _model/ 已在 packaging.isInternalLog 中排除，不会进交付 ZIP。
+          if (typeof info.rawText === 'string' && info.rawText.length) {
+            try {
+              const dir = path.join(ws, '_model');
+              fs.mkdirSync(dir, { recursive: true });
+              fs.writeFileSync(path.join(dir, `attempt-${info.attempt}.txt`), info.rawText);
+            } catch { /* 原始输出落盘失败不应影响主流程 */ }
+          }
+          if (info.ok) return;
+
+          // M7-B4E：诊断字段可追踪，但不含密钥/Authorization/请求头/完整响应体。
+          // 本轮真实故障只有一句 "This operation was aborted"，无法一眼看出是超时还是外部取消。
+          const d = info.diagnostic ?? {};
+          const bits = [];
+          if (d.classification) bits.push("分类=" + d.classification);
+          if (d.timedOut === true) bits.push("超时=是");
+          else if (d.timedOut === false) bits.push("超时=否");
+          if (Number.isFinite(d.elapsedMs)) bits.push("耗时=" + d.elapsedMs + "ms");
+          if (d.enteredNetwork === false) bits.push("未进入网络");
+          bits.push("可重试=" + (d.retryable ? "是" : "否"));
+          if (d.willRetry !== undefined) bits.push("本次将重试=" + (d.willRetry ? "是" : "否"));
+          const tail = info.willRetry ? "，自动重试一次…" : (info.retryable === false ? "，按失败类型不重试" : "，重试已用尽");
+          emit(410, [
+            { type: "log", level: "warn", from: "frontend", message: "⚠ PagePlan 第 " + info.attempt + "/" + info.attempts + " 次尝试失败（" + info.code + "）：" + String(info.issue ?? "").slice(0, 100) + "｜" + bits.join(" ") + tail },
+          ]);
+        },
+        resolveTheme: async () => resolveThemeTokens({
+          styleId: spec.styleLocked ? spec.styleId : (spec.styleId ?? 'editorial-obsidian'),
+          fontMood: spec.fontLocked ? spec.fontMood : undefined,
+          getStyleDef,
+          catalog: STYLE_CATALOG,
+          direction: spec.directionLocked ? spec.pageDirection : undefined,
+        }),
+        // 用 chatDetailed：把供应商真实 usage 带出来（chat 历史实现丢掉了 usage）
+        callModel: chatDetailed,
+      });
+      // PagePlan image nodes may request a real image by searchQuery instead of
+      // guessing a URL. Keep only semantically matched, technically usable files.
+      const pagePlanImageFiles = new Map();
+      const pagePlanImageCredits = new Map();
+      const pagePlanImageProvenance = [];
+      const pagePlanImageOmissions = [];
+      const pagePlanImageFallbacks = [];
+      const imageFallbackReason = new Map();
+      const textOnlyRequest = assessPagePlanVisualComposition(planResult.plan, requirement).textOnly;
+      const plannedImageNodes = collectImageNodes(planResult.plan);
+      if (textOnlyRequest) {
+        for (const node of plannedImageNodes) node.src = '';
+      } else {
+        for (const node of plannedImageNodes) {
+          const src = String(node.src ?? '').trim();
+          const existingLocal = src && !/^https:\/\//i.test(src) && fs.existsSync(path.join(ws, src));
+          if (existingLocal) {
+            const buf = fs.readFileSync(path.join(ws, src));
+            pagePlanImageFiles.set(src, buf);
+            pagePlanImageProvenance.push({ nodeId: node.id, query: node.searchQuery ?? '', provider: 'existing workspace asset', file: src, bytes: buf.length, title: node.alt ?? '', author: '项目素材', license: '用户提供', page: '', src });
+            continue;
+          }
+          if (!String(node.searchQuery ?? '').trim()) {
+            node.searchQuery = `${planResult.plan.meta.title} ${node.alt ?? ''} ${requirement}`.replace(/\s+/g, ' ').slice(0, 240);
+          }
+          node.src = '';
+        }
+      }
+      const queryGroups = new Map();
+      const seenImageQueries = new Map();
+      if (!textOnlyRequest) {
+        for (const node of plannedImageNodes) {
+          if (pagePlanImageFiles.has(String(node.src ?? ''))) continue;
+          let query = String(node.searchQuery ?? '').trim();
+          if (!query) continue;
+          const normalizedQuery = query.toLocaleLowerCase();
+          const occurrence = (seenImageQueries.get(normalizedQuery) ?? 0) + 1;
+          seenImageQueries.set(normalizedQuery, occurrence);
+          if (occurrence > 1) {
+            const suffix = ` ${String(node.alt ?? '').slice(0, 42)} distinct photo composition ${occurrence}`;
+            query = `${query.slice(0, 240 - suffix.length)}${suffix}`.replace(/\s+/g, ' ');
+            node.searchQuery = query;
+          }
+          const key = query.toLocaleLowerCase();
+          const group = queryGroups.get(key) ?? { query, nodes: [] };
+          group.nodes.push(node);
+          queryGroups.set(key, group);
+        }
+      }
+      const allImageSearchGroups = [...queryGroups.values()];
+      const imageSearchGroups = allImageSearchGroups.slice(0, 8);
+      const omittedImageSearchGroups = allImageSearchGroups.slice(8);
+      for (const group of omittedImageSearchGroups) {
+        for (const node of group.nodes) {
+          node.src = '';
+          imageFallbackReason.set(node.id, 'search_limit');
+        }
+      }
+      if (omittedImageSearchGroups.length) {
+        emit(425, [{ type: 'log', level: 'warn', from: 'designer', message: `图片搜索请求过多，已处理前 8 个不同图位；其余图位将改用主题矢量插画。` }]);
+      }
+      if (imageSearchGroups.length) {
+        onPhase?.(`按主题搜寻配图（${imageSearchGroups.length} 个不同图位）…`);
+        const keys = getKeys();
+        const imageSearchResults = await mapPool(imageSearchGroups, 2, async (group) => {
+          const queries = imageSearchQueryCascade(group.query);
+          for (const query of queries) {
+            const skippedProviders = new Set();
+            for (let sourcePass = 0; sourcePass < 6; sourcePass++) {
+              const result = await collectImages({ query, count: 12, keys, skipProviders: [...skippedProviders] });
+              if (!result.images.length) break;
+              const { ranked } = rankCandidates(result.images, { targets: imageSearchTargets(query) });
+              const candidates = ranked.filter((item) => imageCandidateUsable(item, query))
+                .sort((a, b) => imageCandidateRelevance(b.cand, group.query) - imageCandidateRelevance(a.cand, group.query))
+                .map((item) => item.cand);
+              if (candidates.length) return { group, provider: result.provider, candidates };
+              if (!result.provider || result.provider === 'none') break;
+              skippedProviders.add(result.provider);
+              if (skippedProviders.size >= 6) break;
+            }
+          }
+          return { group, candidate: null };
+        });
+
+        const selectedPhotoSignatures = new Set();
+        for (const outcome of imageSearchResults) {
+          if (!outcome) continue;
+          const { group } = outcome;
+          const candidates = outcome.candidates ?? [];
+          const candidate = candidates.find((item) => {
+            const signature = String(item?.src ?? item?.url ?? item?.page ?? '').trim().toLowerCase();
+            return !signature || !selectedPhotoSignatures.has(signature);
+          }) ?? null;
+          const signature = candidate && String(candidate.src ?? candidate.url ?? candidate.page ?? '').trim().toLowerCase();
+          if (signature) selectedPhotoSignatures.add(signature);
+          if (!candidate) {
+            for (const node of group.nodes) {
+              node.src = '';
+              imageFallbackReason.set(node.id, 'no_suitable_result');
+            }
+            emit(425, [{ type: 'log', level: 'warn', from: 'designer', message: `图片搜索未找到足够相关且清晰的结果（${group.query.slice(0, 80)}）；将绘制对应主题的原创矢量插画。` }]);
+            continue;
+          }
+          const sceneMismatch = hasUnsupportedSceneDetails(candidate, group.query);
+          const verifiedTitle = sourceTitle(candidate);
+          const file = `images/pp-search-${group.nodes[0].id}.${candidate.ext}`;
+          pagePlanImageFiles.set(file, candidate.buf);
+          for (const node of group.nodes) {
+            node.src = file;
+            if (sceneMismatch && verifiedTitle) {
+              node.alt = `${verifiedTitle} 实拍照片`;
+              node.caption = `${verifiedTitle}（实拍图）`;
+            }
+            pagePlanImageCredits.set(node.id, { author: candidate.author, license: candidate.license, page: candidate.page });
+            pagePlanImageProvenance.push({
+              nodeId: node.id,
+              query: group.query,
+              provider: outcome.provider,
+              file,
+              bytes: candidate.buf.length,
+              title: candidate.title,
+              author: candidate.author,
+              license: candidate.license,
+              page: candidate.page,
+              src: candidate.page,
+            });
+          }
+        }
+      }
+
+      if (!textOnlyRequest) {
+        for (const node of plannedImageNodes) {
+          const src = String(node.src ?? '').trim();
+          if (src && !/^https:\/\//i.test(src) && !pagePlanImageFiles.has(src) && !fs.existsSync(path.join(ws, src))) {
+            node.src = '';
+            imageFallbackReason.set(node.id, 'source_asset_missing');
+          }
+        }
+      }
+      // 先下载模型提供的 HTTPS 图片；下载失败的图会在下一步替换为本地原创插画。
+      const downloadedAssets = await bundlePagePlanAssets(planResult.plan, {
+        existing: (rel) => pagePlanImageFiles.has(rel) || fs.existsSync(path.join(ws, rel)),
+      });
+      const unresolvedImageIds = new Set(downloadedAssets.unresolved.map((item) => item.nodeId));
+      const imageNodes = plannedImageNodes;
+      if (!textOnlyRequest) {
+        for (const node of imageNodes) {
+          const missingLocalAsset = unresolvedImageIds.has(node.id);
+          if (missingLocalAsset) node.src = '';
+          const currentSrc = String(node.src ?? '').trim();
+          if (currentSrc && !/^https:\/\//i.test(currentSrc) && !pagePlanImageFiles.has(currentSrc) && !fs.existsSync(path.join(ws, currentSrc))) {
+            node.src = '';
+            imageFallbackReason.set(node.id, 'source_asset_missing');
+          }
+          if (String(node.src ?? '').trim()) continue;
+
+          const query = String(node.searchQuery ?? node.alt ?? planResult.plan.meta.title).trim();
+          const file = `images/pp-illustration-${node.id}.svg`;
+          const buf = createTopicIllustration({ query, theme: planResult.plan.theme });
+          pagePlanImageFiles.set(file, buf);
+          node.src = file;
+          pagePlanImageCredits.set(node.id, { author: 'OrchestrAI', license: '原创矢量插画', page: '' });
+          const reason = missingLocalAsset ? 'source_download_failed' : (imageFallbackReason.get(node.id) ?? 'no_suitable_photo');
+          pagePlanImageFallbacks.push({ nodeId: node.id, query, reason, file });
+          pagePlanImageProvenance.push({
+            nodeId: node.id,
+            query,
+            provider: 'OrchestrAI topic illustration',
+            file,
+            bytes: buf.length,
+            title: `${query} · 主题矢量插画`,
+            author: 'OrchestrAI',
+            license: '原创矢量插画',
+            page: '',
+            src: file,
+          });
+        }
+      }
+      const fallbackNodeIds = new Set(pagePlanImageFallbacks.map((item) => item.nodeId));
+      const assetBundle = {
+        ...downloadedAssets,
+        unresolved: downloadedAssets.unresolved.filter((item) => !fallbackNodeIds.has(item.nodeId)),
+      };
+      const finalVisualAssessment = assessPagePlanVisualComposition(planResult.plan, requirement, { includeSearchIntents: false });
+      if (!finalVisualAssessment.ok) {
+        throw new PagePlanGenerationError('PAGEPLAN_VISUAL_COMPOSITION_INSUFFICIENT', finalVisualAssessment.reason, finalVisualAssessment.metrics);
+      }
+
+      const rendered = renderPagePlan(planResult.plan, { imageCredits: pagePlanImageCredits });
+      files = { ...rendered.files };
+      for (const a of assetBundle.assets) files[a.file] = a.buf;
+      for (const [file, buf] of pagePlanImageFiles) files[file] = buf;
+      if (assetBundle.unresolved.length) {
+        emit(425, [
+          { type: 'log', level: 'warn', from: 'frontend', message: `⚠ ${assetBundle.unresolved.length} 张图片未能落地：${assetBundle.unresolved.map((u) => u.nodeId).join('、')}` },
+        ]);
+      }
+      // PagePlan 产物是单页静态站点：为交付物生成真实可执行的一致性测试，
+      // 断言"计划里的 section/主题/披露项确实落到了产物 HTML"，而不是重跑渲染器。
+      const planSections = [];
+      const collectPlanSections = (nodes) => {
+        for (const n of nodes ?? []) {
+          if (n.type === 'section' && n.title) planSections.push({ id: n.id, title: n.title });
+          collectPlanSections(n.children);
+        }
+      };
+      collectPlanSections(planResult.plan.nodes);
+      const hasScene3d = rendered.report.features?.scene3d?.scenes > 0;
+
+      // ---- Scene Brief 交叉校验 + 几何/构图检查（M7-B4C）----
+      // 自动检查只覆盖可量化的硬伤；美术完成度必须人工看截图，不在此处假装通过。
+      let sceneBrief = null;
+      let sceneReview = null;
+      if (hasScene3d) {
+        onPhase?.('渲染检查：校对创作意图与场景几何…');
+        const findSceneNode = (nodes) => {
+          for (const n of nodes ?? []) {
+            if (n.type === 'scene3d') return n;
+            const inChildren = findSceneNode(n.children);
+            if (inChildren) return inChildren;
+            if (n.type === 'tabs') {
+              for (const panel of n.panels ?? []) {
+                const inPanel = findSceneNode(panel.children);
+                if (inPanel) return inPanel;
+              }
+            }
+          }
+          return null;
+        };
+        const sceneNode = findSceneNode(planResult.plan.nodes);
+        sceneBrief = planResult.plan.sceneBrief ?? null;
+
+        // 缺 sceneBrief 是**合法的向后兼容情形**（旧计划本来就没有这个字段）：
+        // 只作为 warning 记录"创作意图不可追溯"，绝不因此阻断交付。
+        // 只有"brief 存在但与场景矛盾"才阻断——那是真的自相矛盾。
+        const briefCheck = sceneBrief
+          ? crossCheckBriefAgainstScene(sceneBrief, sceneNode)
+          : { ok: true, findings: [{ code: 'NO_SCENE_BRIEF', severity: 'warning', detail: '模型未提供 sceneBrief：创作意图不可追溯，构图质量无法核对（不影响交付）' }] };
+        const geometry = checkSceneGeometry(sceneNode, sceneBrief);
+        const review = summariseSceneReview({ geometry, rendering: null });
+        sceneReview = {
+          brief: sceneBrief,
+          briefCheck,
+          geometry: geometry.metrics,
+          findings: [...briefCheck.findings, ...review.findings],
+          ok: briefCheck.ok && review.ok,
+        };
+
+        const briefBlocking = briefCheck.findings.filter((f) => f.severity === 'blocking');
+        const layerText = sceneBrief ? [...new Set(sceneBrief.objects.map((o) => o.layer))].join('/') : '-';
+        const briefMsg = sceneBrief
+          ? '🎬 Scene Brief：' + sceneBrief.theme + '｜主体 ' + sceneBrief.subject.id + '｜层深 ' + layerText + '｜材质 ' + sceneBrief.materials.length + ' 种'
+          : '⚠ 模型未提供 sceneBrief：创作意图不可追溯（几何检查仍会执行）';
+        emit(415, [
+          { type: 'log', level: briefBlocking.length ? 'warn' : (sceneBrief ? 'success' : 'warn'), from: 'designer', message: briefMsg },
+          { type: 'gate_result', gate: 'scene_brief', passed: briefCheck.ok, detail: briefCheck.findings.length ? briefCheck.findings.map((f) => f.code + ': ' + f.detail).join(' · ').slice(0, 400) : 'brief 与场景一致' },
+          { type: 'log', level: geometry.findings.some((f) => f.severity === 'blocking') ? 'warn' : 'info', from: 'supervisor', message: '📐 几何检查：' + geometry.metrics.objects + ' 对象 / 复合原语 ' + Math.round(geometry.metrics.compositeRatio * 100) + '% / 材质 ' + geometry.metrics.materials.length + ' 种 → ' + geometry.findings.length + ' 项发现（' + geometry.findings.filter((f) => f.severity === 'blocking').length + ' 阻断）' },
+        ]);
+
+        if (!briefCheck.ok) {
+          const reason = 'Scene Brief 与场景不一致：' + briefBlocking.map((f) => f.detail).join('；').slice(0, 220);
+          emit(416, [
+            { type: 'log', level: 'error', from: 'supervisor', message: '⛔ ' + reason + '——终止交付，不回退模板' },
+            { type: 'task_status_changed', taskId: 'T1', from: 'in_progress', to: 'blocked', reason },
+          ]);
+          persistProject(cues, {
+            projectId, spec, sentence, files, ws, projectTitle,
+            delivered: false, deliveryVersion: null, previewUrl: null,
+            testSummary: reason, hadDefectFix: false, firstOk: false,
+          });
+          return { projectId, cues, previewUrl: null, workspace: ws, failed: true, blocked: 'scene_brief_mismatch', reason };
+        }
+      }
+      // 页面里唯一允许的脚本 = 报告里声明的 runtime（可能含交互运行时）
+      const renderedRuntime = (() => {
+        const m = rendered.files['index.html'].match(/<script>([\s\S]*?)<\/script>/);
+        return m ? m[1] : '';
+      })();
+      files['test/pageplan.test.mjs'] = buildWorkspaceTest({
+        sectionIds: planSections.map((s) => s.id),
+        title: planResult.plan.meta.title,
+        themeVars: ['--pp-bg', '--pp-surface', '--pp-text', '--pp-muted', '--pp-accent', '--pp-accent-soft'],
+        unsupported: planResult.plan.unsupportedRequests,
+        scene3dRuntime: renderedRuntime,
+      });
+      pagePlanExpect = {
+        sectionIds: planSections.map((s) => s.id),
+        title: planResult.plan.meta.title,
+        scene3dRuntime: renderedRuntime,
+        imageRequired: !textOnlyRequest,
+      };
+      // 项目元数据与页面保持一致：标题与"功能集"都应来自模型计划，而不是模板默认值
+      spec.title = projectTitle || planResult.plan.meta.title;
+      spec.features = planSections.map((s) => s.title);
+      spec.matchedBy = `PagePlan 结构化生成（${planResult.metadata.provider}/${planResult.metadata.model}）`;
+      pagePlanReport = {
+        ...rendered.report,
+        meta: planResult.metadata,
+        styleOrigin: spec.styleOrigin ?? null,
+        sections: planSections,
+        assets: {
+          bundled: [...assetBundle.assets.map(({ buf, ...rest }) => rest), ...pagePlanImageProvenance],
+          unresolved: assetBundle.unresolved,
+          omitted: pagePlanImageOmissions,
+          fallbacks: pagePlanImageFallbacks,
+        },
+        // M7-B4C：创作意图 + 交叉校验 + 几何检查必须随报告落盘，供事后审计
+        sceneReview,
+      };
+      spec.pagePlanReport = pagePlanReport;
+      spec.pagePlanUsed = true;
+      spec.pagePlanMeta = planResult.metadata;
+      emit(420, [
+        { type: 'agent_run_started', runId: 'R-P1', taskId: 'T1', role: 'frontend', model: { provider: planResult.metadata.provider, modelId: planResult.metadata.model } },
+        { type: 'agent_step', runId: 'R-P1', taskId: 'T1', role: 'frontend', step: { at: 0, kind: 'tool', tool: 'pageplan', detail: `节点数 ${rendered.report.nodeCount}，插图 ${rendered.report.features.images} 张，尝试 ${planResult.metadata.attempts} 次，${planResult.metadata.elapsedMs}ms${hasScene3d ? `，含真实 WebGL 场景（${rendered.report.features.scene3d.objects} 个对象）` : ''}` } },
+        { type: 'agent_run_ended', runId: 'R-P1', taskId: 'T1', role: 'frontend', status: 'succeeded', usage: { inputTokens: null, outputTokens: null, costUsd: 0, usageStatus: planResult.metadata.usageStatus } },
+        { type: 'log', level: 'success', from: 'frontend', message: `🧩 PagePlan 渲染完成：${rendered.report.nodeCount} 个节点 · 插图 ${rendered.report.features.images} 张 · 风格 ${planResult.plan.theme.styleId}（${spec.styleOrigin === 'user-locked' ? '用户锁定' : '自动'}）${hasScene3d ? ` · 3D 场景 ${rendered.report.features.scene3d.objects} 对象（WebGL1 本地渲染）` : ''}` },
+      ]);
+    } catch (e) {
+      const code = e?.code ?? 'PAGEPLAN_UNKNOWN';
+      const detail = String(e?.message ?? e).slice(0, 200);
+      emit(430, [
+        { type: 'log', level: 'error', from: 'supervisor', message: `⛔ PagePlan 失败（${code}）：${detail}——终止交付，不回退模板` },
+        { type: 'gate_result', gate: 'pageplan', passed: false, detail: `${code}: ${detail}` },
+        { type: 'task_status_changed', taskId: 'T1', from: 'in_progress', to: 'blocked', reason: `PagePlan ${code}` },
+      ]);
+      persistProject(cues, {
+        projectId, spec, sentence, files: {}, ws, projectTitle,
+        delivered: false, deliveryVersion: null, previewUrl: null,
+        testSummary: `PagePlan 生成失败，未产出页面：${code} — ${detail}`,
+        hadDefectFix: false, firstOk: false,
+      });
+      return {
+        projectId, cues, previewUrl: null, workspace: ws, failed: true,
+        blocked: 'pageplan_failed', reason: `PagePlan 失败（${code}）：${detail}`,
+      };
+    }
+  } else {
+    files = buildFiles(spec, { defect: spec.plantDefect });
+  }
   // 采集到的图片真实文件并入产物清单
   for (const img of spec.images ?? []) files[img.file] = img.buf;
   const totalLines = Object.values(files).reduce(
@@ -354,18 +950,20 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       type: 'requirement_drafted',
       requirement: {
         id: 'RV-1', version: 'v0.1', userText: sentence.length > 1000 ? sentence.slice(0, 1000) + `…（共 ${sentence.length} 字符）` : sentence,
-        overview: `OrchestrAI 生成应用：需求 ${sentence.length} 字符 → 识别为「${spec.template.meta.name}」（${spec.matchedBy}）。${isGallery ? `素材主题「${spec.galleryQuery}」，图源：${spec.provider}（${spec.images.length} 张）。` : ''}`,
+        overview: usePagePlan
+          ? `OrchestrAI 生成应用：需求 ${sentence.length} 字符 → 由模型产出 PagePlan（${spec.matchedBy}）。页面结构由节点树决定：${(pagePlanReport?.sections ?? []).length} 个章节 / ${pagePlanReport?.nodeCount ?? 0} 个节点。`
+          : `OrchestrAI 生成应用：需求 ${sentence.length} 字符 → 识别为「${spec.template.meta.name}」（${spec.matchedBy}）。${isGallery ? `素材主题「${spec.galleryQuery}」，图源：${spec.provider}（${(spec.images ?? []).length} 张）。` : ''}`,
         userStories: [{
           id: 'US1',
-          story: `作为用户，我可以使用${spec.title}完成${spec.template.meta.name}的核心操作`,
+          story: `作为用户，我可以使用${spec.title}${usePagePlan ? '浏览页面全部章节内容' : `完成${spec.template.meta.name}的核心操作`}`,
           acceptance: spec.features,
         }],
         assumptions: ['单用户本地使用，无账号体系', '生成的应用为免构建静态 Web App（可直接预览）', `功能集：${spec.features.join('；')}`],
-        risks: spec.plantDefect ? ['需求包含“预设缺陷”：首次测试将真实失败，用于验证门禁拦截'] : ['模板化生成，复杂个性化需求需后续接入大模型'],
+        risks: spec.plantDefect ? ['需求包含“预设缺陷”：首次测试将真实失败，用于验证门禁拦截'] : (usePagePlan ? ['PagePlan 渲染器当前仅覆盖内置 14 类节点，3D/自定义交互需扩展渲染器'] : ['模板化生成，复杂个性化需求需后续接入大模型']),
         status: 'draft', createdAt: 0,
       },
     },
-    { type: 'log', level: 'info', from: 'supervisor', message: `意图识别：${spec.matchedBy}${spec.viaLLM === false && spec.llmFallbackReason ? `（LLM 调用失败已回退规则：${spec.llmFallbackReason}）` : spec.viaLLM ? '' : '（未配置 AI Key，规则识别）'}；标题「${spec.title}」；视觉风格「${styleDef.name}」；动效「${({ off: '关闭', subtle: '柔和', full: '炫动（粒子避让+拖尾+涟漪）' })[spec.resolvedFx ?? 'subtle']}」${spec.plantDefect ? '；⚠ 检测到预设缺陷指令' : ''}` },
+    { type: 'log', level: 'info', from: 'supervisor', message: `${usePagePlan ? '页面规划' : '意图识别'}：${spec.matchedBy}${!usePagePlan && spec.viaLLM === false && spec.llmFallbackReason ? `（LLM 调用失败已回退规则：${spec.llmFallbackReason}）` : ''}；标题「${spec.title}」；视觉风格「${styleDef.name}」；动效「${({ off: '关闭', subtle: '柔和', full: '炫动（粒子避让+拖尾+涟漪）' })[spec.resolvedFx ?? 'subtle']}」${spec.plantDefect ? '；⚠ 检测到预设缺陷指令' : ''}` },
   ]);
 
   // ---- 阶段 2：计划 ----
@@ -416,16 +1014,22 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
   // ---- 阶段 5：静态质量门禁（T2 前置）+ 真实测试（T2）----
   onPhase?.('写入真实文件到工作区…');
   // 静态质量门禁（已写盘后检查）
-  const problems = staticCheck(ws);
+  // PagePlan 产物契约是"单页静态站点"（无 PWA 清单/SW/图标），必须用对应的门禁，
+  // 否则会把合法产物误判为缺文件。两条路径都是真实文件系统检查。
+  const problems = usePagePlan
+    ? staticCheckPagePlan(ws, pagePlanExpect ?? {})
+    : staticCheck(ws);
   emit(260, [
     { type: 'phase_changed', phase: '阶段 5 · 静态质量门禁 + 独立测试', status: 'integrating' },
-    { type: 'agent_state_changed', role: 'tester', status: 'analyzing', taskId: 'T2', detail: '资源完整性检查：PWA 清单 / 图标 / SW / 测试文件' },
+    { type: 'agent_state_changed', role: 'tester', status: 'analyzing', taskId: 'T2', detail: usePagePlan ? 'PagePlan 产物检查：结构 / 安全 / 锚点 / 主题一致性' : '资源完整性检查：PWA 清单 / 图标 / SW / 测试文件' },
     {
       type: 'gate_result',
       gate: 'static',
       passed: problems.length === 0,
       detail: problems.length === 0
-        ? '静态门禁通过：manifest/SW/双尺寸图标/测试文件齐全，PNG 尺寸校验正确，index.html 含安装标记'
+        ? (usePagePlan
+          ? `静态门禁通过：HTML 结构完整、无脚本/内联处理器、锚点可达、主题变量合法、${(pagePlanExpect?.sectionIds ?? []).length} 个计划 section 均已渲染${pagePlanExpect?.imageRequired ? '、至少一张本地图片存在且已落地' : ''}`
+          : '静态门禁通过：manifest/SW/双尺寸图标/测试文件齐全，PNG 尺寸校验正确，index.html 含安装标记')
         : `静态门禁未通过：${problems.join('；')}`,
       taskId: 'T2',
     },
@@ -472,6 +1076,21 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
   };
 
   const firstOk = await doTest('R-02', 1, undefined);
+
+  if (!firstOk && usePagePlan) {
+    // PagePlan 产物没有模板 logic.mjs 可"修复"：测试失败说明计划与产物不一致，
+    // 只能阻断交付并如实报告，不能用模板代码去糊弄测试。
+    emit(200, [
+      { type: 'log', level: 'error', from: 'supervisor', message: '⛔ PagePlan 产物测试失败：计划与落盘产物不一致，终止交付（不回退模板）' },
+      { type: 'task_status_changed', taskId: 'T2', from: 'in_progress', to: 'blocked', reason: 'PagePlan 产物一致性测试失败' },
+    ]);
+    persistProject(cues, {
+      projectId, spec, sentence, files, ws, projectTitle,
+      delivered: false, deliveryVersion: null, previewUrl: null,
+      testSummary: 'PagePlan 产物一致性测试失败，未交付', hadDefectFix: false, firstOk,
+    });
+    return { projectId, cues, previewUrl: null, workspace: ws, failed: true, blocked: 'pageplan_test_failed', reason: 'PagePlan 产物一致性测试失败' };
+  }
 
   if (!firstOk) {
     // ---- 真实缺陷 → 门禁拦截 → 退回 T1 → 修复重跑 ----
@@ -532,6 +1151,36 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     { type: 'agent_state_changed', role: 'supervisor', status: 'idle' },
   ]);
 
+  // ---- 需求覆盖审计（M7-B4A 静态可达性 → M7-B4B 质量轮升级为可信门禁）----
+  // 两层判定：
+  //   1) 静态可达性（reqcoverage.mjs）：关键字+结构初筛，仅用于发现"需求写了但页面完全没有痕迹"；
+  //   2) 可信覆盖状态（coverage-status.mjs）：只有 required 需求 + 真实证据（browser/integration/manual）
+  //      才算 implemented_verified；required 缺证据或被模型降级为 unsupported → 阻断交付。
+  // 静态匹配不能单独宣称语义等价，所以它不再拥有放行权。
+  const requirementAcceptance = (() => {
+    const built = cues.flatMap((c) => c.events).find((e) => e.type === 'requirement_drafted')?.requirement;
+    return built?.userStories?.flatMap((u) => u.acceptance ?? []) ?? [];
+  })();
+  const coverage = auditRequirementCoverage(requirement, files, requirementAcceptance);
+  spec.coverage = coverage;
+  // 命名澄清（M7-B4C）：这一栏是基于关键字的**静态启发式提示**，没有阻断权。
+  // 有阻断权的是后面的 required_coverage（基于可信证据）。两者同名会造成误读，
+  // 因此这里改名为 requirement_hints，语义与阻断逻辑完全不变。
+  emit(292, [
+    { type: 'log', level: coverage.uncovered.length ? 'warn' : 'info', from: 'supervisor', message: `📋 ${coverage.summary}` },
+    {
+      type: 'gate_result', gate: 'requirement_hints',
+      advisory: true,
+      blocking: false,
+      passed: coverage.uncovered.length === 0,
+      detail: coverage.items.map((i) => `${i.label}:${i.status}(${i.reached}/${i.required})`).join(' · ') || '无能力项声明',
+    },
+  ]);
+  const coverageWarning = coverage.uncovered.length
+    ? `需求覆盖缺口：${coverage.uncovered.map((i) => `${i.label}（证据 ${i.reached}/${i.required}）`).join('、')}`
+    : '';
+
+
   // ---- W2【交付可靠性】必需的素材缺失 → 阻断交付（不能把缺图的页面当完整交付）----
   // 说明：死按钮启发式仍为告警不阻断（避免误伤）；此处仅拦「清单引用但产物不存在」的硬缺失。
   if (audit.missingImages.length > 0) {
@@ -582,6 +1231,86 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     return { projectId, cues, previewUrl: null, workspace: ws, failed: true };
   }
 
+  // ---- P0 硬闸：离线交付的素材必须全部打包（不依赖 ORCHESTRAI_RENDERCHECK）----
+  // 为什么必须在 pipeline 里拦：渲染门禁可以关（离线环境/无浏览器），
+  // 但"ZIP 里缺资源"是客观事实，与能不能开浏览器无关。之前靠 rendercheck 兜底，
+  // 开关一关就会静默交付缺图页面（GAP-AUDIT-v2 §4）。
+  if (usePagePlan) {
+    try {
+      const inventory = (pagePlanReport?.assets?.bundled ?? []).map((a) => ({
+        id: a.nodeId, src: a.src, path: a.file, resolved: true, required: true,
+      }));
+      const unresolved = (pagePlanReport?.assets?.unresolved ?? []).map((u) => ({
+        id: u.nodeId, src: u.src, reason: u.reason, required: true,
+      }));
+      const check = assertAssetsResolved({ assets: inventory, unresolved, bundleFiles: files, offlineDelivery: true });
+      emit(426, [{ type: 'gate_result', gate: 'asset_resolution', passed: true, detail: '素材门禁通过：' + check.assetCount + ' 个引用全部打包进交付物' }]);
+    } catch (e) {
+      const code = e?.code ?? 'PAGEPLAN_ASSET_UNRESOLVED';
+      const detail = String(e?.message ?? e).slice(0, 200);
+      emit(427, [
+        { type: 'log', level: 'error', from: 'supervisor', message: '⛔ 素材未全部解析（' + code + '）：' + detail + '——离线交付必须完整，终止' },
+        { type: 'gate_result', gate: 'asset_resolution', passed: false, detail: code + ': ' + detail },
+        { type: 'task_status_changed', taskId: 'T3', from: 'pending', to: 'blocked', reason: '素材未全部解析' },
+      ]);
+      persistProject(cues, {
+        projectId, spec, sentence, files, ws, projectTitle,
+        delivered: false, deliveryVersion: null, previewUrl: null,
+        testSummary: '素材门禁阻断：' + detail, hadDefectFix: false, firstOk: false,
+      });
+      return { projectId, cues, previewUrl: null, workspace: ws, failed: true, blocked: 'asset_unresolved', reason: detail };
+    }
+  }
+
+  // ---- P0 硬闸：required 需求不得与 delivered=true 并存 ----
+  // 触发条件（任一）：required 需求缺真实证据 / 被模型标为 unsupported / 与已实现状态冲突。
+  // 只有可信调用方标记 required 的需求才有阻断权；非必需项仍只披露（避免误伤探索性需求）。
+  const requiredRequirements = Array.isArray(requiredRequirementIds) && requiredRequirementIds.length
+    ? requiredRequirementIds.map((id) => ({ id, required: true }))
+    : [];
+  let coverageStatus = null;
+  if (usePagePlan && requiredRequirements.length) {
+    const evidence = [];
+    // PagePlan 产物：3D 场景有真实 Edge 验收才算 browser 证据；渲染门禁 pass 算 integration 证据
+    const sceneReport = pagePlanReport?.features?.scene3d;
+    if (sceneReport?.scenes > 0) {
+      evidence.push({ requirementId: 'REQ-3D', kind: 'browser', passed: Boolean(sceneReport.verifiedInBrowser), artifact: sceneReport.verifiedInBrowser ? 'docs/m7-b4bq-evidence' : '' });
+    }
+    if (renderGate?.gate?.status === 'pass') {
+      evidence.push({ requirementId: 'REQ-3D', kind: 'integration', passed: true, artifact: `workspaces/${projectId}/_rendercheck` });
+    }
+    try {
+      coverageStatus = evaluateRequirementCoverage({
+        requirements: requiredRequirements,
+        evidence: evidence.filter((e) => e.passed && e.artifact),
+        unsupportedRequests: pagePlanReport?.unsupportedRequests ?? [],
+      });
+    } catch (e) {
+      emit(292, [{ type: 'log', level: 'warn', from: 'supervisor', message: `覆盖状态判定失败：${String(e?.message ?? e).slice(0, 120)}` }]);
+    }
+    if (coverageStatus) {
+      spec.coverageStatus = coverageStatus;
+      emit(292, [{
+        type: 'gate_result', gate: 'required_coverage', passed: !coverageStatus.blocking,
+        detail: coverageStatus.requirements.map((r) => `${r.requirementId}:${r.status}`).join(' · '),
+      }]);
+      if (coverageStatus.blocking) {
+        const blockedIds = coverageStatus.requirements.filter((r) => r.blocking).map((r) => `${r.requirementId}(${r.status})`);
+        const reason = `必需需求未满足，禁止交付：${blockedIds.join('、')}`;
+        emit(295, [
+          { type: 'log', level: 'error', from: 'supervisor', message: `⛔ ${reason}` },
+          { type: 'task_status_changed', taskId: 'T3', from: 'pending', to: 'blocked', reason },
+        ]);
+        persistProject(cues, {
+          projectId, spec, sentence, files, ws, projectTitle,
+          delivered: false, deliveryVersion: null, previewUrl: null,
+          testSummary: reason, hadDefectFix: !firstOk, firstOk,
+        });
+        return { projectId, cues, previewUrl: null, workspace: ws, failed: true, blocked: 'required_coverage_blocked', reason };
+      }
+    }
+  }
+
   // ---- 交付（T3）----
   const manifest = Object.keys(files).map((f) => `workspaces/${projectId}/${f}`);
   const previewUrl = `/preview/${projectId}/`;
@@ -608,16 +1337,39 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         version: '1.0.0',
         manifest: [...manifest, `在线预览：${previewUrl}`],
         knownLimits: [
-          '基于模板生成（P4 接入大模型后支持任意需求）',
-          spec.plantDefect ? '包含一次真实缺陷修复记录（预设缺陷演示）' : '功能范围为模板默认集',
-          '数据保存在浏览器本地',
-          ...(spec.imageSource === 'placeholder'
+          ...(usePagePlan
+            ? [
+              `页面结构由模型产出的 PagePlan 节点树决定（${pagePlanReport?.nodeCount ?? 0} 个节点，schema ${pagePlanReport?.schemaVersion ?? 'orchestrai.pageplan.v1'}）`,
+              ...(pagePlanReport?.features?.scene3d?.scenes
+                ? [`3D 场景：${pagePlanReport.features.scene3d.objects} 个对象的真实 WebGL1 网格渲染（本地无依赖运行时，非静态图）；材质为风格化高光，不是物理精确折射，也不支持外部 3D 模型导入`]
+                : []),
+              ...(pagePlanReport?.unsupportedRequests ?? [])
+                .filter((u) => u.severity === 'nonblocking')
+                .map((u) => `未实现：${u.capability} —— ${u.reason}`),
+            ]
+            : ['基于模板生成（P4 接入大模型后支持任意需求）']),
+          ...(usePagePlan
+            ? (pagePlanReport?.assets?.unresolved?.length
+              ? [`⚠ ${pagePlanReport.assets.unresolved.length} 张图片未能落地，页面仍引用外链：${pagePlanReport.assets.unresolved.map((u) => u.nodeId).join('、')}（离线打开将缺图）`]
+              : (pagePlanReport?.assets?.bundled?.length
+                ? [`配图已打包进交付物（${pagePlanReport.assets.bundled.length} 张），离线可正常显示`]
+                : []))
+            : (spec.plantDefect ? ['包含一次真实缺陷修复记录（预设缺陷演示）'] : ['功能范围为模板默认集', '数据保存在浏览器本地'])),
+          ...(usePagePlan && pagePlanReport?.assets?.fallbacks?.length
+            ? [`${pagePlanReport.assets.fallbacks.length} 个未获合适网络素材的图位使用了本地绘制的主题矢量插画`]
+            : []),
+          ...(usePagePlan && pagePlanReport?.assets?.omitted?.length
+            ? [`⚠ ${pagePlanReport.assets.omitted.length} 个可选图片图位未找到合适结果或超出搜索范围，已从页面省略：${pagePlanReport.assets.omitted.flatMap((o) => o.nodeIds ?? []).join('、')}`]
+            : []),
+          ...(!usePagePlan && spec.imageSource === 'placeholder'
             ? ['⚠ 网络图源不可达：当前使用本地生成示意卡；在可联网环境重新生成、或配置 Pexels/Unsplash Key 可获得真实照片']
-            : spec.imageSource === 'network'
+            : !usePagePlan && spec.imageSource === 'network'
               ? [`图片来自 ${spec.provider}，署名与来源页在灯箱内展示；商用前请自行核对各图许可证`]
               : []),
         ],
-        testSummary: `真实测试 node --test：${firstOk ? '首次全绿' : '首次失败 → 修复 → 回归通过'}（见测试面板真实日志）`,
+        testSummary: usePagePlan
+          ? `PagePlan 产物一致性测试 node --test：${firstOk ? '首次全绿' : '存在失败'}（见测试面板真实日志）`
+          : `真实测试 node --test：${firstOk ? '首次全绿' : '首次失败 → 修复 → 回归通过'}（见测试面板真实日志）`,
         packagedAt: Date.now(),
       },
     },
@@ -625,8 +1377,13 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     { type: 'log', level: 'success', from: 'supervisor', message: `「${spec.title}」已真实交付！点击「预览」标签页立即使用你的 App 🎉` },
   ]);
 
+  if (coverageWarning) {
+    emit(296, [{ type: 'log', level: 'warn', from: 'supervisor', message: `⚠ ${coverageWarning}（已交付，但功能完成度需人工复核）` }]);
+  }
   persistProject(cues, {
     projectId, spec, sentence, files, ws, projectTitle,
+    // 交付态必须写入，否则主页列表/恢复时读不到（此前漏传导致 project.json 缺这三个字段）
+    delivered: true, deliveryVersion: '1.0.0', previewUrl,
     testSummary: `真实测试 node --test：${firstOk ? '首次全绿' : '首次失败 → 修复 → 回归通过'}；视觉审查：${audit.ok ? `${audit.buttons.length} 个按键全部绑定` : audit.summary}${renderGate ? `；渲染门禁[${renderGate.gate.status}]：${renderGate.gate.reason.slice(0, 60)}` : '；渲染门禁：未执行（开关关闭）'}`,
     hadDefectFix: !firstOk, firstOk,
   });
@@ -637,18 +1394,38 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
 /** 项目元数据 + 事件时间线持久化（主页列表与状态恢复的数据源） */
 function persistProject(cues, o) {
   const { projectTitle } = o;
-  const nameSuffix = o.projectTitle ? '' : `（${o.spec.template.meta.name}）`;
+  const nameSuffix = o.projectTitle ? '' : `（${o.spec.pagePlanUsed ? 'PagePlan 结构化页面' : o.spec.template.meta.name}）`;
   const meta = {
     id: o.projectId,
     name: `${o.spec.title}${nameSuffix}`,
     sentence: o.sentence,
-    type: o.spec.type,
-    typeName: o.spec.template.meta.name,
+    // PagePlan 模式下 type/typeName 必须反映真实产物来源，否则列表与详情会继续显示旧模板名
+    type: o.spec.pagePlanUsed ? 'pageplan' : o.spec.type,
+    typeName: o.spec.pagePlanUsed ? 'PagePlan 结构化页面' : o.spec.template.meta.name,
     styleId: o.spec.styleDef?.id ?? null,
     styleName: o.spec.styleDef?.name ?? null,
+    // 风格来源审计：user-locked = 用户开工前指定（不可覆盖）；auto-detected / default 为推断
+    styleOrigin: o.spec.styleOrigin ?? null,
+    userChoices: o.spec.styleLocked || o.spec.fontLocked || o.spec.directionLocked
+      ? { style: o.spec.styleLocked ? o.spec.styleId : null, font: o.spec.fontLocked ? o.spec.fontMood : null, direction: o.spec.directionLocked ? o.spec.pageDirection : null }
+      : null,
     fxLevel: o.spec.resolvedFx ?? 'subtle',
     viaLLM: o.spec.viaLLM ?? false,
     llmProvider: o.spec.llmProvider ?? null,
+    // PagePlan 元信息：便于前端与审计区分"模型决定的结构"与"模板填充"
+    pagePlan: o.spec.pagePlanUsed
+      ? {
+        schemaVersion: o.spec.pagePlanReport?.schemaVersion ?? null,
+        nodeCount: o.spec.pagePlanReport?.nodeCount ?? null,
+        sections: (o.spec.pagePlanReport?.sections ?? []).map((s) => s.title),
+        unsupported: (o.spec.pagePlanReport?.unsupportedRequests ?? []).map((u) => ({ capability: u.capability, severity: u.severity })),
+        // 3D 是"单元测试 + 真实 Edge 验收"分开记的能力，不能只看 scenes>0 就宣称已验证
+        scene3d: o.spec.pagePlanReport?.features?.scene3d ?? null,
+        // M7-B4C：创作意图（Scene Brief）+ 交叉校验 + 几何检查结果必须落盘，
+        // 否则"构图为什么是这样"事后完全不可审计。
+        sceneReview: o.spec.pagePlanReport?.sceneReview ?? null,
+      }
+      : null,
     createdAt: Date.now(),
     delivered: o.delivered,
     deliveryVersion: o.deliveryVersion,
@@ -658,7 +1435,9 @@ function persistProject(cues, o) {
     hadDefectFix: o.hadDefectFix,
     galleryQuery: o.spec.galleryQuery ?? null,
     imageProvider: o.spec.provider ?? null,
-    imageCount: o.spec.images?.length ?? 0,
+    imageCount: o.spec.pagePlanUsed
+      ? (o.spec.pagePlanReport?.features?.images ?? 0)
+      : (o.spec.images?.length ?? 0),
   };
   try {
     fs.writeFileSync(path.join(o.ws, 'project.json'), JSON.stringify(meta, null, 2));

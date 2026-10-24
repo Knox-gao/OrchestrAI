@@ -1,7 +1,8 @@
 /**
  * 网络图片采集器（零依赖）：
  *   适配器链 Pexels(用户key) → Unsplash(用户key) → Bing 图片(免key,直连) →
- *            Wikipedia 权威肖像(免key,经代理,需 wikiTitle) → DuckDuckGo Images(免key,经代理) → Wikimedia Commons(免key,经代理)
+ *            Reddit Images(免key,经代理) → DuckDuckGo Images(免key,经代理) → Wikimedia Commons(免key,经代理)
+ *            Wikipedia 权威肖像(免key,经代理,需 wikiTitle) 可按需插到链首
  *   任一不可达/无结果自动跳到下一个；全部失败 → 返回空（由流水线用本地程序化示意卡兜底）
  *   成品调研结论（2026-10）：portia/pyspider 均已官方归档且为定向网站抓取框架，不适用本场景，未采用；
  *   DDG 适配器借鉴 duckduckgo-images-api 的 vqd+i.js 手法；被墙源经 proxy.mjs（系统代理探测+CONNECT 隧道）出网。
@@ -234,6 +235,8 @@ async function bingSearch(query, count) {
       const page = d.purl || '';
       let host = '';
       try { host = new URL(page || d.murl || d.turl).hostname; } catch {}
+      let decodedPage = page;
+      try { decodedPage = decodeURIComponent(page); } catch { /* malformed escapes should not discard the candidate */ }
       all.push({
         url: d.murl || d.turl,
         fallbackUrl: d.turl && d.turl !== (d.murl || '') ? d.turl : null,
@@ -241,7 +244,7 @@ async function bingSearch(query, count) {
         author: host ? `来源站 ${host}` : 'Bing 图片搜索',
         license: 'via Bing 图片搜索',
         page,
-        relevant: hit(title, decodeURIComponent(page)),
+        relevant: hit(title, decodedPage),
       });
     } catch { /* 忽略解析失败的候选 */ }
   }
@@ -284,12 +287,12 @@ async function downloadImage(url) {
 
 /**
  * 采集入口。
- * 适配器链：Pexels(Key) → Unsplash(Key) → Bing 图片(免Key,直连) → DuckDuckGo(免Key,经代理) → Wikimedia Commons(免Key,经代理)
+ * 适配器链：Pexels(Key) → Unsplash(Key) → Bing 图片(免Key,直连) → Reddit(免Key,经代理) → DuckDuckGo(免Key,经代理) → Wikimedia Commons(免Key,经代理)
  * 提供 wikiTitle（英文实体名）时，"Wikipedia 权威肖像"（经代理）插到链首——文章头图天然与对象对位。
- * @returns {{images: {buf:Buffer, ext:string, title:string, author:string, license:string, page:string}[],
+ * @returns {{images: {buf:Buffer, ext:string, title:string, author:string, license:string, page:string, src?:string}[],
  *            provider: string, errors: string[], tried: string[]}}
  */
-export async function collectImages({ query, count = 10, keys = {}, wikiTitle }) {
+export async function collectImages({ query, count = 10, keys = {}, wikiTitle, skipProviders = [] }) {
   const result = { images: [], provider: 'none', errors: [], tried: [] };
   const adapters = [];
   if (wikiTitle) adapters.push({ name: 'Wikipedia 权威肖像', run: () => wikipediaPortraitCandidates(wikiTitle, count) });
@@ -299,8 +302,10 @@ export async function collectImages({ query, count = 10, keys = {}, wikiTitle })
   adapters.push({ name: 'Reddit Images', run: () => redditSearch(query, count) });
   adapters.push({ name: 'DuckDuckGo Images', run: () => ddgSearch(query, count) });
   adapters.push({ name: 'Wikimedia Commons', run: () => wikimediaSearch(query, count) });
+  const skipped = new Set(Array.isArray(skipProviders) ? skipProviders : []);
+  const availableAdapters = adapters.filter((adapter) => !skipped.has(adapter.name));
 
-  for (const ad of adapters) {
+  for (const ad of availableAdapters) {
     result.tried.push(ad.name);
     let candidates = [];
     try {
@@ -322,9 +327,10 @@ export async function collectImages({ query, count = 10, keys = {}, wikiTitle })
       // 原图优先，失败回退候选自带的备选地址（如 Bing 缩略图）
       const urls = [c.url, ...(c.fallbackUrl ? [c.fallbackUrl] : [])];
       let got = null;
+      let imageSrc = '';
       let lastErr = '';
       for (const u of urls) {
-        try { got = await downloadImage(u); break; } catch (e) { lastErr = String(e.message ?? e).slice(0, 50); }
+        try { got = await downloadImage(u); imageSrc = u; break; } catch (e) { lastErr = String(e.message ?? e).slice(0, 50); }
       }
       if (!got) { result.errors.push(`${ad.name}: 下载跳过（${lastErr}）`); continue; }
       // 质量门槛：过小的图（logo/低清缩略图）直接弃用
@@ -332,7 +338,7 @@ export async function collectImages({ query, count = 10, keys = {}, wikiTitle })
         result.errors.push(`${ad.name}: 过滤低清图（${Math.round(got.buf.length / 1024)}KB）`);
         continue;
       }
-      images.push({ buf: got.buf, ext: got.ext, title: c.title, author: c.author, license: c.license, page: c.page, size: got.buf.length });
+      images.push({ buf: got.buf, ext: got.ext, title: c.title, author: c.author, license: c.license, page: c.page, src: imageSrc, size: got.buf.length });
     }
     if (images.length > 0) {
       // 大图优先：门面位置放最高清的素材

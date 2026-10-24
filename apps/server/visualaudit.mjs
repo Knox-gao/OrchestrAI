@@ -33,12 +33,38 @@ export function visualAudit(files) {
   const jsFiles = Object.entries(files)
     .filter(([k]) => /^(app|logic|data|images|fx)\.m?(js)?$/.test(k) || /^app\./.test(k))
     .map(([, v]) => String(v));
+  // M7-B4E：PagePlan 的可信 runtime 内联在 index.html 的 <script> 里。
+  // 不把它算进来，会导致"按 data-pp-* 属性委托绑定"被误判为未绑定（实测假阳性）。
+  for (const m of html.matchAll(new RegExp('<script[^>]*>([\\s\\S]*?)<\\/script>', 'gi'))) {
+    if (m[1] && m[1].trim()) jsFiles.push(m[1]);
+  }
   const issues = [];
 
   // 1) 交互完整性
-  const buttons = interactiveIds(html).map((b) => ({ ...b, bound: referencedInJs(b.id, jsFiles) }));
+  // M7-B4E 修复假阳性：PagePlan 的 tabs/search/filter 按钮由可信 runtime 做事件委托
+  // （按 data-pp-* 属性选择，不按 element id）。用"id 是否出现在 JS 源码里"判定会一律误报。
+  const hasTrustedRuntime = /data-pp-tabs|data-pp-search-target|data-pp-filter-target/.test(html)
+    && jsFiles.some((src) => /addEventListener|querySelectorAll/.test(src));
+  const CONVENTIONAL_ATTRS = ["data-pp-tab-button", "data-pp-search-target", "data-pp-filter-target"];
+  const boundByConvention = (id) => {
+    if (!hasTrustedRuntime) return false;
+    const idNeedle = `id="${id}"`;
+    // 不只 <button>：PagePlan 的 search 节点渲染成 <input>，同样由 runtime 委托绑定。
+    const TAG_HEADS = ["<button", "<input", "<textarea", "<select"];
+    for (const head of TAG_HEADS) {
+      for (const segment of html.split(head).slice(1)) {
+        const tagEnd = segment.indexOf(">");
+        if (tagEnd < 0) continue;
+        const tag = segment.slice(0, tagEnd);
+        if (!tag.includes(idNeedle)) continue;
+        if (CONVENTIONAL_ATTRS.some((attr) => tag.includes(attr))) return true;
+      }
+    }
+    return false;
+  };
+  const buttons = interactiveIds(html).map((b) => ({ ...b, bound: referencedInJs(b.id, jsFiles) || boundByConvention(b.id) }));
   const dead = buttons.filter((b) => !b.bound);
-  if (dead.length) issues.push(`未绑定事件的交互元素 ${dead.length} 个：${dead.map((d) => d.tag + '#' + d.id).join('、')}`);
+  if (dead.length) issues.push(`未绑定事件的交互元素 ${dead.length} 个：${dead.map((d) => d.tag + "#" + d.id).join("、")}`);
 
   // 2) 素材完整性
   const missingImages = [];

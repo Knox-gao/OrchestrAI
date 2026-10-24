@@ -106,12 +106,14 @@ function readmeFor(fmt, meta) {
  * W5【交付卫生】：排除内部诊断日志，避免把构建机信息带进交付包。
  * - timeline.json：门禁时间线，含构建机绝对路径
  * - _rendercheck/：渲染探针 JSON 与截图，属内部诊断
+ * - _model/：模型原始输出（M7-B4D 审计用），含模型未清洗文本，绝不可进交付包
  * project.json 保留（工程元数据，无绝对路径）。
  */
 function isInternalLog(rel) {
   const p = rel.replaceAll('\\', '/');
   return p === 'timeline.json'
     || p.startsWith('_rendercheck/')
+    || p.startsWith('_model/')          // 模型原始文本：审计证据，不是交付内容
     || p === 'assets.json';           // 素材注册表含来源工作区相对路径，非交付所需
 }
 

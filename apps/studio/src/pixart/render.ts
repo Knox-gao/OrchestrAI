@@ -34,7 +34,7 @@ const STATUS_COLOR: Record<AgentVisualStatus, string> = {
 
 const STATUS_STYLE: Record<AgentVisualStatus, { bubble: string | null; icon: IconName; screen: string | null; pose: Pose; bob: boolean }> = {
   idle:           { bubble: null,      icon: 'dots',     screen: null,      pose: 'idle',    bob: false },
-  analyzing:      { bubble: '#00F5D4', icon: 'dots',     screen: '#00F5D4', pose: 'idle',    bob: false },
+  analyzing:      { bubble: '#00F5D4', icon: 'dots',     screen: '#00F5D4', pose: 'thinking', bob: true },
   working:        { bubble: '#9DF5E2', icon: 'keyboard', screen: '#00F5D4', pose: 'working', bob: true },
   testing:        { bubble: '#7CFC9A', icon: 'magnifier', screen: '#7CFC9A', pose: 'working', bob: true },
   awaiting_review:{ bubble: '#FFD166', icon: 'check',    screen: '#FFD166', pose: 'handUp',  bob: false },

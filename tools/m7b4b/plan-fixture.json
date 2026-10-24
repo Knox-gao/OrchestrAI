@@ -1,0 +1,206 @@
+{
+  "schemaVersion": "orchestrai.pageplan.v1",
+  "meta": {
+    "title": "果冻海岛图鉴",
+    "description": "一座果冻质感海岛的可浏览风物档案。",
+    "language": "zh-CN"
+  },
+  "userConstraints": {
+    "styleId": "neumorph-blossom",
+    "fontMood": "serif",
+    "pageDirection": "explore",
+    "locked": true
+  },
+  "designIntent": {
+    "concept": "把果冻海岛拆成可翻阅的风物档案：先看见岛，再逐个认识岛上的地标与居民。",
+    "pageDirection": "explore",
+    "visualPrinciples": [
+      "柔和的粉调表面",
+      "大留白的章节节奏",
+      "地标优先的信息层级"
+    ]
+  },
+  "theme": {
+    "styleId": "neumorph-blossom",
+    "background": "#f7edf1",
+    "surface": "#ffffff",
+    "text": "#15171f",
+    "muted": "#747177",
+    "accent": "#ce125d",
+    "accentSoft": "#f0c6d6",
+    "fontMood": "serif",
+    "density": "airy",
+    "radius": "rounded"
+  },
+  "nodes": [
+    {
+      "id": "hero",
+      "type": "section",
+      "variant": "hero",
+      "eyebrow": "JELLY ISLAND",
+      "title": "果冻海岛",
+      "description": "一座会呼吸的岛，十五处风物等你翻。",
+      "children": [
+        {
+          "id": "hero-text",
+          "type": "text",
+          "text": "潮水退去时，岛上的蜜糖灯塔会先亮起来。"
+        },
+        {
+          "id": "hero-photo",
+          "type": "image",
+          "src": "https://picsum.photos/seed/jelly-island/1200/700",
+          "alt": "果冻质感海岛俯视图",
+          "caption": "示意图：柔和粉调的海岛地貌"
+        },
+        {
+          "id": "hero-link",
+          "type": "link",
+          "label": "开始探索",
+          "href": "#landmarks",
+          "variant": "primary"
+        }
+      ]
+    },
+    {
+      "id": "landmarks",
+      "type": "section",
+      "title": "岛屿地标",
+      "description": "四处主要地标。",
+      "children": [
+        {
+          "id": "lm-grid",
+          "type": "container",
+          "layout": "grid",
+          "columns": 2,
+          "children": [
+            {
+              "id": "lm-1",
+              "type": "card",
+              "eyebrow": "地标 01",
+              "title": "蜜糖灯塔",
+              "description": "蜂蜜色的塔身，夜里透出暖光。"
+            },
+            {
+              "id": "lm-2",
+              "type": "card",
+              "eyebrow": "地标 02",
+              "title": "果冻渔村",
+              "description": "彩色小屋沿着浅滩排列。"
+            },
+            {
+              "id": "lm-3",
+              "type": "card",
+              "eyebrow": "地标 03",
+              "title": "珊瑚浅滩",
+              "description": "粉色珊瑚在透明海水下发光。"
+            },
+            {
+              "id": "lm-4",
+              "type": "card",
+              "eyebrow": "地标 04",
+              "title": "风车花园",
+              "description": "海风把花田吹成波浪。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "residents",
+      "type": "section",
+      "title": "岛民与生灵",
+      "children": [
+        {
+          "id": "res-list",
+          "type": "list",
+          "items": [
+            {
+              "title": "守塔人阿婆",
+              "text": "在灯塔住了四十年，认得每一艘夜归的船。"
+            },
+            {
+              "title": "果冻鲸",
+              "text": "半透明的巨鲸，每年冬至游过岛的南岸。"
+            },
+            {
+              "title": "萤光浮游",
+              "text": "夜里贴着水面发蓝光的小生物。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "timeline",
+      "type": "section",
+      "title": "岛屿纪年",
+      "children": [
+        {
+          "id": "tl",
+          "type": "timeline",
+          "items": [
+            {
+              "id": "tl-1",
+              "date": "1892",
+              "title": "荒礁",
+              "body": "只有礁石与海鸟。"
+            },
+            {
+              "id": "tl-2",
+              "date": "1930",
+              "title": "渔村成形",
+              "body": "第一批渔民定居。"
+            },
+            {
+              "id": "tl-3",
+              "date": "2024",
+              "title": "风物图谱",
+              "body": "十五处风物被逐一定档。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "type": "section",
+      "title": "常被问到",
+      "description": "关于这座岛的几件小事。",
+      "children": [
+        {
+          "id": "faq-1",
+          "type": "details",
+          "summary": "岛上的潮水什么时候退？",
+          "children": [
+            {
+              "id": "faq-1-t",
+              "type": "text",
+              "text": "每天两次，退潮后浅滩会露出粉色的珊瑚脊。"
+            }
+          ]
+        },
+        {
+          "id": "faq-2",
+          "type": "details",
+          "summary": "蜜糖灯塔可以进去吗？",
+          "children": [
+            {
+              "id": "faq-2-t",
+              "type": "text",
+              "text": "可以。守塔人阿婆每天傍晚开放一小时。"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "unsupportedRequests": [
+    {
+      "requirementId": "US1-accept1",
+      "capability": "interactive-3d-scene",
+      "reason": "当前 PagePlan 渲染器不含 3D 场景能力，已用分层档案替代。",
+      "severity": "nonblocking"
+    }
+  ]
+}

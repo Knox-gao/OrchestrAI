@@ -105,7 +105,7 @@ export const ROLE_SPRITES: Record<string, RoleSpriteConfig> = {
   },
 };
 
-export type Pose = 'idle' | 'blink' | 'working' | 'handUp';
+export type Pose = 'idle' | 'blink' | 'working' | 'thinking' | 'handUp';
 
 /** 姿势补丁：眨眼 / 举手 */
 const POSE_PATCH: Partial<Record<Pose, Pixel[]>> = {
@@ -113,6 +113,10 @@ const POSE_PATCH: Partial<Record<Pose, Pixel[]>> = {
   handUp: [ // 举右手（等待审核）
     { x: 14, y: 8, c: 'S' }, { x: 14, y: 7, c: 'S' }, { x: 13, y: 6, c: 'S' },
     { x: 14, y: 9, c: 'C' }, { x: 13, y: 10, c: 'C' },
+  ],
+  thinking: [ // 托腮思考
+    { x: 12, y: 8, c: 'S' }, { x: 11, y: 7, c: 'S' }, { x: 12, y: 9, c: '#D9A87C' },
+    { x: 11, y: 10, c: 'C' }, { x: 10, y: 10, c: 'C' },
   ],
 };
 

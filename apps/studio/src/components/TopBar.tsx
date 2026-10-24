@@ -1,5 +1,6 @@
 import type { StudioEngine } from '@studio/core';
 import type { Mode } from '../App';
+import { fmtClock } from '../useStudio';
 
 const STATUS_LABEL: Record<string, string> = {
   idle: '待启动', running: '运行中', paused: '已暂停',
@@ -7,9 +8,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function TopBar({
-  engine, mode, onHome, fallbackName,
+  engine, mode, onHome, fallbackName, generating = false, phase, elapsedMs = 0,
 }: {
   engine: StudioEngine | null; mode: Mode; onHome: () => void; fallbackName?: string;
+  generating?: boolean; phase?: string | null; elapsedMs?: number;
 }) {
   const s = engine?.state;
   const st = engine?.status ?? 'idle';
@@ -26,11 +28,17 @@ export function TopBar({
   };
 
   return (
-    <header className="topbar">
+    <header className={`topbar ${generating ? 'is-generating' : ''}`}>
       <button className="btn home-btn" onClick={onHome} title="返回项目主页">← 主页</button>
       <div className="logo" />
       <span className="name">{s?.projectName || fallbackName || 'OrchestrAI'}</span>
       <span className={`mode-chip ${mode}`}>{mode === 'real' ? '⚡ 真实生成' : '演示剧本'}</span>
+      {generating && (
+        <span className="generation-phase" title={phase || '模型正在思考'}>
+          <span className="generation-pulse" />
+          {phase || '模型正在思考'} · {fmtClock(elapsedMs)}
+        </span>
+      )}
       {s?.projectName && (
         <span className="phase">
           {s.phase} · 需求 {s.currentVersion || '—'}
@@ -80,6 +88,11 @@ export function TopBar({
       <button className="btn" onClick={exportLog} title="导出全部事件日志（JSON）" disabled={!engine}>
         导出日志
       </button>
+      {generating && (
+        <div className="generation-progress" role="progressbar" aria-label="模型生成进度" aria-valuetext={`${phase || '模型正在思考'}，已用时 ${fmtClock(elapsedMs)}`}>
+          <span />
+        </div>
+      )}
     </header>
   );
 }

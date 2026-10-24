@@ -79,7 +79,7 @@ export async function fetchStyles(): Promise<{ count: number; styles: StyleEntry
 }
 
 export interface PreflightQuestion { id: string; title: string; reason?: string; options: { value: string; label: string; hint?: string }[] }
-export interface PreflightResult { ok: boolean; viaLLM: boolean; questions: PreflightQuestion[]; reason?: string }
+export interface PreflightResult { ok: boolean; viaLLM: boolean; questions: PreflightQuestion[]; reason?: string; fatal?: boolean }
 
 /** 开工前确认：AI 需要主观选择时先问用户（模型未配置时返回 ok:false） */
 export async function runPreflight(requirement: string, model = 'auto'): Promise<PreflightResult> {
@@ -148,6 +148,21 @@ export async function fetchProjects(): Promise<ProjectMeta[]> {
   const res = await fetch('/api/projects');
   if (!res.ok) throw new Error(`项目列表加载失败（${res.status}）`);
   return res.json();
+}
+
+export async function deleteProjects(ids: string[]): Promise<string[]> {
+  const res = await fetch('/api/projects/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error = new Error(data.error ?? `删除失败（${res.status}）`) as Error & { deleted?: string[] };
+    error.deleted = Array.isArray(data.deleted) ? data.deleted : [];
+    throw error;
+  }
+  return Array.isArray(data.deleted) ? data.deleted : [];
 }
 
 export async function fetchProject(id: string): Promise<{ meta: ProjectMeta; cues: Cue[] }> {

@@ -1,0 +1,379 @@
+{
+  "schemaVersion": "orchestrai.pageplan.v1",
+  "meta": {
+    "title": "沙漠温室营地",
+    "description": "自由主题：起伏沙丘中的玻璃穹顶温室。",
+    "language": "zh-CN"
+  },
+  "userConstraints": {
+    "styleId": "neumorph-blossom",
+    "fontMood": "serif",
+    "pageDirection": "explore",
+    "locked": true
+  },
+  "designIntent": {
+    "concept": "沙漠中的玻璃温室营地",
+    "pageDirection": "explore",
+    "visualPrinciples": [
+      "沙丘暖色 + 薄荷玻璃，强方向光产生长影",
+      "焦点：玻璃穹顶"
+    ]
+  },
+  "theme": {
+    "styleId": "neumorph-blossom",
+    "background": "#f7edf1",
+    "surface": "#ffffff",
+    "text": "#15171f",
+    "muted": "#747177",
+    "accent": "#ce125d",
+    "accentSoft": "#f0c6d6",
+    "fontMood": "serif",
+    "density": "airy",
+    "radius": "rounded"
+  },
+  "sceneBrief": {
+    "schemaVersion": "orchestrai.scene-brief.v1",
+    "theme": "沙漠中的玻璃温室营地",
+    "visualStyle": "沙丘暖色 + 薄荷玻璃，强方向光产生长影",
+    "subject": {
+      "id": "dome-greenhouse",
+      "description": "半透明玻璃穹顶温室",
+      "silhouette": "低矮穹顶 + 可见内部结构骨架"
+    },
+    "secondaryFocus": [
+      "供水塔",
+      "沙丘",
+      "营地围栏"
+    ],
+    "composition": {
+      "cameraAngle": "low",
+      "subjectCoverage": [
+        0.3,
+        0.5
+      ],
+      "whitespace": "airy",
+      "focalPoint": "玻璃穹顶"
+    },
+    "terrain": {
+      "kind": "沙丘地形",
+      "relief": "gentle",
+      "layers": [
+        "风蚀沙脊",
+        "砾石层"
+      ]
+    },
+    "objects": [
+      {
+        "id": "dome-sand",
+        "role": "accent",
+        "scaleHint": "huge",
+        "layer": "background",
+        "relation": "起伏沙丘作为地景"
+      },
+      {
+        "id": "dome-greenhouse",
+        "role": "subject",
+        "scaleHint": "large",
+        "layer": "midground",
+        "relation": "画面中央的穹顶"
+      },
+      {
+        "id": "dome-tower",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "background",
+        "relation": "穹顶右后方供水塔"
+      },
+      {
+        "id": "dome-crate-a",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "foreground",
+        "relation": "左前景补给箱"
+      },
+      {
+        "id": "dome-crate-b",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "foreground",
+        "relation": "右前景补给箱"
+      },
+      {
+        "id": "dome-shrub",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "midground",
+        "relation": "穹顶左侧耐旱灌木"
+      },
+      {
+        "id": "dome-rock",
+        "role": "accent",
+        "scaleHint": "small",
+        "layer": "foreground",
+        "relation": "右下裸露砾岩"
+      }
+    ],
+    "materials": [
+      {
+        "name": "sand",
+        "intent": "沙丘细腻颗粒"
+      },
+      {
+        "name": "jelly",
+        "intent": "玻璃穹顶半透"
+      },
+      {
+        "name": "metal",
+        "intent": "骨架与供水塔金属"
+      },
+      {
+        "name": "wood",
+        "intent": "补给箱木料"
+      },
+      {
+        "name": "foliage",
+        "intent": "耐旱灌木"
+      },
+      {
+        "name": "stone",
+        "intent": "砾岩"
+      }
+    ],
+    "light": {
+      "direction": "右后低角度夕阳，长投影",
+      "mood": "强对比、暖色"
+    },
+    "interaction": [
+      "拖拽旋转",
+      "点击物件查看档案",
+      "昼夜切换"
+    ],
+    "acceptance": [
+      "穹顶轮廓可辨且是焦点",
+      "沙丘有起伏而非平面",
+      "前景/中景/背景都有物件",
+      "至少 4 种可区分材质"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "hero",
+      "type": "section",
+      "variant": "hero",
+      "eyebrow": "沙漠中的玻璃温室营地",
+      "title": "沙漠温室营地",
+      "description": "自由主题：起伏沙丘中的玻璃穹顶温室。",
+      "children": [
+        {
+          "id": "hero-text",
+          "type": "text",
+          "text": "半透明玻璃穹顶温室"
+        }
+      ]
+    },
+    {
+      "id": "scene-section",
+      "type": "section",
+      "title": "三维场景",
+      "description": "拖拽旋转、滚轮缩放；点击物件查看档案。",
+      "children": [
+        {
+          "id": "dome-scene",
+          "type": "scene3d",
+          "label": "沙漠温室营地",
+          "description": "起伏沙丘中的玻璃穹顶温室。",
+          "height": "wide",
+          "background": "#f7efe2",
+          "groundColor": "#d9c49a",
+          "cameraDistance": 13,
+          "shadows": true,
+          "controls": {
+            "orbit": true,
+            "zoom": true,
+            "autoRotate": false,
+            "dayNight": true,
+            "tide": false
+          },
+          "objects": [
+            {
+              "id": "dome-sand",
+              "name": "沙丘",
+              "shape": "terrain",
+              "position": [
+                0,
+                -0.35,
+                0
+              ],
+              "scale": [
+                6.5,
+                1.1,
+                5
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#e0c894",
+              "material": "sand",
+              "description": "起伏沙丘地形。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "dome-greenhouse",
+              "name": "玻璃穹顶",
+              "shape": "dome",
+              "position": [
+                0,
+                0.55,
+                0
+              ],
+              "scale": [
+                3.1,
+                2.4,
+                3.1
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#a9e4de",
+              "material": "jelly",
+              "description": "多环带半球壳 + 骨架 + 基座 + 内部植被。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "dome-tower",
+              "name": "供水塔",
+              "shape": "lighthouse",
+              "position": [
+                2.6,
+                0.55,
+                -1.9
+              ],
+              "scale": [
+                0.62,
+                0.95,
+                0.62
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#c9bfae",
+              "material": "metal",
+              "description": "复合塔形结构。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "dome-crate-a",
+              "name": "补给箱 A",
+              "shape": "house",
+              "position": [
+                -2.4,
+                0.05,
+                1.9
+              ],
+              "scale": [
+                0.55,
+                0.4,
+                0.5
+              ],
+              "rotation": [
+                0,
+                28,
+                0
+              ],
+              "color": "#b98a5e",
+              "material": "wood",
+              "description": "木箱（复用复合体缩小）。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "dome-crate-b",
+              "name": "补给箱 B",
+              "shape": "house",
+              "position": [
+                2,
+                0,
+                2.2
+              ],
+              "scale": [
+                0.45,
+                0.34,
+                0.42
+              ],
+              "rotation": [
+                0,
+                -16,
+                0
+              ],
+              "color": "#a97a50",
+              "material": "wood",
+              "description": "木箱。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "dome-shrub",
+              "name": "耐旱灌木",
+              "shape": "shrub",
+              "position": [
+                -2.2,
+                0.55,
+                -0.6
+              ],
+              "scale": [
+                0.75,
+                0.62,
+                0.75
+              ],
+              "rotation": [
+                0,
+                40,
+                0
+              ],
+              "color": "#8fa86a",
+              "material": "foliage",
+              "description": "复合灌木。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "dome-rock",
+              "name": "砾岩",
+              "shape": "rock",
+              "position": [
+                3.1,
+                -0.1,
+                1.6
+              ],
+              "scale": [
+                0.8,
+                0.6,
+                0.7
+              ],
+              "rotation": [
+                16,
+                40,
+                12
+              ],
+              "color": "#bfae98",
+              "material": "stone",
+              "description": "裸露砾岩。",
+              "selectable": false,
+              "motion": "none"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "unsupportedRequests": []
+}

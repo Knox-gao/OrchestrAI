@@ -62,16 +62,20 @@ const ICONS: Record<IconName, string[]> = {
 
 export function drawIcon(ctx: CanvasRenderingContext2D, name: IconName, x: number, y: number, color: string, frame = 0) {
   ctx.fillStyle = color;
+  if (name === 'dots') {
+    // 三颗像素按序呼吸，确保分析状态在低帧率下也能看出变化。
+    const active = frame % 3;
+    for (let i = 0; i < 3; i++) {
+      ctx.globalAlpha = i === active ? 1 : 0.28;
+      ctx.fillRect(x + (1 + i * 2) * 2, y + 4, 2, 2);
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
   const rows = ICONS[name]!;
   for (let r = 0; r < rows.length; r++) {
     for (let c = 0; c < rows[r]!.length; c++) {
       if (rows[r]![c] !== '#') continue;
-      if (name === 'dots') {
-        // 三点加载动画：按帧点亮 1/2/3 个
-        const lit = [c === 1, c === 3 || frame % 3 >= 1, c === 5 || frame % 3 >= 2][c];
-        if (c !== 1 && c !== 3 && c !== 5) continue;
-        if (!lit) continue;
-      }
       ctx.fillRect(x + c * 2, y + r * 2, 2, 2);
     }
   }

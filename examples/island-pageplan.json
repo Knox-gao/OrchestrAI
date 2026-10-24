@@ -1,0 +1,682 @@
+{
+  "schemaVersion": "orchestrai.pageplan.v1",
+  "meta": {
+    "title": "果冻海岛档案",
+    "description": "一座虚构海岛的探索式图文网站。岛屿场景和交互能力只在实现并通过验收后才可宣称可用。",
+    "language": "zh-CN"
+  },
+  "userConstraints": {
+    "styleId": "neumorph-blossom",
+    "fontMood": "serif",
+    "pageDirection": "explore",
+    "locked": true
+  },
+  "designIntent": {
+    "concept": "以柔和粉色的新拟物界面组织一座虚构果冻海岛的探索与档案内容。",
+    "pageDirection": "explore",
+    "visualPrinciples": [
+      "以岛屿介绍和探索线索建立清晰层级",
+      "使用衬线标题强化故事感",
+      "避免把海岛内容误渲染成行星轨道图"
+    ]
+  },
+  "theme": {
+    "styleId": "neumorph-blossom",
+    "background": "#fff5f8",
+    "surface": "#ffffff",
+    "text": "#352735",
+    "muted": "#765f70",
+    "accent": "#cf6291",
+    "accentSoft": "#f7dce8",
+    "fontMood": "serif",
+    "density": "comfortable",
+    "radius": "rounded"
+  },
+  "unsupportedRequests": [],
+  "nodes": [
+    {
+      "id": "island-intro",
+      "type": "section",
+      "eyebrow": "SEA JOURNAL · 07",
+      "title": "一座会呼吸的果冻海岛",
+      "description": "一座虚构的海上果冻岛。下方场景由 WebGL 实时绘制，可拖拽观察并选择建筑与生物查看档案。",
+      "variant": "hero",
+      "children": [
+        {
+          "id": "island-lead",
+          "type": "text",
+          "text": "从三维海岸线出发，探索灯塔、渔村、温室与奇妙生物。"
+        },
+        {
+          "id": "island-primary-link",
+          "type": "link",
+          "label": "探索岛屿档案 ↓",
+          "href": "#island-archive",
+          "variant": "primary"
+        }
+      ]
+    },
+    {
+      "id": "island-scene-3d",
+      "type": "scene3d",
+      "label": "可交互的果冻海岛",
+      "description": "拖拽画布环绕观察，滚轮调整距离。选择灯塔、渔村、温室或生物查看档案。日夜与潮位控件会改变场景环境状态。",
+      "height": "wide",
+      "background": "#fce7f3",
+      "cameraDistance": 12.5,
+      "controls": {
+        "orbit": true,
+        "zoom": true,
+        "autoRotate": false,
+        "dayNight": true,
+        "tide": true
+      },
+      "objects": [
+        {
+          "id": "island-water",
+          "name": "环岛海面",
+          "shape": "disk",
+          "position": [
+            0,
+            -0.46,
+            0
+          ],
+          "scale": [
+            12,
+            0.05,
+            10
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#82d9f0",
+          "material": "jelly",
+          "description": "淡青色的外海包围着粉色岛屿。使用下方潮位控制可以调整水面高度。",
+          "selectable": true,
+          "motion": "tide"
+        },
+        {
+          "id": "island-terrain",
+          "name": "果冻岛主体",
+          "shape": "island",
+          "position": [
+            0,
+            0.08,
+            0
+          ],
+          "scale": [
+            4.25,
+            1.35,
+            3.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#f6a8ce",
+          "material": "jelly",
+          "description": "岛屿主体由真实 WebGL 三角网格构成，表面有不规则海岸轮廓与柔亮高光。拖拽可以从不同角度观察。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-reef-ring",
+          "name": "浅色礁环",
+          "shape": "torus",
+          "position": [
+            0,
+            -0.22,
+            0
+          ],
+          "scale": [
+            8.4,
+            0.1,
+            6.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#ffd6e7",
+          "material": "jelly",
+          "description": "围绕海岛的浅粉色礁环。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "island-lighthouse",
+          "name": "蜜糖灯塔",
+          "shape": "cylinder",
+          "position": [
+            -1.65,
+            0.91,
+            0.1
+          ],
+          "scale": [
+            0.42,
+            1.36,
+            0.42
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#fff4d6",
+          "material": "matte",
+          "description": "蜜糖灯塔位于海岛西侧，高处的暖金色灯室会在传说中的潮汐到来前亮起。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-lighthouse-roof",
+          "name": "灯塔顶棚",
+          "shape": "cone",
+          "position": [
+            -1.65,
+            1.68,
+            0.1
+          ],
+          "scale": [
+            0.53,
+            0.43,
+            0.53
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#e98ab8",
+          "material": "jelly",
+          "description": "灯塔的粉色尖顶。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "island-village-home",
+          "name": "果冻渔村",
+          "shape": "box",
+          "position": [
+            0.7,
+            0.84,
+            0.1
+          ],
+          "scale": [
+            0.85,
+            0.66,
+            0.75
+          ],
+          "rotation": [
+            0,
+            22,
+            0
+          ],
+          "color": "#f9d4e6",
+          "material": "jelly",
+          "description": "半透明圆润的小屋沿着内海湾散布，屋顶有柔软的粉色光泽。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-village-roof",
+          "name": "渔村屋顶",
+          "shape": "cone",
+          "position": [
+            0.7,
+            1.34,
+            0.1
+          ],
+          "scale": [
+            0.66,
+            0.48,
+            0.66
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#d96caa",
+          "material": "jelly",
+          "description": "渔村小屋的屋顶。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "island-greenhouse",
+          "name": "玻璃温室",
+          "shape": "box",
+          "position": [
+            1.75,
+            0.78,
+            -0.95
+          ],
+          "scale": [
+            0.78,
+            0.65,
+            0.72
+          ],
+          "rotation": [
+            0,
+            -16,
+            0
+          ],
+          "color": "#9de6db",
+          "material": "jelly",
+          "description": "薄荷色的温室保存岛上发光植物的种子。此处使用有光泽的实时三维材质表现，不宣称物理精确的光线折射。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-tree-trunk",
+          "name": "棕榈树树干",
+          "shape": "cylinder",
+          "position": [
+            -0.55,
+            0.8,
+            -0.8
+          ],
+          "scale": [
+            0.16,
+            0.9,
+            0.16
+          ],
+          "rotation": [
+            0,
+            0,
+            -8
+          ],
+          "color": "#9b695c",
+          "material": "matte",
+          "description": "一棵生长在岛屿高处的植物。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "island-tree-crown",
+          "name": "荧光树冠",
+          "shape": "sphere",
+          "position": [
+            -0.55,
+            1.37,
+            -0.8
+          ],
+          "scale": [
+            0.72,
+            0.65,
+            0.72
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#82d9a7",
+          "material": "foliage",
+          "description": "树冠在夜间会呈现柔和荧光。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-jelly-whale",
+          "name": "果冻鲸",
+          "shape": "sphere",
+          "position": [
+            0.95,
+            1.27,
+            1.15
+          ],
+          "scale": [
+            0.92,
+            0.48,
+            0.45
+          ],
+          "rotation": [
+            0,
+            -20,
+            0
+          ],
+          "color": "#8edcf2",
+          "material": "jelly",
+          "description": "果冻鲸是这座虚构海岛世界中的生物，会在外海湾缓慢迁游。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-float-orb",
+          "name": "漂浮荧光球",
+          "shape": "sphere",
+          "position": [
+            -0.15,
+            1.75,
+            0.8
+          ],
+          "scale": [
+            0.2,
+            0.2,
+            0.2
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#ffe28a",
+          "material": "jelly",
+          "description": "漂浮的荧光球用于点缀岛屿场景。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-rock-a",
+          "name": "珊瑚岩一",
+          "shape": "sphere",
+          "position": [
+            -2.15,
+            0.26,
+            -1.1
+          ],
+          "scale": [
+            0.52,
+            0.24,
+            0.47
+          ],
+          "rotation": [
+            0,
+            0,
+            10
+          ],
+          "color": "#c987b9",
+          "material": "matte",
+          "description": "粉紫色珊瑚岩。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "island-rock-b",
+          "name": "珊瑚岩二",
+          "shape": "sphere",
+          "position": [
+            2.05,
+            0.19,
+            0.85
+          ],
+          "scale": [
+            0.43,
+            0.2,
+            0.37
+          ],
+          "rotation": [
+            0,
+            0,
+            -8
+          ],
+          "color": "#e9a4c9",
+          "material": "matte",
+          "description": "浅粉色珊瑚岩。",
+          "selectable": false,
+          "motion": "none"
+        }
+      ]
+    },
+    {
+      "id": "island-archive",
+      "type": "section",
+      "eyebrow": "FIELD NOTES",
+      "title": "岛上的风物",
+      "description": "下面的内容由页面计划组合成卡片、展开档案和时间线。",
+      "variant": "plain",
+      "children": [
+        {
+          "id": "island-features-grid",
+          "type": "container",
+          "layout": "grid",
+          "columns": 3,
+          "children": [
+            {
+              "id": "honey-lighthouse",
+              "type": "card",
+              "eyebrow": "LANDMARK 01",
+              "title": "蜜糖灯塔",
+              "description": "灯罩会在潮汐到来前发出温暖的蜜金色微光。"
+            },
+            {
+              "id": "jelly-village",
+              "type": "card",
+              "eyebrow": "SETTLEMENT 02",
+              "title": "果冻渔村",
+              "description": "半透明的圆顶小屋沿着内海湾缓缓排开。"
+            },
+            {
+              "id": "glass-greenhouse",
+              "type": "card",
+              "eyebrow": "GARDEN 03",
+              "title": "玻璃温室",
+              "description": "发光的植物在这里记录每一次潮汐的颜色。"
+            }
+          ]
+        },
+        {
+          "id": "island-naturalist-note",
+          "type": "details",
+          "summary": "打开自然观察档案",
+          "children": [
+            {
+              "id": "island-naturalist-copy",
+              "type": "text",
+              "text": "果冻鲸会在外海缓慢迁徙；荧光浮游生物聚集在低浪的水湾。以上均为虚构世界观设定，不代表真实生物资料。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "island-history",
+      "type": "section",
+      "eyebrow": "ISLAND CHRONICLE",
+      "title": "岛屿发展记录",
+      "description": "时间线的展开和收起由原生 details/summary 实现，不依赖任意模型脚本。",
+      "variant": "panel",
+      "children": [
+        {
+          "id": "island-timeline",
+          "type": "timeline",
+          "items": [
+            {
+              "id": "reef-year",
+              "date": "第 01 年",
+              "title": "荒礁出现",
+              "body": "第一片粉色礁岩从浅海中露出。"
+            },
+            {
+              "id": "village-year",
+              "date": "第 08 年",
+              "title": "渔村建立",
+              "body": "居民在内海湾搭起第一排半透明小屋。"
+            },
+            {
+              "id": "garden-year",
+              "date": "第 15 年",
+              "title": "温室点亮",
+              "body": "玻璃温室开始记录潮汐和植物变化。"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sceneBrief": {
+    "schemaVersion": "orchestrai.scene-brief.v1",
+    "theme": "会呼吸的果冻海岛",
+    "visualStyle": "粉色果冻质感，柔和粉调表面，大留白章节节奏",
+    "subject": {
+      "id": "island-terrain",
+      "description": "有厚度与地层剖面的果冻岛主体",
+      "silhouette": "隆起台面 + 不规则海岸轮廓 + 可见侧壁地层"
+    },
+    "secondaryFocus": [
+      "蜜糖灯塔",
+      "果冻渔村",
+      "玻璃温室"
+    ],
+    "composition": {
+      "cameraAngle": "isometric",
+      "subjectCoverage": [
+        0.35,
+        0.65
+      ],
+      "whitespace": "airy",
+      "focalPoint": "蜜糖灯塔"
+    },
+    "terrain": {
+      "kind": "海岛地形（顶面 + 砂岸 + 侧壁）",
+      "relief": "rolling",
+      "layers": [
+        "浅水礁环",
+        "砂岸带",
+        "果冻岛体",
+        "深色侧壁地层"
+      ]
+    },
+    "objects": [
+      {
+        "id": "island-water",
+        "role": "secondary",
+        "scaleHint": "huge",
+        "layer": "background",
+        "relation": "环绕整座岛的浅水基面"
+      },
+      {
+        "id": "island-terrain",
+        "role": "subject",
+        "scaleHint": "large",
+        "layer": "midground",
+        "relation": "居中隆起，占据画面主体"
+      },
+      {
+        "id": "island-reef-ring",
+        "role": "accent",
+        "scaleHint": "large",
+        "layer": "background",
+        "relation": "岛体外缘的浅色礁环"
+      },
+      {
+        "id": "island-lighthouse",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "background",
+        "relation": "岛体西侧高地，作为视觉焦点"
+      },
+      {
+        "id": "island-lighthouse-roof",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "background",
+        "relation": "灯塔顶棚，与塔身同组"
+      },
+      {
+        "id": "island-village-home",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "midground",
+        "relation": "内海湾聚落的小屋"
+      },
+      {
+        "id": "island-village-roof",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "midground",
+        "relation": "聚落屋顶，与屋身同组"
+      },
+      {
+        "id": "island-greenhouse",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "midground",
+        "relation": "岛体东侧温室"
+      },
+      {
+        "id": "island-tree-trunk",
+        "role": "accent",
+        "scaleHint": "small",
+        "layer": "midground",
+        "relation": "高处植物的树干"
+      },
+      {
+        "id": "island-tree-crown",
+        "role": "accent",
+        "scaleHint": "small",
+        "layer": "midground",
+        "relation": "树冠，夜间呈荧光"
+      },
+      {
+        "id": "island-jelly-whale",
+        "role": "accent",
+        "scaleHint": "medium",
+        "layer": "foreground",
+        "relation": "外海湾缓慢游动的生物"
+      },
+      {
+        "id": "island-float-orb",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "foreground",
+        "relation": "近景漂浮荧光球"
+      },
+      {
+        "id": "island-rock-a",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "foreground",
+        "relation": "画面左前方珊瑚岩"
+      },
+      {
+        "id": "island-rock-b",
+        "role": "accent",
+        "scaleHint": "tiny",
+        "layer": "foreground",
+        "relation": "画面右前方珊瑚岩"
+      }
+    ],
+    "materials": [
+      {
+        "name": "jelly",
+        "intent": "岛体半透果冻质感"
+      },
+      {
+        "name": "water",
+        "intent": "环岛浅水"
+      },
+      {
+        "name": "foliage",
+        "intent": "树冠叶片哑光绿"
+      },
+      {
+        "name": "matte",
+        "intent": "灯塔与岩体哑光"
+      }
+    ],
+    "light": {
+      "direction": "左上前方主光，右下弱补光",
+      "mood": "柔和、高光克制"
+    },
+    "interaction": [
+      "拖拽旋转",
+      "滚轮缩放",
+      "点击物件查看档案",
+      "昼夜切换",
+      "潮位调整"
+    ],
+    "acceptance": [
+      "第一眼可辨为带海岸轮廓的海岛主体",
+      "主体占画幅 35–65%",
+      "前中后景三层都有物件",
+      "灯塔可点选并显示档案"
+    ]
+  }
+}

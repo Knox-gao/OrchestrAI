@@ -58,6 +58,7 @@ export async function launchCdp({ edgeBin, timeoutMs = 20_000, extraArgs = [] } 
   let seq = 0;
   const pending = new Map();
   const eventWaiters = [];   // { method, sessionId, resolve }
+  const eventListeners = new Set();  // (method, params, sessionId) => void
   ws.addEventListener('message', (ev) => {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
@@ -69,6 +70,7 @@ export async function launchCdp({ edgeBin, timeoutMs = 20_000, extraArgs = [] } 
       return;
     }
     if (msg.method) {
+      for (const fn of eventListeners) { try { fn(msg.method, msg.params, msg.sessionId); } catch {} }
       for (let i = eventWaiters.length - 1; i >= 0; i--) {
         const w = eventWaiters[i];
         if (w.method === msg.method && (!w.sessionId || w.sessionId === msg.sessionId)) {
@@ -97,6 +99,9 @@ export async function launchCdp({ edgeBin, timeoutMs = 20_000, extraArgs = [] } 
     }, timeoutMs);
   });
 
+  /** 订阅所有 CDP 事件（用于收集 console/exception/log），返回取消订阅函数 */
+  const onEvent = (fn) => { eventListeners.add(fn); return () => eventListeners.delete(fn); };
+
   const close = async () => {
     try { ws.close(); } catch {}
     try { proc.kill(); } catch {}
@@ -104,14 +109,41 @@ export async function launchCdp({ edgeBin, timeoutMs = 20_000, extraArgs = [] } 
     try { fs.rmSync(userDir, { recursive: true, force: true }); } catch {}
   };
 
-  return { send, waitEvent, port, userDir, close, proc };
+  return { send, waitEvent, onEvent, port, userDir, close, proc };
 }
 
 /**
  * 在精确视口中打开 URL，采集真实布局指标 + 截图。
  * @returns {{ok:boolean, error?:string, metrics?:Object, shot?:Buffer, shotW?:number, shotH?:number}}
  */
-export async function captureAtViewport(cdp, { url, width, height, mobile, waitMs = 1800, screenshot = true }) {
+/**
+ * 自适应等待图片稳定：所有图片 complete 或状态在 stallMs 内不再变化即返回。
+ * 有界超时兜底，绝不无限等待；未加载的图片仍会被探针判为失败（不降低门禁强度）。
+ */
+async function waitForImagesToSettle(cdp, sessionId, { timeoutMs = 6000, stallMs = 1200, pollMs = 150 } = {}) {
+  const startedAt = Date.now();
+  let lastSig = '';
+  let lastChangeAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    let sig;
+    try {
+      const r = await cdp.send('Runtime.evaluate', {
+        expression: `(() => { const imgs = [...document.images]; return imgs.length + ':' + imgs.map(i => (i.complete ? 1 : 0) + ',' + (i.naturalWidth > 0 ? 1 : 0)).join(''); })()`,
+        returnByValue: true,
+      }, sessionId);
+      sig = String(r?.result?.value ?? '');
+    } catch {
+      return;
+    }
+    const allSettled = /^(\d+):(?:1,1)*$/.test(sig);
+    if (allSettled) return;
+    if (sig !== lastSig) { lastSig = sig; lastChangeAt = Date.now(); }
+    else if (Date.now() - lastChangeAt >= stallMs) return;
+    await sleep(pollMs);
+  }
+}
+
+export async function captureAtViewport(cdp, { url, width, height, mobile, waitMs = 1800, screenshot = true, imageWaitMs = 6000 }) {
   const { send } = cdp;
   const { targetId } = await send('Target.createTarget', { url: 'about:blank' });
   const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true });
@@ -137,6 +169,9 @@ export async function captureAtViewport(cdp, { url, width, height, mobile, waitM
     // 等真实 load 事件（超时则退化为固定等待，指标仍以运行时实测为准）
     await cdp.waitEvent('Page.loadEventFired', sessionId, 8000);
     await sleep(waitMs);
+    // 远程图片可能晚于 load 事件：自适应等待图片"停止变化"（有界），
+    // 否则固定等待会在慢网上把合法页面误判为"必需图片未加载"。
+    await waitForImagesToSettle(cdp, sessionId, { timeoutMs: imageWaitMs });
 
     // 真实布局指标（含目标/实际视口对照 + 图片完整性 + 元素裁切）
     const probeExpr = `(() => {
@@ -148,12 +183,22 @@ export async function captureAtViewport(cdp, { url, width, height, mobile, waitM
       const required = imgs.filter(i => i.loading !== 'lazy' || i.getBoundingClientRect().top < vh);
       const lazy = imgs.filter(i => i.loading === 'lazy' && i.getBoundingClientRect().top >= vh);
       const failedOf = (a) => a.filter(i => !i.complete || i.naturalWidth === 0).length;
-      // 检测被裁切的内容：任何元素右边缘超出布局视口
+      // 检测被裁切的内容：元素右边缘超出布局视口，且**其祖先没有提供横向滚动**。
+      // 设计明确的横向滚动容器（overflow-x:auto/scroll）内的内容超出视口是正常交互，
+      // 不能算作裁切缺陷（此前把 atlas 底部 chips 横向列表误判为溢出）。
       let clipped = 0, clippedSample = null;
       const cw = de.clientWidth;
+      const inScrollableX = (el) => {
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+          const ox = getComputedStyle(p).overflowX;
+          if (ox === 'auto' || ox === 'scroll') return true;
+        }
+        return false;
+      };
       for (const el of document.body ? document.body.querySelectorAll('*') : []) {
         const r = el.getBoundingClientRect();
         if (r.width > 0 && r.right > cw + 1) {
+          if (inScrollableX(el)) continue;
           clipped++;
           if (!clippedSample) clippedSample = (el.tagName + '.' + String(el.className || '').split(' ')[0]).slice(0, 40) + ' right=' + Math.round(r.right);
         }

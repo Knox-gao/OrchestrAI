@@ -1,0 +1,408 @@
+{
+  "schemaVersion": "orchestrai.pageplan.v1",
+  "meta": {
+    "title": "山谷村落",
+    "description": "非岛屿主题：梯田山丘上的微缩村落。",
+    "language": "zh-CN"
+  },
+  "userConstraints": {
+    "styleId": "neumorph-blossom",
+    "fontMood": "serif",
+    "pageDirection": "explore",
+    "locked": true
+  },
+  "designIntent": {
+    "concept": "山谷里的微缩村落",
+    "pageDirection": "explore",
+    "visualPrinciples": [
+      "暖砂岩色调，晨雾柔光，建筑群聚落感",
+      "焦点：教堂钟楼"
+    ]
+  },
+  "theme": {
+    "styleId": "neumorph-blossom",
+    "background": "#f7edf1",
+    "surface": "#ffffff",
+    "text": "#15171f",
+    "muted": "#747177",
+    "accent": "#ce125d",
+    "accentSoft": "#f0c6d6",
+    "fontMood": "serif",
+    "density": "airy",
+    "radius": "rounded"
+  },
+  "sceneBrief": {
+    "schemaVersion": "orchestrai.scene-brief.v1",
+    "theme": "山谷里的微缩村落",
+    "visualStyle": "暖砂岩色调，晨雾柔光，建筑群聚落感",
+    "subject": {
+      "id": "village-hill",
+      "description": "带梯田与坡面的山丘主体",
+      "silhouette": "层层收窄的台地山丘，可见耕层剖面"
+    },
+    "secondaryFocus": [
+      "教堂钟楼",
+      "三栋民居",
+      "山道"
+    ],
+    "composition": {
+      "cameraAngle": "high",
+      "subjectCoverage": [
+        0.35,
+        0.55
+      ],
+      "whitespace": "balanced",
+      "focalPoint": "教堂钟楼"
+    },
+    "terrain": {
+      "kind": "方形切块地台",
+      "relief": "steep",
+      "layers": [
+        "草坡",
+        "梯田土层",
+        "岩基"
+      ]
+    },
+    "objects": [
+      {
+        "id": "village-plinth",
+        "role": "accent",
+        "scaleHint": "huge",
+        "layer": "background",
+        "relation": "承载整块山体的方形地台"
+      },
+      {
+        "id": "village-hill",
+        "role": "subject",
+        "scaleHint": "large",
+        "layer": "midground",
+        "relation": "居中偏后，形成山谷坡面"
+      },
+      {
+        "id": "village-church",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "background",
+        "relation": "山顶最高点，视觉焦点"
+      },
+      {
+        "id": "village-house-a",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "midground",
+        "relation": "半坡第一级台地"
+      },
+      {
+        "id": "village-house-b",
+        "role": "secondary",
+        "scaleHint": "small",
+        "layer": "foreground",
+        "relation": "坡脚近景"
+      },
+      {
+        "id": "village-tree-a",
+        "role": "accent",
+        "scaleHint": "medium",
+        "layer": "midground",
+        "relation": "坡面左侧成组"
+      },
+      {
+        "id": "village-tree-b",
+        "role": "accent",
+        "scaleHint": "medium",
+        "layer": "background",
+        "relation": "钟楼后方"
+      },
+      {
+        "id": "village-path",
+        "role": "accent",
+        "scaleHint": "medium",
+        "layer": "foreground",
+        "relation": "从坡脚蜿蜒上行"
+      }
+    ],
+    "materials": [
+      {
+        "name": "stone",
+        "intent": "山体岩层与钟楼基座"
+      },
+      {
+        "name": "sand",
+        "intent": "地台切面与梯田土"
+      },
+      {
+        "name": "wood",
+        "intent": "民居梁柱与山道"
+      },
+      {
+        "name": "foliage",
+        "intent": "坡面草木"
+      },
+      {
+        "name": "matte",
+        "intent": "墙面抹灰"
+      }
+    ],
+    "light": {
+      "direction": "右上后侧晨光，长影",
+      "mood": "温暖、低对比"
+    },
+    "interaction": [
+      "拖拽旋转",
+      "点击建筑查看档案",
+      "昼夜切换"
+    ],
+    "acceptance": [
+      "山丘有明显坡面与台地层次",
+      "钟楼是最高的可辨焦点",
+      "建筑不是方块堆叠",
+      "至少三层景深"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "hero",
+      "type": "section",
+      "variant": "hero",
+      "eyebrow": "山谷里的微缩村落",
+      "title": "山谷村落",
+      "description": "非岛屿主题：梯田山丘上的微缩村落。",
+      "children": [
+        {
+          "id": "hero-text",
+          "type": "text",
+          "text": "带梯田与坡面的山丘主体"
+        }
+      ]
+    },
+    {
+      "id": "scene-section",
+      "type": "section",
+      "title": "三维场景",
+      "description": "拖拽旋转、滚轮缩放；点击物件查看档案。",
+      "children": [
+        {
+          "id": "village-scene",
+          "type": "scene3d",
+          "label": "山谷村落",
+          "description": "方形切块地台上的梯田山丘与村落。",
+          "height": "wide",
+          "background": "#f6efe6",
+          "groundColor": "#d8c7ae",
+          "cameraDistance": 14,
+          "shadows": true,
+          "controls": {
+            "orbit": true,
+            "zoom": true,
+            "autoRotate": false,
+            "dayNight": true,
+            "tide": false
+          },
+          "objects": [
+            {
+              "id": "village-plinth",
+              "name": "切块地台",
+              "shape": "plateau",
+              "position": [
+                0,
+                -1.1,
+                0
+              ],
+              "scale": [
+                11.5,
+                1.4,
+                9.5
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#cfb99c",
+              "material": "sand",
+              "description": "方形地层切块。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "village-hill",
+              "name": "梯田山丘",
+              "shape": "terrain",
+              "position": [
+                0,
+                -0.25,
+                -0.4
+              ],
+              "scale": [
+                4.8,
+                2.1,
+                3.9
+              ],
+              "rotation": [
+                0,
+                -8,
+                0
+              ],
+              "color": "#b8c99a",
+              "material": "stone",
+              "description": "有坡面与台地的山体。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "village-church",
+              "name": "教堂钟楼",
+              "shape": "lighthouse",
+              "position": [
+                -0.6,
+                1.35,
+                -1.5
+              ],
+              "scale": [
+                0.7,
+                1.05,
+                0.7
+              ],
+              "rotation": [
+                0,
+                12,
+                0
+              ],
+              "color": "#f2ead9",
+              "material": "matte",
+              "description": "钟楼（复用塔形复合体）。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "village-house-a",
+              "name": "半坡民居",
+              "shape": "house",
+              "position": [
+                1.1,
+                0.55,
+                -0.35
+              ],
+              "scale": [
+                1,
+                0.9,
+                0.95
+              ],
+              "rotation": [
+                0,
+                -22,
+                0
+              ],
+              "color": "#e8d9c2",
+              "material": "matte",
+              "description": "复合民居。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "village-house-b",
+              "name": "坡脚民居",
+              "shape": "house",
+              "position": [
+                0.4,
+                -0.15,
+                1.6
+              ],
+              "scale": [
+                1.15,
+                1,
+                1.05
+              ],
+              "rotation": [
+                0,
+                16,
+                0
+              ],
+              "color": "#ddc9ae",
+              "material": "matte",
+              "description": "复合民居。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "village-tree-a",
+              "name": "坡面树 A",
+              "shape": "tree",
+              "position": [
+                -2,
+                0.35,
+                0.2
+              ],
+              "scale": [
+                1.15,
+                1.15,
+                1.15
+              ],
+              "rotation": [
+                0,
+                26,
+                0
+              ],
+              "color": "#7fae7a",
+              "material": "foliage",
+              "description": "复合树。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "village-tree-b",
+              "name": "坡面树 B",
+              "shape": "tree",
+              "position": [
+                -0.2,
+                1.1,
+                -2
+              ],
+              "scale": [
+                0.95,
+                0.95,
+                0.95
+              ],
+              "rotation": [
+                0,
+                -34,
+                0
+              ],
+              "color": "#8bbd84",
+              "material": "foliage",
+              "description": "复合树。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "village-path",
+              "name": "山道",
+              "shape": "dock",
+              "position": [
+                0.9,
+                -0.35,
+                2.5
+              ],
+              "scale": [
+                1.7,
+                0.5,
+                1.2
+              ],
+              "rotation": [
+                0,
+                22,
+                0
+              ],
+              "color": "#a98a68",
+              "material": "wood",
+              "description": "木栈道（复用复合体作山道）。",
+              "selectable": false,
+              "motion": "none"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "unsupportedRequests": []
+}

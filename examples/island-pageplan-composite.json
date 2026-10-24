@@ -1,0 +1,557 @@
+{
+  "schemaVersion": "orchestrai.pageplan.v1",
+  "meta": {
+    "title": "果冻海岛 · 复合模型版",
+    "description": "用复合程序化原语（地形体积 / 方形地层底座 / 房屋 / 灯塔 / 棕榈 / 灌木 / 礁岩 / 栈桥）构建的分层海岛场景。视觉质量仍须真实 Edge 截图与人工验收。",
+    "language": "zh-CN"
+  },
+  "userConstraints": {
+    "styleId": "neumorph-blossom",
+    "fontMood": "serif",
+    "pageDirection": "explore",
+    "locked": true
+  },
+  "designIntent": {
+    "concept": "把一座果冻质感的小岛切出来放进方形地层底座里：先看见整块地，再沿着路径认出灯塔、渔村、棕榈与栈桥。",
+    "pageDirection": "explore",
+    "visualPrinciples": [
+      "主体轮廓优先：方形底座 + 隆起岛体，一眼可辨是一座岛而不是球体集合",
+      "前中后景：前景礁岩与栈桥、中景聚落与棕榈、后景灯塔",
+      "材质分层：水/砂/地形/植被/木/石各自有不同的高光响应",
+      "高光受控：不允许出现大片纯白或全灰块"
+    ]
+  },
+  "theme": {
+    "styleId": "neumorph-blossom",
+    "background": "#f7edf1",
+    "surface": "#ffffff",
+    "text": "#15171f",
+    "muted": "#747177",
+    "accent": "#ce125d",
+    "accentSoft": "#f0c6d6",
+    "fontMood": "serif",
+    "density": "airy",
+    "radius": "rounded"
+  },
+  "unsupportedRequests": [],
+  "nodes": [
+    {
+      "id": "hero",
+      "type": "section",
+      "variant": "hero",
+      "eyebrow": "JELLY ISLAND · MATERIAL STUDY",
+      "title": "果冻海岛",
+      "description": "一块被切出来的岛。拖拽可以绕到背面看地层剖面。",
+      "children": [
+        {
+          "id": "hero-text",
+          "type": "text",
+          "text": "潮水退去时，蜜糖灯塔会先亮起来。"
+        }
+      ]
+    },
+    {
+      "id": "scene-wrap",
+      "type": "section",
+      "title": "三维海岛",
+      "description": "可拖拽旋转、滚轮缩放；点击物件查看档案。",
+      "children": [
+        {
+          "id": "island-scene",
+          "type": "scene3d",
+          "label": "可交互的果冻海岛",
+          "description": "方形地层底座上的分层海岛：潟湖、有体积的岛体、聚落、棕榈与栈桥。",
+          "height": "wide",
+          "background": "#f7edf1",
+          "groundColor": "#e6d3c4",
+          "cameraDistance": 13.5,
+          "shadows": true,
+          "controls": {
+            "orbit": true,
+            "zoom": true,
+            "autoRotate": false,
+            "dayNight": true,
+            "tide": true
+          },
+          "objects": [
+            {
+              "id": "diorama-base",
+              "name": "地层底座",
+              "shape": "plateau",
+              "position": [
+                0,
+                -1.16,
+                0
+              ],
+              "scale": [
+                12.6,
+                1.5,
+                10.2
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#d9c6b4",
+              "material": "sand",
+              "description": "方形地层剖面：表层砂、深色沉积带与基岩，用来把岛屿\"切\"出来。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "lagoon",
+              "name": "潟湖水面",
+              "shape": "disk",
+              "position": [
+                0,
+                -0.62,
+                0
+              ],
+              "scale": [
+                11.4,
+                0.04,
+                9.2
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#8ad9ea",
+              "material": "water",
+              "description": "环绕岛屿的浅色潟湖，拖动潮位滑块可改变水位。",
+              "selectable": true,
+              "motion": "tide"
+            },
+            {
+              "id": "shallow",
+              "name": "浅水带",
+              "shape": "torus",
+              "position": [
+                0,
+                -0.54,
+                0
+              ],
+              "scale": [
+                9.4,
+                0.16,
+                7.6
+              ],
+              "rotation": [
+                0,
+                0,
+                0
+              ],
+              "color": "#c7f0f5",
+              "material": "water",
+              "description": "岛屿周围的浅水带，颜色比外海更亮。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "island-terrain",
+              "name": "果冻岛地形",
+              "shape": "terrain",
+              "position": [
+                0,
+                -0.3,
+                0
+              ],
+              "scale": [
+                4.6,
+                1.55,
+                3.6
+              ],
+              "rotation": [
+                0,
+                12,
+                0
+              ],
+              "color": "#f2a0c6",
+              "material": "jelly",
+              "description": "有体积的岛体：隆起台面、收坡岸线、浅色砂岸与深色侧壁地层。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "lighthouse",
+              "name": "蜜糖灯塔",
+              "shape": "lighthouse",
+              "position": [
+                -2.15,
+                0.42,
+                0.55
+              ],
+              "scale": [
+                0.86,
+                0.86,
+                0.86
+              ],
+              "rotation": [
+                0,
+                -18,
+                0
+              ],
+              "color": "#fff3dd",
+              "material": "matte",
+              "description": "塔基、塔身、观景平台、灯室与暖黄灯球组成的复合灯塔。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "house-a",
+              "name": "渔村主屋",
+              "shape": "house",
+              "position": [
+                -0.35,
+                0.3,
+                0.15
+              ],
+              "scale": [
+                1.3,
+                1.1,
+                1.22
+              ],
+              "rotation": [
+                0,
+                24,
+                0
+              ],
+              "color": "#fff0e6",
+              "material": "jelly",
+              "description": "带坡屋顶、正门、三扇窗与烟囱的复合民居。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "house-b",
+              "name": "温室小屋",
+              "shape": "house",
+              "position": [
+                0.92,
+                0.24,
+                -0.62
+              ],
+              "scale": [
+                1.1,
+                0.95,
+                1.05
+              ],
+              "rotation": [
+                0,
+                -32,
+                0
+              ],
+              "color": "#d6f2ec",
+              "material": "jelly",
+              "description": "薄荷色的第二栋民居，屋顶与门窗同样可辨。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "palm-1",
+              "name": "棕榈 1",
+              "shape": "tree",
+              "position": [
+                -1.85,
+                0.3,
+                -1.35
+              ],
+              "scale": [
+                1.3125,
+                1.3125,
+                1.3125
+              ],
+              "rotation": [
+                0,
+                18,
+                0
+              ],
+              "color": "#8ecfa4",
+              "material": "foliage",
+              "description": "树干加七对放射状羽状叶的复合棕榈，不是单个绿色球体。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "palm-2",
+              "name": "棕榈 2",
+              "shape": "tree",
+              "position": [
+                -1.15,
+                0.3,
+                -1.95
+              ],
+              "scale": [
+                1.1500000000000001,
+                1.1500000000000001,
+                1.1500000000000001
+              ],
+              "rotation": [
+                0,
+                -24,
+                0
+              ],
+              "color": "#a2d9ae",
+              "material": "foliage",
+              "description": "树干加七对放射状羽状叶的复合棕榈，不是单个绿色球体。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "palm-3",
+              "name": "棕榈 3",
+              "shape": "tree",
+              "position": [
+                1.95,
+                0.3,
+                -1.15
+              ],
+              "scale": [
+                1.25,
+                1.25,
+                1.25
+              ],
+              "rotation": [
+                0,
+                42,
+                0
+              ],
+              "color": "#86c9a0",
+              "material": "foliage",
+              "description": "树干加七对放射状羽状叶的复合棕榈，不是单个绿色球体。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "palm-4",
+              "name": "棕榈 4",
+              "shape": "tree",
+              "position": [
+                1.35,
+                0.3,
+                0.85
+              ],
+              "scale": [
+                1.075,
+                1.075,
+                1.075
+              ],
+              "rotation": [
+                0,
+                -8,
+                0
+              ],
+              "color": "#b3ddb4",
+              "material": "foliage",
+              "description": "树干加七对放射状羽状叶的复合棕榈，不是单个绿色球体。",
+              "selectable": true,
+              "motion": "none"
+            },
+            {
+              "id": "shrub-1",
+              "name": "灌木 1",
+              "shape": "shrub",
+              "position": [
+                -2.35,
+                0.24,
+                0.05
+              ],
+              "scale": [
+                0.42,
+                0.36119999999999997,
+                0.42
+              ],
+              "rotation": [
+                0,
+                37,
+                0
+              ],
+              "color": "#8bc7a8",
+              "material": "foliage",
+              "description": "多球簇灌木。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "shrub-2",
+              "name": "灌木 2",
+              "shape": "shrub",
+              "position": [
+                0.35,
+                0.24,
+                1.05
+              ],
+              "scale": [
+                0.36,
+                0.3096,
+                0.36
+              ],
+              "rotation": [
+                0,
+                74,
+                0
+              ],
+              "color": "#9bd3b8",
+              "material": "foliage",
+              "description": "多球簇灌木。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "shrub-3",
+              "name": "灌木 3",
+              "shape": "shrub",
+              "position": [
+                2.45,
+                0.24,
+                -0.35
+              ],
+              "scale": [
+                0.4,
+                0.34400000000000003,
+                0.4
+              ],
+              "rotation": [
+                0,
+                111,
+                0
+              ],
+              "color": "#8ac6a6",
+              "material": "foliage",
+              "description": "多球簇灌木。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "rock-1",
+              "name": "礁岩 1",
+              "shape": "rock",
+              "position": [
+                -4.6,
+                0.02,
+                1.55
+              ],
+              "scale": [
+                0.55,
+                0.44000000000000006,
+                0.55
+              ],
+              "rotation": [
+                23,
+                41,
+                11
+              ],
+              "color": "#c9a3b8",
+              "material": "stone",
+              "description": "不规则多面礁岩。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "rock-2",
+              "name": "礁岩 2",
+              "shape": "rock",
+              "position": [
+                4.15,
+                0.02,
+                -2.05
+              ],
+              "scale": [
+                0.48,
+                0.384,
+                0.48
+              ],
+              "rotation": [
+                46,
+                82,
+                22
+              ],
+              "color": "#c9a3b8",
+              "material": "stone",
+              "description": "不规则多面礁岩。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "rock-3",
+              "name": "礁岩 3",
+              "shape": "rock",
+              "position": [
+                -3.9,
+                0.02,
+                -2.35
+              ],
+              "scale": [
+                0.42,
+                0.336,
+                0.42
+              ],
+              "rotation": [
+                69,
+                123,
+                33
+              ],
+              "color": "#c9a3b8",
+              "material": "stone",
+              "description": "不规则多面礁岩。",
+              "selectable": false,
+              "motion": "none"
+            },
+            {
+              "id": "dock",
+              "name": "木栈桥",
+              "shape": "dock",
+              "position": [
+                2.85,
+                -0.12,
+                1.15
+              ],
+              "scale": [
+                1.5,
+                1.4,
+                1.4
+              ],
+              "rotation": [
+                0,
+                -26,
+                0
+              ],
+              "color": "#b98a77",
+              "material": "wood",
+              "description": "带四根柱与横梁的木栈桥复合体。",
+              "selectable": true,
+              "motion": "none"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "notes",
+      "type": "section",
+      "title": "关于本次生成",
+      "children": [
+        {
+          "id": "notes-list",
+          "type": "list",
+          "items": [
+            {
+              "title": "材质是风格化高光",
+              "text": "果冻质感由受控高光与色彩压缩表现，不是物理精确折射。"
+            },
+            {
+              "title": "没有阴影贴图",
+              "text": "接触感来自聚合成片的软阴影盘，不是 shadow mapping。"
+            },
+            {
+              "title": "几何是程序化的",
+              "text": "所有物件由内置网格生成器构建，不支持导入外部 3D 模型。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -4,21 +4,24 @@ import { OFFICE_H, OFFICE_W, agentHitTest } from '../pixart/office';
 import { drawOffice, type OfficeView } from '../pixart/render';
 
 export function PixelOffice({
-  state, selectedAgent, onSelectAgent,
+  state, selectedAgent, onSelectAgent, thinking = false,
 }: {
   state: ProjectState;
   selectedAgent: AgentRole | null;
   onSelectAgent: (role: AgentRole) => void;
+  thinking?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const stateRef = useRef(state);
   const selRef = useRef(selectedAgent);
+  const thinkingRef = useRef(thinking);
   const hoverRef = useRef<AgentRole | undefined>(undefined);
   const viewRef = useRef<OfficeView>({ k: 1, offX: 0, offY: 0 });
   const [hoverName, setHoverName] = useState<string | null>(null);
   stateRef.current = state;
   selRef.current = selectedAgent;
+  thinkingRef.current = thinking;
 
   // 像素完美渲染：画布背板 = 显示尺寸 × DPR，办公室按整数倍 k 居中绘制
   useEffect(() => {
@@ -53,8 +56,12 @@ export function PixelOffice({
       const s = stateRef.current;
       const agents = AGENT_ROLES.map((role) => ({
         role,
-        status: s.agents[role]?.status ?? 'idle',
-        detail: s.agents[role]?.detail,
+        status: thinkingRef.current && ['product', 'architect', 'designer'].includes(role)
+          ? 'analyzing' as const
+          : s.agents[role]?.status ?? 'idle',
+        detail: thinkingRef.current && ['product', 'architect', 'designer'].includes(role)
+          ? '模型思考中：拆解需求与页面构想'
+          : s.agents[role]?.detail,
         taskId: s.agents[role]?.currentTaskId,
         selected: selRef.current === role,
       }));
@@ -81,7 +88,8 @@ export function PixelOffice({
       <div className="office-head">
         <span>像素办公室 · 点击角色查看详情</span>
         <div className="legend">
-          <span style={{ color: 'var(--cyan)' }}>工作中</span>
+          <span style={{ color: 'var(--cyan)' }}>思考中</span>
+          <span style={{ color: '#9DF5E2' }}>工作中</span>
           <span style={{ color: 'var(--green)' }}>测试</span>
           <span style={{ color: 'var(--yellow)' }}>待审核</span>
           <span style={{ color: 'var(--amber)' }}>阻塞</span>
@@ -109,8 +117,10 @@ export function PixelOffice({
       </div>
       <div className="office-hint">
         {hoverName
-          ? `${hoverName} — 状态由后端事件驱动`
-          : '动画只是状态的可视化 · 权威状态来自事件日志'}
+          ? `${hoverName} — ${thinking && ['product', 'architect', 'designer'].includes(hoverName) ? '正在思考页面结构' : '状态由后端事件驱动'}`
+          : thinking
+            ? '模型思考中 · 产品、架构与设计工位正在整理页面方案'
+            : '工位动画跟随项目进度 · 状态详情可在事件日志查看'}
       </div>
     </section>
   );

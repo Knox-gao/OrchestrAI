@@ -1,0 +1,1365 @@
+{
+  "schemaVersion": "orchestrai.pageplan.v1",
+  "meta": {
+    "title": "果冻海岛 · 高细节构图评估夹具",
+    "description": "用于评估复合场景构图、自动取景、地形层次、植被聚落和真实浏览器视觉质量的桌面 WebGL 测试夹具；不是已验收的生产截图。",
+    "language": "zh-CN"
+  },
+  "userConstraints": {
+    "styleId": "neumorph-blossom",
+    "fontMood": "serif",
+    "pageDirection": "explore",
+    "locked": true
+  },
+  "designIntent": {
+    "concept": "参考用户提供的目标效果图，构建一座有明确海岸轮廓、分层地形、聚落、灯塔、植被、路径与海面层次的粉色果冻质感小岛。此夹具仅提供更丰富的结构数据，最后视觉质量必须通过 Edge 截图与人工对照验收。",
+    "pageDirection": "explore",
+    "visualPrinciples": [
+      "目标参考图是视觉验收的来源，不得只凭 WebGL ready 或对象数量判断质量",
+      "以明确可辨识的岛屿轮廓为第一层级，避免呈现为行星轨道图或无语义球体集合",
+      "通过沙岸/礁环/地形/建筑/植被/路径的前中后景建立空间层次",
+      "粉色果冻主题使用受控高光，保留物体轮廓与色彩，不允许大片纯白过曝",
+      "建筑、树木、植物和生物必须由复合几何或经许可的本地资产形成可辨认形体"
+    ]
+  },
+  "theme": {
+    "styleId": "neumorph-blossom",
+    "background": "#fff5f8",
+    "surface": "#ffffff",
+    "text": "#352735",
+    "muted": "#765f70",
+    "accent": "#cf6291",
+    "accentSoft": "#f7dce8",
+    "fontMood": "serif",
+    "density": "comfortable",
+    "radius": "rounded"
+  },
+  "unsupportedRequests": [],
+  "nodes": [
+    {
+      "id": "island-intro",
+      "type": "section",
+      "eyebrow": "SEA JOURNAL · 07",
+      "title": "一座会呼吸的果冻海岛",
+      "description": "一座虚构的海上果冻岛。下方场景由 WebGL 实时绘制，可拖拽观察并选择建筑与生物查看档案。",
+      "variant": "hero",
+      "children": [
+        {
+          "id": "island-lead",
+          "type": "text",
+          "text": "从三维海岸线出发，探索灯塔、渔村、温室与奇妙生物。"
+        },
+        {
+          "id": "island-primary-link",
+          "type": "link",
+          "label": "探索岛屿档案 ↓",
+          "href": "#island-archive",
+          "variant": "primary"
+        }
+      ]
+    },
+    {
+      "id": "island-scene-3d",
+      "type": "scene3d",
+      "label": "高细节果冻海岛（视觉基准夹具）",
+      "description": "用于与用户提供的目标参考图进行真实 Edge 视觉对照。包含分层海岸、礁环、灯塔、不同屋顶的聚落、树冠、灌木、花草、步道、木码头与生物。必须检查自动取景是否完整、岛屿是否清晰可辨、细节是否有层级，而不是仅检查对象数量。",
+      "height": "wide",
+      "background": "#fce7f3",
+      "cameraDistance": 13.8,
+      "controls": {
+        "orbit": true,
+        "zoom": true,
+        "autoRotate": false,
+        "dayNight": true,
+        "tide": true
+      },
+      "objects": [
+        {
+          "id": "island-water",
+          "name": "环岛碧蓝海面",
+          "shape": "disk",
+          "position": [
+            0,
+            -0.52,
+            0
+          ],
+          "scale": [
+            12,
+            0.05,
+            10
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#75cfe4",
+          "material": "jelly",
+          "description": "近岸海水，潮位控制应改变真实可见的水面高度。",
+          "selectable": true,
+          "motion": "tide"
+        },
+        {
+          "id": "island-reef-ring",
+          "name": "浅粉珊瑚礁环",
+          "shape": "torus",
+          "position": [
+            0,
+            -0.29,
+            0
+          ],
+          "scale": [
+            8.9,
+            0.22,
+            6.7
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#fbd5e7",
+          "material": "jelly",
+          "description": "岛屿外围的浅色礁环，提供海岸边缘层次。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "island-lower-rock",
+          "name": "岛屿下层岩台",
+          "shape": "island",
+          "position": [
+            0,
+            -0.24,
+            0
+          ],
+          "scale": [
+            4.65,
+            0.78,
+            3.35
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#c77f9e",
+          "material": "matte",
+          "description": "岛体下层应形成可见的厚度和侧壁，不应像漂浮薄片。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "island-terrain",
+          "name": "粉色果冻岛主体",
+          "shape": "island",
+          "position": [
+            0,
+            0.12,
+            0
+          ],
+          "scale": [
+            4.25,
+            1.35,
+            3.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#f3a0c5",
+          "material": "jelly",
+          "description": "核心有机地形；相机初始视角须自动取景，完整显示地形与主要建筑。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-shoreline",
+          "name": "奶油色海岸边缘",
+          "shape": "torus",
+          "position": [
+            0,
+            0.05,
+            0.02
+          ],
+          "scale": [
+            7.9,
+            0.16,
+            5.85
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#ffe3ca",
+          "material": "matte",
+          "description": "浅沙色岸边形成粉色岛体与海面之间的过渡。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "path-west",
+          "name": "西侧弯道步道一",
+          "shape": "box",
+          "position": [
+            -1.05,
+            0.86,
+            0.35
+          ],
+          "scale": [
+            1.12,
+            0.08,
+            0.28
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#f8d5b7",
+          "material": "matte",
+          "description": "连接灯塔和渔村的浅色小路。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "path-center",
+          "name": "中央石径",
+          "shape": "box",
+          "position": [
+            0.15,
+            0.91,
+            0.38
+          ],
+          "scale": [
+            1.25,
+            0.07,
+            0.22
+          ],
+          "rotation": [
+            0,
+            18,
+            0
+          ],
+          "color": "#fbe7ca",
+          "material": "matte",
+          "description": "中央步道，连接聚落与花园。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "path-east",
+          "name": "东侧步道",
+          "shape": "box",
+          "position": [
+            1.2,
+            0.83,
+            -0.55
+          ],
+          "scale": [
+            0.95,
+            0.07,
+            0.2
+          ],
+          "rotation": [
+            0,
+            -28,
+            0
+          ],
+          "color": "#f5ccb1",
+          "material": "matte",
+          "description": "通向温室与观景台的小路。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "lighthouse-tower",
+          "name": "蜜糖灯塔塔身",
+          "shape": "cylinder",
+          "position": [
+            -1.7,
+            1.02,
+            0.25
+          ],
+          "scale": [
+            0.48,
+            1.38,
+            0.48
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#fff2db",
+          "material": "matte",
+          "description": "塔身具有明确的竖向比例。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "lighthouse-roof",
+          "name": "灯塔粉色尖顶",
+          "shape": "cone",
+          "position": [
+            -1.7,
+            1.78,
+            0.25
+          ],
+          "scale": [
+            0.64,
+            0.46,
+            0.64
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#df699f",
+          "material": "jelly",
+          "description": "锥形屋顶。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "lighthouse-lantern",
+          "name": "灯室",
+          "shape": "cylinder",
+          "position": [
+            -1.7,
+            1.61,
+            0.25
+          ],
+          "scale": [
+            0.39,
+            0.25,
+            0.39
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#ffd889",
+          "material": "jelly",
+          "description": "发光灯室。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "lighthouse-glow",
+          "name": "灯塔光源",
+          "shape": "sphere",
+          "position": [
+            -1.7,
+            1.64,
+            0.25
+          ],
+          "scale": [
+            0.18,
+            0.18,
+            0.18
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#fff4b2",
+          "material": "jelly",
+          "description": "灯塔暖色光点。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "lighthouse-base",
+          "name": "灯塔石基",
+          "shape": "cylinder",
+          "position": [
+            -1.7,
+            0.37,
+            0.25
+          ],
+          "scale": [
+            0.72,
+            0.18,
+            0.72
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#d9a5bd",
+          "material": "matte",
+          "description": "灯塔基座。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-a-wall",
+          "name": "贝壳小屋主体",
+          "shape": "box",
+          "position": [
+            -0.45,
+            0.94,
+            0.05
+          ],
+          "scale": [
+            0.78,
+            0.64,
+            0.68
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#fff1e8",
+          "material": "jelly",
+          "description": "贝壳小屋的主体结构。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "house-a-roof",
+          "name": "贝壳小屋屋顶",
+          "shape": "cone",
+          "position": [
+            -0.45,
+            1.3699999999999999,
+            0.05
+          ],
+          "scale": [
+            0.86,
+            0.42,
+            0.82
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#d978a8",
+          "material": "jelly",
+          "description": "贝壳小屋屋顶。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-a-door",
+          "name": "贝壳小屋门",
+          "shape": "box",
+          "position": [
+            -0.45,
+            0.82,
+            0.39599999999999996
+          ],
+          "scale": [
+            0.16,
+            0.31,
+            0.06
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#98637f",
+          "material": "matte",
+          "description": "贝壳小屋入口。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-a-window",
+          "name": "贝壳小屋窗",
+          "shape": "box",
+          "position": [
+            -0.65,
+            1.0,
+            0.40499999999999997
+          ],
+          "scale": [
+            0.14,
+            0.14,
+            0.06
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#9ce4ec",
+          "material": "jelly",
+          "description": "贝壳小屋的窗户。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-b-wall",
+          "name": "蜜桃小屋主体",
+          "shape": "box",
+          "position": [
+            0.65,
+            0.93,
+            -0.72
+          ],
+          "scale": [
+            0.78,
+            0.64,
+            0.68
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#f8d9e7",
+          "material": "jelly",
+          "description": "蜜桃小屋的主体结构。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "house-b-roof",
+          "name": "蜜桃小屋屋顶",
+          "shape": "cone",
+          "position": [
+            0.65,
+            1.36,
+            -0.72
+          ],
+          "scale": [
+            0.86,
+            0.42,
+            0.82
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#b95d93",
+          "material": "jelly",
+          "description": "蜜桃小屋屋顶。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-b-door",
+          "name": "蜜桃小屋门",
+          "shape": "box",
+          "position": [
+            0.65,
+            0.81,
+            -0.374
+          ],
+          "scale": [
+            0.16,
+            0.31,
+            0.06
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#98637f",
+          "material": "matte",
+          "description": "蜜桃小屋入口。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-b-window",
+          "name": "蜜桃小屋窗",
+          "shape": "box",
+          "position": [
+            0.45,
+            0.99,
+            -0.365
+          ],
+          "scale": [
+            0.14,
+            0.14,
+            0.06
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#9ce4ec",
+          "material": "jelly",
+          "description": "蜜桃小屋的窗户。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-c-wall",
+          "name": "海盐温室主体",
+          "shape": "box",
+          "position": [
+            1.78,
+            0.88,
+            -0.2
+          ],
+          "scale": [
+            0.78,
+            0.64,
+            0.68
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#d8f4ee",
+          "material": "jelly",
+          "description": "海盐温室的主体结构。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "house-c-roof",
+          "name": "海盐温室温室屋顶",
+          "shape": "box",
+          "position": [
+            1.78,
+            1.26,
+            -0.2
+          ],
+          "scale": [
+            0.85,
+            0.18,
+            0.78
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#78b8ad",
+          "material": "jelly",
+          "description": "海盐温室的平缓玻璃屋顶。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-c-door",
+          "name": "海盐温室门",
+          "shape": "box",
+          "position": [
+            1.78,
+            0.76,
+            0.14599999999999996
+          ],
+          "scale": [
+            0.16,
+            0.31,
+            0.06
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#98637f",
+          "material": "matte",
+          "description": "海盐温室入口。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "house-c-window",
+          "name": "海盐温室窗",
+          "shape": "box",
+          "position": [
+            1.58,
+            0.94,
+            0.15499999999999997
+          ],
+          "scale": [
+            0.14,
+            0.14,
+            0.06
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#9ce4ec",
+          "material": "jelly",
+          "description": "海盐温室的窗户。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "tree-1-trunk",
+          "name": "果冻树1树干",
+          "shape": "cylinder",
+          "position": [
+            -2.55,
+            0.94,
+            -0.75
+          ],
+          "scale": [
+            0.15,
+            0.42900000000000005,
+            0.15
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#a86e80",
+          "material": "matte",
+          "description": "树干。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "tree-1-crown",
+          "name": "果冻树1树冠",
+          "shape": "sphere",
+          "position": [
+            -2.55,
+            1.21,
+            -0.75
+          ],
+          "scale": [
+            0.48360000000000003,
+            0.5459999999999999,
+            0.48360000000000003
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#8cc9a7",
+          "material": "jelly",
+          "description": "圆润但有体积的树冠。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "tree-2-trunk",
+          "name": "果冻树2树干",
+          "shape": "cylinder",
+          "position": [
+            -2.65,
+            0.94,
+            0.62
+          ],
+          "scale": [
+            0.15,
+            0.35750000000000004,
+            0.15
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#a86e80",
+          "material": "matte",
+          "description": "树干。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "tree-2-crown",
+          "name": "果冻树2树冠",
+          "shape": "sphere",
+          "position": [
+            -2.65,
+            1.145,
+            0.62
+          ],
+          "scale": [
+            0.403,
+            0.45499999999999996,
+            0.403
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#a6d9ae",
+          "material": "jelly",
+          "description": "圆润但有体积的树冠。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "tree-3-trunk",
+          "name": "果冻树3树干",
+          "shape": "cylinder",
+          "position": [
+            0.25,
+            0.94,
+            -1.6
+          ],
+          "scale": [
+            0.15,
+            0.4015,
+            0.15
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#a86e80",
+          "material": "matte",
+          "description": "树干。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "tree-3-crown",
+          "name": "果冻树3树冠",
+          "shape": "sphere",
+          "position": [
+            0.25,
+            1.185,
+            -1.6
+          ],
+          "scale": [
+            0.4526,
+            0.511,
+            0.4526
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#86c8c3",
+          "material": "jelly",
+          "description": "圆润但有体积的树冠。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "tree-4-trunk",
+          "name": "果冻树4树干",
+          "shape": "cylinder",
+          "position": [
+            2.55,
+            0.94,
+            0.55
+          ],
+          "scale": [
+            0.15,
+            0.396,
+            0.15
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#a86e80",
+          "material": "matte",
+          "description": "树干。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "tree-4-crown",
+          "name": "果冻树4树冠",
+          "shape": "sphere",
+          "position": [
+            2.55,
+            1.18,
+            0.55
+          ],
+          "scale": [
+            0.44639999999999996,
+            0.504,
+            0.44639999999999996
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#b8dca1",
+          "material": "jelly",
+          "description": "圆润但有体积的树冠。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "shrub-1",
+          "name": "海岛灌木1",
+          "shape": "sphere",
+          "position": [
+            -2.0,
+            0.82,
+            0.15
+          ],
+          "scale": [
+            0.34,
+            0.27,
+            0.32
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#8bc7a8",
+          "material": "foliage",
+          "description": "低矮的圆润灌木。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "shrub-2",
+          "name": "海岛灌木2",
+          "shape": "sphere",
+          "position": [
+            0.95,
+            0.82,
+            0.45
+          ],
+          "scale": [
+            0.34,
+            0.27,
+            0.32
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#9bd3b8",
+          "material": "foliage",
+          "description": "低矮的圆润灌木。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "shrub-3",
+          "name": "海岛灌木3",
+          "shape": "sphere",
+          "position": [
+            2.35,
+            0.82,
+            -0.75
+          ],
+          "scale": [
+            0.34,
+            0.27,
+            0.32
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#8ac6a6",
+          "material": "foliage",
+          "description": "低矮的圆润灌木。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "flower-1",
+          "name": "发光花朵1",
+          "shape": "sphere",
+          "position": [
+            -1.5,
+            0.97,
+            1.02
+          ],
+          "scale": [
+            0.18,
+            0.15,
+            0.18
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#f8c5da",
+          "material": "jelly",
+          "description": "小型岛屿花朵。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "flower-2",
+          "name": "发光花朵2",
+          "shape": "sphere",
+          "position": [
+            1.2,
+            0.97,
+            0.7
+          ],
+          "scale": [
+            0.18,
+            0.15,
+            0.18
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#ffd7a6",
+          "material": "jelly",
+          "description": "小型岛屿花朵。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "rock-west",
+          "name": "西岸礁石",
+          "shape": "sphere",
+          "position": [
+            -3.15,
+            0.28,
+            0.35
+          ],
+          "scale": [
+            0.5,
+            0.25,
+            0.42
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#c99bb3",
+          "material": "matte",
+          "description": "海岸礁石。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "rock-north",
+          "name": "北岸礁石",
+          "shape": "sphere",
+          "position": [
+            0.25,
+            0.26,
+            -2.35
+          ],
+          "scale": [
+            0.42,
+            0.22,
+            0.35
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#d4a2bc",
+          "material": "matte",
+          "description": "海岸礁石。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "rock-east",
+          "name": "东岸礁石",
+          "shape": "sphere",
+          "position": [
+            3.12,
+            0.22,
+            -0.45
+          ],
+          "scale": [
+            0.38,
+            0.22,
+            0.31
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#c992ae",
+          "material": "matte",
+          "description": "海岸礁石。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "dock-main",
+          "name": "木码头主桥",
+          "shape": "box",
+          "position": [
+            2.75,
+            0.02,
+            1.15
+          ],
+          "scale": [
+            1.25,
+            0.11,
+            0.32
+          ],
+          "rotation": [
+            0,
+            20,
+            0
+          ],
+          "color": "#b98a77",
+          "material": "matte",
+          "description": "延伸入海的木制码头。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "dock-branch",
+          "name": "木码头支桥",
+          "shape": "box",
+          "position": [
+            3.22,
+            0.02,
+            1.52
+          ],
+          "scale": [
+            0.62,
+            0.1,
+            0.27
+          ],
+          "rotation": [
+            0,
+            52,
+            0
+          ],
+          "color": "#c49a82",
+          "material": "matte",
+          "description": "码头侧支桥。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "dock-post-a",
+          "name": "码头立柱一",
+          "shape": "cylinder",
+          "position": [
+            2.25,
+            -0.12,
+            1.0
+          ],
+          "scale": [
+            0.1,
+            0.42,
+            0.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#8e6a64",
+          "material": "matte",
+          "description": "码头立柱。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "dock-post-b",
+          "name": "码头立柱二",
+          "shape": "cylinder",
+          "position": [
+            3.25,
+            -0.12,
+            1.52
+          ],
+          "scale": [
+            0.1,
+            0.42,
+            0.1
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#8e6a64",
+          "material": "matte",
+          "description": "码头立柱。",
+          "selectable": false,
+          "motion": "none"
+        },
+        {
+          "id": "jelly-whale",
+          "name": "果冻鲸",
+          "shape": "sphere",
+          "position": [
+            0.35,
+            1.65,
+            2.15
+          ],
+          "scale": [
+            0.58,
+            0.32,
+            0.28
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#75cde2",
+          "material": "jelly",
+          "description": "漂浮在近岸上方的虚构果冻鲸，可选择查看档案。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "island-bird",
+          "name": "海岛小鸟",
+          "shape": "sphere",
+          "position": [
+            2.15,
+            2.0,
+            -1.6
+          ],
+          "scale": [
+            0.2,
+            0.14,
+            0.16
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#fff0c3",
+          "material": "jelly",
+          "description": "在岛上空盘旋的小鸟档案。",
+          "selectable": true,
+          "motion": "none"
+        },
+        {
+          "id": "glow-firefly",
+          "name": "荧光浮游生物",
+          "shape": "sphere",
+          "position": [
+            -2.45,
+            1.65,
+            -1.4
+          ],
+          "scale": [
+            0.16,
+            0.16,
+            0.16
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "color": "#b9f0df",
+          "material": "jelly",
+          "description": "夜晚可观察的虚构发光生物。",
+          "selectable": true,
+          "motion": "none"
+        }
+      ]
+    },
+    {
+      "id": "island-archive",
+      "type": "section",
+      "eyebrow": "FIELD NOTES",
+      "title": "岛上的风物",
+      "description": "下面的内容由页面计划组合成卡片、展开档案和时间线。",
+      "variant": "plain",
+      "children": [
+        {
+          "id": "island-features-grid",
+          "type": "container",
+          "layout": "grid",
+          "columns": 3,
+          "children": [
+            {
+              "id": "honey-lighthouse",
+              "type": "card",
+              "eyebrow": "LANDMARK 01",
+              "title": "蜜糖灯塔",
+              "description": "灯罩会在潮汐到来前发出温暖的蜜金色微光。"
+            },
+            {
+              "id": "jelly-village",
+              "type": "card",
+              "eyebrow": "SETTLEMENT 02",
+              "title": "果冻渔村",
+              "description": "半透明的圆顶小屋沿着内海湾缓缓排开。"
+            },
+            {
+              "id": "glass-greenhouse",
+              "type": "card",
+              "eyebrow": "GARDEN 03",
+              "title": "玻璃温室",
+              "description": "发光的植物在这里记录每一次潮汐的颜色。"
+            }
+          ]
+        },
+        {
+          "id": "island-naturalist-note",
+          "type": "details",
+          "summary": "打开自然观察档案",
+          "children": [
+            {
+              "id": "island-naturalist-copy",
+              "type": "text",
+              "text": "果冻鲸会在外海缓慢迁徙；荧光浮游生物聚集在低浪的水湾。以上均为虚构世界观设定，不代表真实生物资料。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "island-history",
+      "type": "section",
+      "eyebrow": "ISLAND CHRONICLE",
+      "title": "岛屿发展记录",
+      "description": "时间线的展开和收起由原生 details/summary 实现，不依赖任意模型脚本。",
+      "variant": "panel",
+      "children": [
+        {
+          "id": "island-timeline",
+          "type": "timeline",
+          "items": [
+            {
+              "id": "reef-year",
+              "date": "第 01 年",
+              "title": "荒礁出现",
+              "body": "第一片粉色礁岩从浅海中露出。"
+            },
+            {
+              "id": "village-year",
+              "date": "第 08 年",
+              "title": "渔村建立",
+              "body": "居民在内海湾搭起第一排半透明小屋。"
+            },
+            {
+              "id": "garden-year",
+              "date": "第 15 年",
+              "title": "温室点亮",
+              "body": "玻璃温室开始记录潮汐和植物变化。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
