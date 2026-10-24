@@ -2,6 +2,7 @@ import { getPagePlanRenderer, isBuiltinPagePlanType } from './registry.mjs';
 import { validateScene3DNode } from './scene3d.mjs';
 import { validateInteractionNode } from './interactions.mjs';
 import { validateSceneBrief } from './scene-brief.mjs';
+import { describeScene3DFailure } from './scene3d.mjs';
 
 export const PAGEPLAN_SCHEMA_VERSION = 'orchestrai.pageplan.v1';
 export const PAGEPLAN_LIMITS = Object.freeze({
@@ -296,17 +297,21 @@ export function validatePagePlan(input, options = {}) {
         checkEnum(node.tone ?? 'neutral', CALLOUT_TONES, `${path}.tone`, issues);
         break;
       case 'divider': break;
-      case 'scene3d':
-        if (!validateScene3DNode(node)) issues.push(`${path}: invalid scene3d configuration, object geometry, controls or bounds`);
-        else {
+      case 'scene3d': {
+        // 只报 "invalid" 时模型只能瞎猜（实测连续三轮都改不对），这里给出具体字段原因
+        const sceneIssues = describeScene3DFailure(node);
+        if (sceneIssues.length) {
+          for (const reason of sceneIssues) issues.push(`${path}.${reason.replace(/^scene3d\./, '')}`);
+        } else {
           for (const object of node.objects) {
-            if (ids.has(object.id)) issues.push(`${path}.objects: duplicate stable id \"${object.id}\"`);
+            if (ids.has(object.id)) issues.push(`${path}.objects: duplicate stable id "${object.id}"`);
             else ids.add(object.id);
           }
           count += node.objects.length;
           if (count > limits.maxNodes) issues.push(`nodes: exceeds maximum node count ${limits.maxNodes}`);
         }
         break;
+      }
       case 'quote':
         checkString(node.text, `${path}.text`, issues, { max: 1400 });
         checkString(node.byline, `${path}.byline`, issues, { required: false, max: 200, allowEmpty: true });

@@ -1,9 +1,10 @@
 import { validatePagePlan, PAGEPLAN_FIELD_CONTRACT, PAGEPLAN_NODE_KEYS, PAGEPLAN_ENUMS, PAGEPLAN_LIMITS } from './schema.mjs';
 import { listExtensionPagePlanTypes } from './registry.mjs';
 import { normalizeProviderUsage } from './usage-normalizer.mjs';
-import { SCENE3D_PRIMITIVES, SCENE3D_COMPOSITES, SCENE3D_MATERIALS, SCENE3D_LIMITS } from './scene3d.mjs';
+import { SCENE3D_PRIMITIVES, SCENE3D_COMPOSITES, SCENE3D_MATERIALS, SCENE3D_LIMITS, SCENE3D_CONTRACT } from './scene3d.mjs';
 import { SCENE_BRIEF_VERSION, SCENE_BRIEF_LIMITS } from './scene-brief.mjs';
 import { sanitizeForOutput } from '../../llm.mjs';
+import { normalizePagePlanDraft } from './normalize-draft.mjs';
 
 export const PAGEPLAN_BASE_CAPABILITIES = Object.freeze([
   'section', 'container', 'heading', 'text', 'image', 'link', 'card', 'list',
@@ -196,7 +197,27 @@ export function pagePlanMaxTokens() {
 
 const SCENE3D_PROMPT = `3D REQUIREMENT TRIGGER: Read the user's requirement, not just the requested page genre. If it explicitly asks for a three-dimensional/3D scene, interactive 3D model, WebGL scene, orbit/drag-to-rotate 3D view, or an explorable 3D world, and "scene3d" is in registeredRendererCapabilities, you MUST include a scene3d node and its top-level sceneBrief. Do not satisfy such a request with a 2D illustration, a static card, or prose describing a 3D scene. If "scene3d" is unavailable and the 3D experience is central to the request, report it as blocking in unsupportedRequests; never silently downgrade it. Do not add scene3d just because the page topic is a physical place or object when the user did not request a 3D experience.
 When a 3D scene is required, you must also emit a top-level "sceneBrief" object with schemaVersion "${SCENE_BRIEF_VERSION}". It is a structured creative plan, not prose: theme, visualStyle, subject{id,description,silhouette}, secondaryFocus[], composition{cameraAngle(low|eye|high|isometric), subjectCoverage[min,max] (0.05-0.95, share of frame the subject should fill), whitespace(tight|balanced|airy), focalPoint}, terrain{kind,relief(flat|gentle|rolling|steep),layers[]}, objects[{id,role(subject|secondary|accent),scaleHint(tiny|small|medium|large|huge),layer(foreground|midground|background),relation}], materials[{name,intent}], light{direction,mood}, interaction[], acceptance[] (1-${SCENE_BRIEF_LIMITS.maxAcceptance} checkable statements). Exactly one object must have role=subject, and subject.id must appear in objects. objects must span at least two depth layers.
-Scene3d node constraints: 1-${SCENE3D_LIMITS.maxObjects} objects. Allowed shapes: ${SHAPE_LIST}. Prefer the composite shapes (${COMPOSITE_HINT}) over stacking raw primitives: a house is ONE object with shape "house" (it already renders walls, gabled roof, door, windows, chimney), a palm is ONE object with shape "tree" (trunk plus fronds), a lighthouse is ONE object with shape "lighthouse" (base, tower, gallery, lantern, roof, lamp). Do NOT compose a house out of several boxes yourself — that is what produced "random stacked primitives". Use raw primitives only for genuinely simple props. Allowed materials: ${MATERIAL_LIST}. Each object: bounded position/scale/rotation triples, hex color, material, selectable flag, motion ("none" or "tide" only on shape "disk"). Coordinates are a rough layout hint: the renderer auto-frames the camera and snaps standing objects onto the terrain surface, so express intent through role/layer/relation instead of pixel-perfect coordinates.
+Scene3d node constraints — copy this shape EXACTLY; every listed key is REQUIRED unless marked optional:
+{
+  "id": <lowercase-kebab>, "type": "scene3d",
+  "label": <string 1-180>, "description": <string <=600>,
+  "height": ${SCENE3D_CONTRACT.heights.map((h) => `"${h}"`).join(' | ')},
+  "background": "#RRGGBB", "cameraDistance": <number ${SCENE3D_CONTRACT.cameraDistance.min}-${SCENE3D_CONTRACT.cameraDistance.max}>,
+  "controls": { ${SCENE3D_CONTRACT.controlKeys.map((k) => `"${k}": true|false`).join(', ')} },
+  "shadows": <boolean, optional>, "groundColor": "#RRGGBB, optional",
+  "objects": [ 1-${SCENE3D_LIMITS.maxObjects} items ]
+}
+Each objects item — ALL of these keys are REQUIRED except description-length only:
+{ "id": <unique lowercase-kebab>, "name": <required display name 1-120>, "shape": <allowed shape>,
+  "position": [x,y,z] each within ±${SCENE3D_CONTRACT.coordinate}, "scale": [x,y,z] each ${SCENE3D_CONTRACT.scale.min}-${SCENE3D_CONTRACT.scale.max},
+  "rotation": [x,y,z] degrees within ±360, "color": "#RRGGBB", "material": <allowed material>,
+  "description": <string <=900, required>, "selectable": true|false, "motion": "none" | "tide" }
+Common mistakes that make the whole plan fail — avoid all of them:
+  * "height" MUST be one of the three enum strings above, NEVER a pixel number like 480.
+  * "controls" MUST be an object of the ${SCENE3D_CONTRACT.controlKeys.length} boolean keys above, NEVER an array like ["rotate","zoom"].
+  * every object MUST have a "name"; ids alone are not enough.
+  * "motion": "tide" is only legal on shape "disk".
+Allowed shapes: ${SHAPE_LIST}. Prefer the composite shapes (${COMPOSITE_HINT}) over stacking raw primitives: a house is ONE object with shape "house" (it already renders walls, gabled roof, door, windows, chimney), a palm is ONE object with shape "tree" (trunk plus fronds), a lighthouse is ONE object with shape "lighthouse" (base, tower, gallery, lantern, roof, lamp). Do NOT compose a house out of several boxes yourself — that is what produced "random stacked primitives". Use raw primitives only for genuinely simple props. Allowed materials: ${MATERIAL_LIST}. Coordinates are a rough layout hint: the renderer auto-frames the camera and snaps standing objects onto the terrain surface, so express intent through role/layer/relation instead of pixel-perfect coordinates.
 Never claim physical refraction, PBR, shadow mapping, skeletal animation, or imported 3D models; the renderer does stylized mesh lighting and procedural geometry only.`;
 
 /**
@@ -428,7 +449,11 @@ export async function generatePagePlan({
           fontMood: requestedFontMood,
         },
       };
-      let validated = validatePagePlan(plan);
+      // 校验前先做确定性规范化：只清机械噪声（多余字段/空 children/非 grid 的 columns），
+      // 不发明内容。修复记录会随 metadata 上报，事件日志里能看到具体动了什么。
+      const normalized = normalizePagePlanDraft(plan, { limits: PAGEPLAN_LIMITS });
+      const repairs = normalized.repairs;
+      let validated = validatePagePlan(normalized.draft);
       if (!explicitlyTextOnly(requirement) && !assessPagePlanVisualComposition(validated, requirement).ok) {
         validated = validatePagePlan(injectTopicImagesToTarget(validated, requirement));
       }
@@ -470,6 +495,8 @@ export async function generatePagePlan({
           usage: providerUsage.usage,
           usageStatus: providerUsage.usageStatus,
           lockedChoiceFields: Object.keys(locks).filter((key) => locks[key] != null),
+          // 规范化做了什么，如实带出去给事件日志，不静默处理
+          repairs,
         },
       };
     } catch (error) {

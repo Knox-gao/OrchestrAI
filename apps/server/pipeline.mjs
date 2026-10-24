@@ -906,6 +906,9 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         { type: 'agent_step', runId: 'R-P1', taskId: 'T1', role: 'frontend', step: { at: 0, kind: 'tool', tool: 'pageplan', detail: `节点数 ${rendered.report.nodeCount}，插图 ${rendered.report.features.images} 张，尝试 ${planResult.metadata.attempts} 次，${planResult.metadata.elapsedMs}ms${hasScene3d ? `，含真实 WebGL 场景（${rendered.report.features.scene3d.objects} 个对象）` : ''}` } },
         { type: 'agent_run_ended', runId: 'R-P1', taskId: 'T1', role: 'frontend', status: 'succeeded', usage: { inputTokens: null, outputTokens: null, costUsd: 0, usageStatus: planResult.metadata.usageStatus } },
         { type: 'log', level: 'success', from: 'frontend', message: `🧩 PagePlan 渲染完成：${rendered.report.nodeCount} 个节点 · 插图 ${rendered.report.features.images} 张 · 风格 ${planResult.plan.theme.styleId}（${spec.styleOrigin === 'user-locked' ? '用户锁定' : '自动'}）${hasScene3d ? ` · 3D 场景 ${rendered.report.features.scene3d.objects} 对象（WebGL1 本地渲染）` : ''}` },
+        ...(Array.isArray(planResult.metadata.repairs) && planResult.metadata.repairs.length
+          ? [{ type: 'log', level: 'info', from: 'frontend', message: `🔧 PagePlan 校验前做过 ${planResult.metadata.repairs.length} 处机械规范化（不涉及内容）：${planResult.metadata.repairs.slice(0, 6).map((r) => `${r.path} ${r.action}${r.keys ? `(${r.keys.join('/')})` : ''}`).join('；')}${planResult.metadata.repairs.length > 6 ? ` 等 ${planResult.metadata.repairs.length} 项` : ''}` }]
+          : []),
       ]);
     } catch (e) {
       const code = e?.code ?? 'PAGEPLAN_UNKNOWN';

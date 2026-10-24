@@ -48,9 +48,124 @@ const SHAPE_PART_COUNT = Object.freeze({
   terrain: 4, plateau: 5, lagoon: 6, dome: 16, house: 9, lighthouse: 6, tree: 34, shrub: 4, rock: 3, dock: 7,
 });
 
-const HEIGHTS = new Set(['compact', 'standard', 'wide']);
+export const SCENE3D_HEIGHTS = Object.freeze(['compact', 'standard', 'wide']);
+export const SCENE3D_CONTROL_KEYS = Object.freeze(['orbit', 'zoom', 'autoRotate', 'dayNight', 'tide']);
+const HEIGHTS = new Set(SCENE3D_HEIGHTS);
 const ID_RE = /^[a-z][a-z0-9-]{0,49}$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * scene3d 的字段契约，供提示词直接引用。
+ *
+ * 为什么导出：真实模型把 height 写成 480、controls 写成 ["rotate","zoom"]、
+ * 每个 object 漏掉 name —— 因为提示词只描述了取值域，没列这些是**必填**且长什么样。
+ * 契约必须与校验器同源，不能手写第二份。
+ */
+export const SCENE3D_CONTRACT = Object.freeze({
+  nodeKeys: ['id', 'type', 'label', 'description', 'height', 'background', 'cameraDistance', 'controls', 'objects', 'shadows', 'groundColor'],
+  requiredNodeKeys: ['id', 'type', 'label', 'description', 'height', 'background', 'cameraDistance', 'controls', 'objects'],
+  objectKeys: ['id', 'name', 'shape', 'position', 'scale', 'rotation', 'color', 'material', 'description', 'selectable', 'motion'],
+  requiredObjectKeys: ['id', 'name', 'shape', 'position', 'scale', 'rotation', 'color', 'material', 'selectable', 'motion'],
+  heights: SCENE3D_HEIGHTS,
+  controlKeys: SCENE3D_CONTROL_KEYS,
+  cameraDistance: { min: 6, max: 28 },
+  coordinate: SCENE3D_LIMITS.coordinate,
+  scale: { min: SCENE3D_LIMITS.scaleMin, max: SCENE3D_LIMITS.scaleMax },
+  rotation: { min: -360, max: 360 },
+  materials: [...SCENE3D_MATERIALS],
+  shapes: [...SCENE3D_SHAPES],
+});
+
+/**
+ * 说明 scene3d 到底哪里不合法。
+ *
+ * 校验器返回 boolean 是为了在 schema 里做快速闸门，但提示词回传阶段需要**原因** ——
+ * 只回 "invalid scene3d configuration" 时模型只能瞎猜，实测三轮都改不对。
+ * 这里逐条对齐 validateScene3DNode 的检查，输出具体到字段。
+ */
+export function describeScene3DFailure(node) {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) return ['scene3d: expected object'];
+  const out = [];
+  const allowed = SCENE3D_CONTRACT.nodeKeys;
+  for (const key of Object.keys(node)) if (!allowed.includes(key)) out.push(`scene3d: unsupported property "${key}"`);
+
+  if (node.type !== 'scene3d') out.push('scene3d.type: expected "scene3d"');
+  if (!ID_RE.test(node.id ?? '')) out.push('scene3d.id: expected lowercase kebab-case id');
+  if (typeof node.label !== 'string' || !node.label.trim() || node.label.length > 180) out.push('scene3d.label: required, 1-180 chars');
+  if (typeof node.description !== 'string' || node.description.length > 600) out.push('scene3d.description: required string up to 600 chars');
+  if (!HEIGHTS.has(node.height)) out.push(`scene3d.height: expected one of ${SCENE3D_HEIGHTS.join('|')} (got ${JSON.stringify(node.height)})`);
+  if (typeof node.background !== 'string' || !HEX_RE.test(node.background)) out.push('scene3d.background: expected #RRGGBB');
+  if (!Number.isFinite(node.cameraDistance) || node.cameraDistance < 6 || node.cameraDistance > 28) out.push(`scene3d.cameraDistance: expected number 6-28 (got ${JSON.stringify(node.cameraDistance)})`);
+  if (node.shadows != null && typeof node.shadows !== 'boolean') out.push('scene3d.shadows: expected boolean when present');
+  if (node.groundColor != null && !HEX_RE.test(node.groundColor)) out.push('scene3d.groundColor: expected #RRGGBB when present');
+
+  if (!node.controls || typeof node.controls !== 'object' || Array.isArray(node.controls)) {
+    out.push(`scene3d.controls: expected an OBJECT with boolean keys ${SCENE3D_CONTROL_KEYS.join('/')} — not an array or string (got ${Array.isArray(node.controls) ? 'array' : JSON.stringify(node.controls)})`);
+  } else {
+    for (const key of Object.keys(node.controls)) if (!SCENE3D_CONTROL_KEYS.includes(key)) out.push(`scene3d.controls: unsupported key "${key}"`);
+    for (const key of SCENE3D_CONTROL_KEYS) if (typeof node.controls[key] !== 'boolean') out.push(`scene3d.controls.${key}: expected boolean`);
+  }
+
+  if (!Array.isArray(node.objects) || node.objects.length < SCENE3D_LIMITS.minObjects || node.objects.length > SCENE3D_LIMITS.maxObjects) {
+    out.push(`scene3d.objects: expected ${SCENE3D_LIMITS.minObjects}-${SCENE3D_LIMITS.maxObjects} objects`);
+    return out;
+  }
+
+  const ids = new Set();
+  let parts = 0;
+  node.objects.forEach((object, index) => {
+    const p = `scene3d.objects[${index}]`;
+    if (!object || typeof object !== 'object' || Array.isArray(object)) { out.push(`${p}: expected object`); return; }
+    for (const key of Object.keys(object)) if (!SCENE3D_CONTRACT.objectKeys.includes(key)) out.push(`${p}: unsupported property "${key}"`);
+    if (!ID_RE.test(object.id ?? '') || ids.has(object.id)) out.push(`${p}.id: expected unique lowercase kebab-case id`);
+    else ids.add(object.id);
+    if (typeof object.name !== 'string' || !object.name.trim() || object.name.length > 120) out.push(`${p}.name: REQUIRED string 1-120 chars (display name); it is missing or empty`);
+    if (!SCENE3D_SHAPES.has(object.shape)) out.push(`${p}.shape: unsupported shape ${JSON.stringify(object.shape)}`);
+    if (!Array.isArray(object.position) || object.position.length !== 3 || object.position.some((n) => !Number.isFinite(n) || Math.abs(n) > SCENE3D_LIMITS.coordinate)) out.push(`${p}.position: expected 3 numbers within ±${SCENE3D_LIMITS.coordinate}`);
+    if (!Array.isArray(object.scale) || object.scale.length !== 3 || object.scale.some((n) => !Number.isFinite(n) || n < SCENE3D_LIMITS.scaleMin || n > SCENE3D_LIMITS.scaleMax)) out.push(`${p}.scale: expected 3 numbers ${SCENE3D_LIMITS.scaleMin}-${SCENE3D_LIMITS.scaleMax}`);
+    if (!Array.isArray(object.rotation) || object.rotation.length !== 3 || object.rotation.some((n) => !Number.isFinite(n) || Math.abs(n) > 360)) out.push(`${p}.rotation: expected 3 numbers within ±360`);
+    if (typeof object.color !== 'string' || !HEX_RE.test(object.color)) out.push(`${p}.color: expected #RRGGBB`);
+    if (!SCENE3D_MATERIALS.has(object.material)) out.push(`${p}.material: expected one of ${[...SCENE3D_MATERIALS].join('|')}`);
+    if (typeof object.description !== 'string' || object.description.length > 900) out.push(`${p}.description: required string up to 900 chars`);
+    if (typeof object.selectable !== 'boolean') out.push(`${p}.selectable: expected boolean`);
+    if (!['none', 'tide'].includes(object.motion)) out.push(`${p}.motion: expected "none" or "tide"`);
+    if (object.motion === 'tide' && object.shape !== 'disk') out.push(`${p}.motion: "tide" is only allowed on shape "disk"`);
+    parts += SHAPE_PART_COUNT[object.shape] ?? 1;
+  });
+  if (parts > SCENE3D_LIMITS.maxTotalParts) out.push(`scene3d.objects: total parts ${parts} exceeds budget ${SCENE3D_LIMITS.maxTotalParts}`);
+  return condenseScene3DIssues(out);
+}
+
+/**
+ * 把同类错误合并计数。
+ *
+ * 10 个对象都漏 name 时会产出 10 条几乎一样的句子，把诊断预算（1200 字符）
+ * 全吃掉，反而让模型看不到别的错误。合并成一条「10/10 个对象缺少 name」。
+ */
+export function condenseScene3DIssues(issues) {
+  const generic = [];
+  const byPattern = new Map();
+  for (const issue of issues) {
+    // 把 objects[i] 归一成 objects[*]，才能识别出"同一类错误"
+    const key = issue.replace(/objects\[\d+\]/g, 'objects[*]');
+    if (!key.includes('objects[*]')) { generic.push(issue); continue; }
+    if (!byPattern.has(key)) byPattern.set(key, { template: key, count: 0, indexes: [] });
+    const rec = byPattern.get(key);
+    rec.count += 1;
+    const m = issue.match(/objects\[(\d+)\]/);
+    if (m) rec.indexes.push(Number(m[1]));
+  }
+  const condensed = [...generic];
+  for (const { template, count, indexes } of byPattern.values()) {
+    if (count === 1) {
+      // 只有一处，保留原始下标更利于定位
+      condensed.push(template.replace('objects[*]', `objects[${indexes[0] ?? 0}]`));
+    } else {
+      condensed.push(`${template} (${count} objects affected; indexes ${indexes.slice(0, 8).join(',')}${indexes.length > 8 ? '…' : ''})`);
+    }
+  }
+  return condensed;
+}
 
 export function validateScene3DNode(node) {
   if (!node || typeof node !== 'object' || Array.isArray(node)) return false;

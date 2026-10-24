@@ -48,6 +48,22 @@ function planWithPrinciples(count, length = 40) {
   return plan;
 }
 
+
+/**
+ * 造一个规范化**修不了**的坏计划：section 缺必填 title。
+ * 为什么不用超量 visualPrinciples 来触发重试 —— 那是可确定性修复的机械噪声，
+ * 规范化层会直接修掉，不该再消耗重试轮次。
+ */
+function planMissingSectionTitle() {
+  const plan = structuredClone(sample);
+  plan.theme.styleId = 'neumorph-blossom';
+  plan.theme.fontMood = 'serif';
+  plan.designIntent.pageDirection = 'explore';
+  delete plan.nodes[0].title;
+  plan.nodes[0].label = plan.nodes[0].label ?? 'section';
+  return plan;
+}
+
 const run = (outputs, seen = []) => generatePagePlan({
   requirement: '做一个探索式虚构果冻海岛网页',
   projectTitle: '果冻海岛',
@@ -98,13 +114,12 @@ test('系统提示包含校验修复模式：逐项修复、保留合法内容�
 
 test('第二次请求会把上一次的校验错误放进 previousValidationIssue', async () => {
   const seen = [];
-  await run([planWithPrinciples(13), planWithPrinciples(3)], seen);
+  await run([planMissingSectionTitle(), planWithPrinciples(3)], seen);
 
   assert.equal(seen.length, 2);
-  assert.match(seen[1].messages[1].content, /previousValidationIssue/);
   const payload = JSON.parse(seen[1].messages[1].content);
-  assert.match(payload.previousValidationIssue, /visualPrinciples/);
-  assert.match(payload.previousValidationIssue, /at most 12 items/);
+  assert.ok(payload.previousValidationIssue, '必须把上一轮错误回传');
+  assert.match(payload.previousValidationIssue, /title/i);
 });
 
 // ---------- 3. 诊断脱敏 ----------
@@ -123,13 +138,14 @@ test('回传的诊断会脱敏密钥与 Bearer 头，且保留足够定位上下
   }
 });
 
-test('诊断摘要上限从 400 提高到 1200，能容纳多条嵌套字段错误', async () => {
+test('诊断摘要保留多条错误且仍有上限', async () => {
   const seen = [];
-  const plan = planWithPrinciples(13);
+  // 一次造出多个结构性错误（规范化都修不了的那种）
+  const plan = planMissingSectionTitle();
+  plan.nodes[1].children = [];
   await run([plan, planWithPrinciples(3)], seen);
 
   const issue = JSON.parse(seen[1].messages[1].content).previousValidationIssue;
-  // 12 条 issue 拼起来通常远超旧的 400 字符上限
   assert.ok(issue.length > 0);
   assert.ok(issue.length <= 1200, '仍然要有上限，不能无限增长');
 });
@@ -164,7 +180,7 @@ test('单项字数上限仍然生效：超过 220 字符必须被拒绝', () => 
 
 test('非法计划不会被静默降级：重试耗尽后阻断交付，最后错误指明校验失败', async () => {
   await assert.rejects(
-    () => run([planWithPrinciples(13), planWithPrinciples(13)]),
+    () => run([planMissingSectionTitle(), planMissingSectionTitle()]),
     (err) => {
       assert.ok(err instanceof PagePlanGenerationError);
       // 外层是 GENERATION_FAILED，但必须带上最后一轮的真实错误码，
@@ -179,7 +195,15 @@ test('非法计划不会被静默降级：重试耗尽后阻断交付，最后�
 
 test('实际尝试次数如实记录，不把配置上限当实际次数', async () => {
   await assert.rejects(
-    () => run([planWithPrinciples(13), planWithPrinciples(13)], [], ),
+    () => run([planMissingSectionTitle(), planMissingSectionTitle()]),
     (err) => /实际尝试 2\/2 次/.test(err.message),
   );
+});
+
+test('可机械修复的偏差不再消耗重试轮次：13 项 visualPrinciples 一次通过', async () => {
+  const seen = [];
+  const { plan, metadata } = await run([planWithPrinciples(13)], seen);
+  assert.equal(seen.length, 1, '机械噪声不该触发重试');
+  assert.equal(plan.designIntent.visualPrinciples.length, 12);
+  assert.ok(metadata.repairs.some((r) => r.action === 'truncate-items'));
 });
