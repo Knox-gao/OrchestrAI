@@ -17,6 +17,7 @@
  */
 
 import { SCENE3D_CONTRACT } from './scene3d.mjs';
+import { PAGEPLAN_ENUMS } from './schema.mjs';
 
 const LIST_ITEM_KEYS = new Set(['title', 'text']);
 const TIMELINE_ITEM_KEYS = new Set(['id', 'date', 'title', 'body']);
@@ -24,6 +25,8 @@ const TIMELINE_ITEM_KEYS = new Set(['id', 'date', 'title', 'body']);
 /** children 非空即必须的节点类型：空数组时整个节点都是废的，直接摘除。 */
 const CHILDREN_REQUIRED = new Set(['section', 'container', 'details']);
 
+const SECTION_VARIANTS = new Set(PAGEPLAN_ENUMS.sectionVariant);
+const CONTAINER_LAYOUTS_SET = new Set(PAGEPLAN_ENUMS.containerLayout);
 const ID_RE = /^[a-z][a-z0-9-]{0,49}$/;
 
 function isObj(v) {
@@ -58,6 +61,23 @@ function visitNode(node, path, ids, repairs) {
   if (!isObj(node)) return node;
   if (typeof node.id === 'string') node.id = dedupeIds(ids, node.id, `${path}.id`, repairs);
   const type = node.type;
+
+  // section.variant 被填了 container.layout 的值（实测 split）→ 回到缺省 plain。
+  // 与"删掉该字段"等价，不改变渲染结果；只处理可判定的跨属性误用。
+  if (type === 'section' && typeof node.variant === 'string') {
+    if (!SECTION_VARIANTS.has(node.variant) && CONTAINER_LAYOUTS_SET.has(node.variant)) {
+      repairs.push({ path: `${path}.variant`, action: 'map-layout-to-default-variant', from: node.variant, to: 'plain' });
+      node.variant = 'plain';
+    }
+  }
+
+  // container.layout 反向被填了 section.variant 的值（如 panel / contrast）→ 回到 stack。
+  if (type === 'container' && typeof node.layout === 'string') {
+    if (!CONTAINER_LAYOUTS_SET.has(node.layout) && SECTION_VARIANTS.has(node.layout)) {
+      repairs.push({ path: `${path}.layout`, action: 'map-variant-to-default-layout', from: node.layout, to: 'stack' });
+      node.layout = 'stack';
+    }
+  }
 
   if (type === 'list' && Array.isArray(node.items)) {
     node.items.forEach((item, i) => {
@@ -248,5 +268,63 @@ export function normalizePagePlanDraft(draft, { limits } = {}) {
     void seenTags;
   }
 
+  // 站内锚点解析：把 href="#x" 指到真实存在的节点 id。
+  // 实测模型写 "#pricing" 而节点 id 是 "pricing-section"，只差一个后缀却阻断整次交付。
+  const anchorRepairs = resolveFragmentAnchors(draft, repairs);
+  void anchorRepairs;
+
   return { draft, repairs };
+}
+
+
+/**
+ * 把所有 link 的 href="#x" 解析到真实存在的节点 id。
+ *
+ * 匹配顺序（只在**唯一命中**时才改写，避免歧义）：
+ *   1. 完全相同
+ *   2. x + "-section"（模型最常漏的后缀）
+ *   3. 以 x + "-" 开头的唯一节点
+ *   4. 以 "-" + x 结尾的唯一节点
+ * 解析不了的**不改写**，留给上层校验报错（让重试循环去修）。
+ */
+function resolveFragmentAnchors(draft, repairs) {
+  const ids = new Set();
+  const collect = (nodes) => {
+    for (const node of nodes ?? []) {
+      if (isObj(node) && typeof node.id === 'string') ids.add(node.id);
+      if (isObj(node)) {
+        collect(node.children);
+        for (const panel of node.panels ?? []) collect(panel?.children);
+      }
+    }
+  };
+  collect(draft.nodes);
+
+  const pick = (fragment) => {
+    if (ids.has(fragment)) return fragment;
+    const suffixed = `${fragment}-section`;
+    if (ids.has(suffixed)) return suffixed;
+    const prefixed = [...ids].filter((id) => id.startsWith(`${fragment}-`));
+    if (prefixed.length === 1) return prefixed[0];
+    const tailed = [...ids].filter((id) => id.endsWith(`-${fragment}`));
+    if (tailed.length === 1) return tailed[0];
+    return null;
+  };
+
+  const walk = (nodes) => {
+    for (const node of nodes ?? []) {
+      if (!isObj(node)) continue;
+      if (node.type === 'link' && typeof node.href === 'string' && node.href.startsWith('#') && node.href.length > 1) {
+        const fragment = node.href.slice(1);
+        const target = pick(fragment);
+        if (target && target !== fragment) {
+          node.href = `#${target}`;
+          repairs.push({ path: `${node.id}.href`, action: 'resolve-fragment-anchor', from: `#${fragment}`, to: `#${target}` });
+        }
+      }
+      walk(node.children);
+      for (const panel of node.panels ?? []) walk(panel?.children);
+    }
+  };
+  walk(draft.nodes);
 }

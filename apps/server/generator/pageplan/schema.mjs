@@ -99,9 +99,34 @@ function checkString(value, path, issues, { required = true, max = 500, allowEmp
   if (value.length > max) issues.push(`${path}: exceeds ${max} characters`);
   if (!allowEmpty && required && !value.trim()) issues.push(`${path}: must not be empty`);
 }
+/**
+ * 枚举校验。
+ *
+ * 错误消息必须带上「实际值」和「合法值」—— 真实故障里只回 "unsupported value"，
+ * 模型重试时完全不知道该怎么改，白白烧掉一次机会（PMVMNBF1R 就是这样失败的）。
+ *
+ * 另外识别一种高频误用：把另一个属性的枚举值填进来（例如 section.variant="split"，
+ * 而 split 是 container.layout 的值）。这种要直接点明，否则模型会反复换同族词。
+ */
+const ENUM_OWNERS = [
+  { name: 'container.layout', values: CONTAINER_LAYOUTS },
+  { name: 'section.variant', values: SECTION_VARIANTS },
+  { name: 'link.variant', values: LINK_VARIANTS },
+  { name: 'callout.tone', values: CALLOUT_TONES },
+];
+
 function checkEnum(value, values, path, issues, { required = true } = {}) {
   if (!required && value == null) return;
-  if (typeof value !== 'string' || !values.has(value)) issues.push(`${path}: unsupported value`);
+  if (typeof value === 'string' && values.has(value)) return;
+  const allowed = [...values].join('|');
+  if (typeof value !== 'string') {
+    issues.push(`${path}: expected one of ${allowed} (got ${JSON.stringify(value)})`);
+    return;
+  }
+  // 是否用了别的属性的枚举值？
+  const foreign = ENUM_OWNERS.find((owner) => owner.values !== values && owner.values.has(value));
+  const hint = foreign ? `; "${value}" is a ${foreign.name} value, not a ${path.split('.').pop()} value` : '';
+  issues.push(`${path}: expected one of ${allowed} (got "${value}"${hint})`);
 }
 function checkColor(value, path, issues) {
   if (typeof value !== 'string' || !HEX_RE.test(value)) issues.push(`${path}: expected #RRGGBB`);

@@ -342,6 +342,11 @@ function strictJson(text) {
   }
   try { return JSON.parse(candidate); }
   catch (error) {
+    // 说明：这里曾尝试过"文本级自动修复"（替换表达式值、去尾逗号、改单引号），
+    // 实测风险远大于收益 —— 用关键词判断"这行是表达式"会误伤 "orchestrai"（含 or）、
+    // "container"（含 in）这类正常内容，把整份 JSON 毁得更彻底。
+    // 正解是让校验错误足够具体（枚举报 got+allowed+跨属性提示）+ 规范化层处理
+    // 结构性问题；JSON 语法真的崩了就老实重试一次。
     throw new PagePlanGenerationError('MODEL_INVALID_JSON', '模型返回的 JSON 无法解析', { parseMessage: String(error?.message ?? error).slice(0, 160) });
   }
 }
@@ -496,6 +501,19 @@ export async function generatePagePlan({
       const normalized = normalizePagePlanDraft(plan, { limits: PAGEPLAN_LIMITS });
       const repairs = normalized.repairs;
       let validated = validatePagePlan(normalized.draft);
+      // 站内锚点必须可达：在计划阶段就拦，让它进入重试循环（静态门禁阶段没有重试机会）。
+      const danglingAnchors = findDanglingAnchors(validated);
+      if (danglingAnchors.length) {
+        const availableSections = (validated.nodes ?? [])
+          .filter((n) => n && n.type === 'section' && typeof n.id === 'string')
+          .map((n) => n.id)
+          .slice(0, 12);
+        throw new PagePlanGenerationError(
+          'PAGEPLAN_INVALID',
+          `站内锚点无对应节点：${danglingAnchors.slice(0, 5).join('、')}。可用的 section id：${availableSections.join(', ') || '（无）'}。链路 href="#x" 必须等于某个节点的 id；若想跳到某 section，用它的完整 id。`,
+          { danglingAnchors, availableSections },
+        );
+      }
       if (!explicitlyTextOnly(requirement) && !assessPagePlanVisualComposition(validated, requirement).ok) {
         validated = validatePagePlan(injectTopicImagesToTarget(validated, requirement));
       }
@@ -579,6 +597,41 @@ export async function generatePagePlan({
  *
  * 返回的 diagnostic 只含分类与时间，不含密钥、Authorization、请求头或完整响应体。
  */
+/**
+ * 检查计划里的站内锚点是否都能落到真实节点上。
+ *
+ * 返回无法解析的锚点列表；空数组表示全部可达。
+ * 提前在计划阶段跑，是为了让这种缺陷进入重试循环（静态门禁阶段没有重试机会）。
+ */
+export function findDanglingAnchors(plan) {
+  const ids = new Set();
+  const collect = (nodes) => {
+    for (const node of nodes ?? []) {
+      if (node && typeof node.id === 'string') ids.add(node.id);
+      if (node) {
+        collect(node.children);
+        for (const panel of node.panels ?? []) collect(panel?.children);
+      }
+    }
+  };
+  collect(plan?.nodes);
+
+  const dangling = new Set();
+  const walk = (nodes) => {
+    for (const node of nodes ?? []) {
+      if (!node) continue;
+      if (node.type === 'link' && typeof node.href === 'string' && node.href.startsWith('#') && node.href.length > 1) {
+        const fragment = node.href.slice(1);
+        if (!ids.has(fragment)) dangling.add(fragment);
+      }
+      walk(node.children);
+      for (const panel of node.panels ?? []) walk(panel?.children);
+    }
+  };
+  walk(plan?.nodes);
+  return [...dangling];
+}
+
 export function describeAttemptFailure(error, { attempt, attempts } = {}) {
   const code = String(error?.code ?? 'UNKNOWN');
   const name = String(error?.name ?? 'Error');
