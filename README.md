@@ -33,9 +33,11 @@ npm run dev                          # → http://127.0.0.1:5175
 | API Key | 你的密钥 |
 | 模型名 | 如 `deepseek-chat`、`gpt-4o-mini`、`glm-4-flash` |
 
+不要把密钥放进接口地址的用户名、密码或 `key` / `token` 查询参数；服务会拒绝这类自定义地址。密钥只填写在 **API Key** 字段。
+
 也可以用内置选项：智谱 GLM / OpenAI / Anthropic。
 
-密钥只存本机 `apps/server/keys.json`（已在 `.gitignore`），接口只返回掩码，不写日志、不进入交付 ZIP。
+密钥只存本机 `apps/server/keys.json`（已在 `.gitignore`），配置接口只返回掩码，不进入事件流或交付 ZIP。错误返回和服务端诊断会对常见密钥、凭据 URL 及敏感查询参数做脱敏。
 
 PagePlan 默认请求 `20000` 个输出 token。不同 OpenAI 兼容网关的输出上限可能不同；如遇到供应商拒绝 `max_tokens` 的错误，可在**启动服务端前**设置 `ORCHESTRAI_PAGEPLAN_MAX_TOKENS`，允许值为 `1000`–`100000` 的整数，设置后重启服务端。例如 PowerShell：
 

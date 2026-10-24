@@ -59,20 +59,56 @@ export function inferModel(baseUrl) {
   return 'gpt-4o-mini';
 }
 
+const SENSITIVE_URL_PARAMETER = /^(?:key|api[-_]?key|x-api-key|access[-_]?token|refresh[-_]?token|token|secret|client[-_]?secret|password|passwd|auth|authorization|credential|signature)$/i;
+
+function parseCustomBaseUrl(value) {
+  let parsed;
+  try { parsed = new URL(value); } catch { throw new Error('Base URL 格式无效'); }
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Base URL 必须使用 http(s)');
+  if (parsed.username || parsed.password) throw new Error('请勿把用户名、密码或 API Key 写进 Base URL；密钥请填入 API Key 字段');
+  if ([...parsed.searchParams.keys()].some((name) => SENSITIVE_URL_PARAMETER.test(name))) {
+    throw new Error('Base URL 不能包含密钥类查询参数；请把 API Key 填入 API Key 字段');
+  }
+  parsed.hash = '';
+  return parsed;
+}
+
+export function normalizeCustomBaseUrl(value) {
+  return parseCustomBaseUrl(String(value ?? '').trim()).toString().replace(/\/$/, '');
+}
+
+function displayBaseUrl(value) {
+  try {
+    const parsed = new URL(value);
+    const path = parsed.pathname.split('/').map((segment) => {
+      let decoded = segment;
+      try { decoded = decodeURIComponent(segment); } catch { /* 保留原段 */ }
+      return /(?:^|[-_])(?:sk|api[-_]?key|token|secret|password|credential)(?:[-_]|$)/i.test(decoded)
+        || /^[A-Za-z0-9_-]{40,}$/.test(decoded)
+        ? '[REDACTED]'
+        : segment;
+    }).join('/');
+    return `${parsed.protocol}//${parsed.host}${path}`;
+  } catch {
+    return '自定义网关地址已配置';
+  }
+}
+
 export function addCustom({ label, baseUrl, key, model }) {
   const name = String(label ?? '').trim().slice(0, 30);
   const url = String(baseUrl ?? '').trim();
   const k = String(key ?? '').trim();
   if (!name) throw new Error('名称不能为空');
-  if (!/^https?:\/\//.test(url)) throw new Error('地址需以 http(s):// 开头');
+  if (!/^https?:\/\//i.test(url)) throw new Error('地址需以 http(s):// 开头');
   if (!k) throw new Error('Key 不能为空');
-  const m = String(model ?? '').trim() || inferModel(url);
+  const safeUrl = normalizeCustomBaseUrl(url);
+  const m = String(model ?? '').trim() || inferModel(safeUrl);
   const all = readAll();
   all.custom = all.custom ?? [];
-  const item = { id: 'c' + Date.now().toString(36), label: name, baseUrl: url, key: k, model: m };
+  const item = { id: 'c' + Date.now().toString(36), label: name, baseUrl: safeUrl, key: k, model: m };
   all.custom.push(item);
   fs.writeFileSync(FILE, JSON.stringify(all, null, 2));
-  return { id: item.id, label: name, baseUrl: url, model: m, masked: mask(k) };
+  return { id: item.id, label: name, baseUrl: displayBaseUrl(safeUrl), model: m, masked: mask(k) };
 }
 
 export function removeCustom(id) {
@@ -94,7 +130,7 @@ export function maskedKeys() {
     masked: mask(all[p.id]) ?? null, configured: Boolean(all[p.id]), custom: false,
   }));
   const customs = (all.custom ?? []).map((c) => ({
-    id: c.id, label: c.label, purpose: `${c.baseUrl} · ${c.model ?? inferModel(c.baseUrl)}`, url: '',
+    id: c.id, label: c.label, purpose: `${displayBaseUrl(c.baseUrl)} · ${c.model ?? inferModel(c.baseUrl)}`, url: '',
     masked: mask(c.key) ?? null, configured: true, custom: true, model: c.model ?? inferModel(c.baseUrl),
   }));
   return [...builtin, ...customs];

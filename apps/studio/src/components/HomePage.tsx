@@ -52,40 +52,132 @@ interface KeyProvider {
   model?: string;
 }
 
+type KeyApiResult = Record<string, unknown>;
+
+async function requestKeyApi(path: string, init: RequestInit, fallback: string): Promise<KeyApiResult> {
+  let response: Response;
+  try {
+    response = await fetch(path, init);
+  } catch {
+    throw new Error('无法连接本地服务，请确认服务端正在运行。');
+  }
+  const data = await response.json().catch(() => null) as KeyApiResult | null;
+  if (!response.ok || data?.ok === false) {
+    throw new Error(typeof data?.error === 'string' ? data.error : fallback);
+  }
+  return data ?? {};
+}
+
 function KeySettings({ onClose }: { onClose: () => void }) {
   const [providers, setProviders] = useState<KeyProvider[] | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLElement>(null);
+  const pendingActionRef = useRef<string | null>(null);
+  pendingActionRef.current = pendingAction;
 
-  const load = () => {
-    fetch('/api/keys').then((r) => r.json()).then(setProviders).catch(() => setProviders([]));
-  };
-  useEffect(load, []);
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch('/api/keys');
+      if (!response.ok) throw new Error('配置读取失败');
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('配置格式无效');
+      setProviders(data);
+    } catch {
+      setProviders([]);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = dialogRef.current;
+    const getFocusable = () => Array.from(dialog?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? []);
+    const focusables = getFocusable();
+    (focusables[0] ?? dialog)?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !pendingActionRef.current) {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const current = getFocusable();
+      if (!current.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+      const first = current[0];
+      const last = current[current.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, []);
 
   const save = async (id: string) => {
     const key = (draft[id] ?? '').trim();
-    if (!key) return;
-    const res = await fetch('/api/keys', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: id, key }),
-    });
-    if (res.ok) { setDraft((m) => ({ ...m, [id]: '' })); setMsg(`${id} 已保存`); load(); }
-    else setMsg(`保存失败（${res.status}）`);
+    if (!key || pendingAction) return;
+    setPendingAction(`save:${id}`);
+    try {
+      await requestKeyApi('/api/keys', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: id, key }),
+      }, '保存失败');
+      setDraft((m) => ({ ...m, [id]: '' }));
+      setMsg(`${id} 已保存`);
+      void load();
+    } catch (error) {
+      setMsg(`保存失败：${error instanceof Error ? error.message : '请求失败'}`);
+    } finally {
+      setPendingAction(null);
+    }
   };
   const remove = async (id: string) => {
-    await fetch(`/api/keys/${id}`, { method: 'DELETE' });
-    setMsg(`${id} 已删除`); load();
+    if (pendingAction) return;
+    setPendingAction(`remove:${id}`);
+    try {
+      await requestKeyApi(`/api/keys/${id}`, { method: 'DELETE' }, '删除失败');
+      setMsg(`${id} 已删除`);
+      void load();
+    } catch (error) {
+      setMsg(`删除失败：${error instanceof Error ? error.message : '请求失败'}`);
+    } finally {
+      setPendingAction(null);
+    }
   };
 
   return (
-    <div className="overlay key-settings-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="card key-settings-card">
-        <h1 style={{ fontSize: 18 }}>🔑 接入你自己的 <span>API Key</span></h1>
-        <p className="sub" style={{ marginBottom: 12 }}>
+    <div className="overlay key-settings-overlay" onClick={(e) => { if (e.target === e.currentTarget && !pendingAction) onClose(); }}>
+      <section className="card key-settings-card" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="key-settings-title" aria-describedby="key-settings-description" tabIndex={-1}>
+        <div className="key-settings-heading">
+          <h1 id="key-settings-title" style={{ fontSize: 18 }}>🔑 接入你自己的 <span>API Key</span></h1>
+          <button className="key-settings-close" type="button" onClick={onClose} disabled={Boolean(pendingAction)} aria-label="关闭模型与图源设置">×</button>
+        </div>
+        <p id="key-settings-description" className="sub" style={{ marginBottom: 12 }}>
           密钥仅保存在本机（服务端 keys.json），不进入日志、事件流与导出包。
           配置图库 Key 后，生成展馆/图库类应用将优先使用高质量真实照片。
         </p>
+        {!providers && <p className="key-settings-loading" role="status">正在读取服务配置…</p>}
         {(providers ?? []).filter((p) => !p.custom).map((p) => (
           <div key={p.id} className="key-row">
             <div className="key-meta">
@@ -99,8 +191,8 @@ function KeySettings({ onClose }: { onClose: () => void }) {
               value={draft[p.id] ?? ''}
               onChange={(e) => setDraft((m) => ({ ...m, [p.id]: e.target.value }))}
             />
-            <button className="btn" disabled={!(draft[p.id] ?? '').trim()} onClick={() => save(p.id)}>保存</button>
-            {p.configured && <button className="btn" onClick={() => remove(p.id)}>删除</button>}
+            <button className="btn" disabled={Boolean(pendingAction) || !(draft[p.id] ?? '').trim()} onClick={() => void save(p.id)}>{pendingAction === `save:${p.id}` ? '保存中…' : '保存'}</button>
+            {p.configured && <button className="btn" disabled={Boolean(pendingAction)} onClick={() => void remove(p.id)}>{pendingAction === `remove:${p.id}` ? '删除中…' : '删除'}</button>}
             {!p.configured && <a className="btn" href={p.url} target="_blank" rel="noreferrer">获取 ↗</a>}
           </div>
         ))}
@@ -115,7 +207,7 @@ function KeySettings({ onClose }: { onClose: () => void }) {
               <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>{p.purpose}</div>
             </div>
             <span />
-            <button className="btn" onClick={() => remove(p.id)}>删除</button>
+            <button className="btn" disabled={Boolean(pendingAction)} onClick={() => void remove(p.id)}>{pendingAction === `remove:${p.id}` ? '删除中…' : '删除'}</button>
             <span />
           </div>
         ))}
@@ -128,36 +220,49 @@ function KeySettings({ onClose }: { onClose: () => void }) {
           <input className="cf" placeholder="模型名（留空自动识别）" value={draft['__cf_model'] ?? ''} onChange={(e) => setDraft((m) => ({ ...m, __cf_model: e.target.value }))} />
           <button
             className="btn"
-            disabled={!(draft['__cf_label'] ?? '').trim() || !(draft['__cf_url'] ?? '').trim() || !(draft['__cf_key'] ?? '').trim()}
+            disabled={Boolean(pendingAction) || !(draft['__cf_label'] ?? '').trim() || !(draft['__cf_url'] ?? '').trim() || !(draft['__cf_key'] ?? '').trim()}
             onClick={async () => {
-              const res = await fetch('/api/keys/custom', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ label: draft['__cf_label'], baseUrl: draft['__cf_url'], key: draft['__cf_key'], model: draft['__cf_model'] }),
-              });
-              if (res.ok) {
+              if (pendingAction) return;
+              setPendingAction('add-custom');
+              try {
+                await requestKeyApi('/api/keys/custom', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ label: draft['__cf_label'], baseUrl: draft['__cf_url'], key: draft['__cf_key'], model: draft['__cf_model'] }),
+                }, '添加失败');
                 setDraft((m) => ({ ...m, __cf_label: '', __cf_url: '', __cf_key: '', __cf_model: '' }));
-                setMsg('自定义服务已保存'); load();
-              } else setMsg(`添加失败（${res.status}）`);
+                setMsg('自定义服务已保存');
+                void load();
+              } catch (error) {
+                setMsg(`添加失败：${error instanceof Error ? error.message : '请求失败'}`);
+              } finally {
+                setPendingAction(null);
+              }
             }}
-          >添加</button>
+          >{pendingAction === 'add-custom' ? '添加中…' : '添加'}</button>
         </div>
         <button
           className="dock-test"
           style={{ marginTop: 10 }}
           onClick={async () => {
+            if (pendingAction) return;
+            setPendingAction('test');
             setMsg('测试中…');
             try {
-              const res = await fetch('/api/keys/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-              const d = await res.json();
-              setMsg(d.ok ? `✅ ${d.provider}/${d.model} 连通（${d.ms}ms）` : `❌ ${d.error ?? '失败'}`);
-            } catch (e) { setMsg(`❌ ${String(e)}`); }
+              const data = await requestKeyApi('/api/keys/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }, '连接测试失败');
+              setMsg(`✅ ${String(data.provider ?? '模型')}/${String(data.model ?? '')} 连通（${String(data.ms ?? '—')}ms）`);
+            } catch (error) {
+              setMsg(`❌ ${error instanceof Error ? error.message : '连接测试失败'}`);
+            } finally {
+              setPendingAction(null);
+            }
           }}
-        >🔌 测试模型连接（用当前自动选择的网关发一条真实消息）</button>
+          disabled={Boolean(pendingAction)}
+        >{pendingAction === 'test' ? '⏳ 测试中…' : '🔌 测试模型连接（用当前自动选择的网关发一条真实消息）'}</button>
         {providers && providers.length === 0 && <p className="dim">密钥服务不可用（生成服务未启动？）</p>}
-        {msg && <p style={{ color: 'var(--cyan)', fontSize: 12, marginTop: 8 }}>{msg}</p>}
-        <button className="go" style={{ marginTop: 12 }} onClick={onClose}>完成</button>
-      </div>
+        {msg && <p className="key-settings-message" role="status" aria-live="polite">{msg}</p>}
+        <button className="go" style={{ marginTop: 12 }} onClick={onClose} disabled={Boolean(pendingAction)}>完成</button>
+      </section>
     </div>
   );
 }
@@ -428,8 +533,8 @@ export function HomePage({
                       </div>
                       <div className="all-style-grid">
                         {visibleCatalogStyles.map((item) => {
-                          const baseInfo = STYLE_BASE_INFO[item.base] ?? STYLE_BASE_INFO.neon;
-                          const paletteInfo = STYLE_PALETTE_INFO[item.palette] ?? STYLE_PALETTE_INFO.obsidian;
+                          const baseInfo = STYLE_BASE_INFO[item.base] ?? STYLE_BASE_INFO.neon!;
+                          const paletteInfo = STYLE_PALETTE_INFO[item.palette] ?? STYLE_PALETTE_INFO.obsidian!;
                           return (
                             <button key={item.id} className={`style-card all-style-card ${style === item.id ? 'active' : ''}`} aria-pressed={style === item.id} onClick={() => setStyle(item.id)}>
                               <span className="style-card-art"><img src={baseInfo.image} alt="" loading="lazy" /><span className="style-palette-dot" style={{ backgroundColor: paletteInfo.color }} /><span className="photo-credit">{baseInfo.credit}</span></span>

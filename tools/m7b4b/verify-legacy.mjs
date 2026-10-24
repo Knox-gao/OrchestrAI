@@ -32,7 +32,7 @@ const stub = http.createServer((req, res) => {
   });
 });
 await new Promise((r) => stub.listen(0, '127.0.0.1', r));
-fs.writeFileSync(KEYS, JSON.stringify({ custom: [{ id: 'stub', label: 'Legacy Stub', baseUrl: `http://127.0.0.1:${stub.address().port}/v1`, key: 'sk-legacy-stub', model: 'stub' }] }));
+fs.writeFileSync(KEYS, JSON.stringify({ custom: [{ id: 'stub', label: 'Legacy Stub', baseUrl: `http://127.0.0.1:${stub.address().port}/v1`, key: 'test-only-stub-key', model: 'stub' }] }));
 
 const env = { ...process.env, PORT: String(PORT), ORCHESTRAI_KEYS_FILE: KEYS };
 delete env.ORCHESTRAI_PAGEPLAN;   // 关键：默认关闭

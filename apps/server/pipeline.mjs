@@ -576,7 +576,7 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
           if (d.willRetry !== undefined) bits.push("本次将重试=" + (d.willRetry ? "是" : "否"));
           const tail = info.willRetry ? "，自动重试一次…" : (info.retryable === false ? "，按失败类型不重试" : "，重试已用尽");
           emit(410, [
-            { type: "log", level: "warn", from: "frontend", message: "⚠ PagePlan 第 " + info.attempt + "/" + info.attempts + " 次尝试失败（" + info.code + "）：" + String(info.issue ?? "").slice(0, 100) + "｜" + bits.join(" ") + tail },
+            { type: "log", level: "warn", from: "frontend", message: "⚠ PagePlan 第 " + info.attempt + "/" + info.attempts + " 次尝试失败（" + info.code + "）：" + String(info.issue ?? "").slice(0, 240) + "｜" + bits.join(" ") + tail },
           ]);
         },
         resolveTheme: async () => resolveThemeTokens({

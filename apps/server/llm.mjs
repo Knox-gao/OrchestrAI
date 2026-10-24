@@ -3,7 +3,7 @@
  * 支持 智谱 GLM / OpenAI / 自定义 OpenAI 兼容网关（用户在 🔑 面板自行配置地址与 Key）。
  * 所有调用有超时与明确失败状态——失败时上层回退规则识别，绝不阻塞生成。
  */
-import { getKey, getKeys, inferModel } from './keys.mjs';
+import { getKey, getKeys, inferModel, normalizeCustomBaseUrl } from './keys.mjs';
 
 /**
  * M7-B4E 根因修复。
@@ -72,11 +72,14 @@ export function sanitizeForOutput(input, maxLen = 300) {
   s = s.replace(/\bsk-[A-Za-z0-9._\-]{6,}/g, 'sk-[REDACTED]');
   s = s.replace(/\b(?:sk|pk|api[_-]?key|apikey)[_-][A-Za-z0-9._\-]{10,}/gi, '[REDACTED_KEY]');
   // URL 查询参数中的敏感项
-  s = s.replace(/([?&](?:key|api_key|apikey|access_token|token|secret|password)=)[^&\s"'<>]+/gi, '$1[REDACTED]');
+  s = s.replace(/([?&](?:key|x-api-key|api[-_]?key|apikey|access[-_]?token|refresh[-_]?token|token|secret|client[-_]?secret|password|passwd|auth|authorization|credential|signature)=)[^&\s"'<>]+/gi, '$1[REDACTED]');
+  // 文本字段使用 key=... / token: ... 等形式时，也必须遮掉值。
+  s = s.replace(/((?:x[-_ ]?api[-_ ]?key|api[-_ ]?key|access[-_ ]?token|refresh[-_ ]?token|client[-_ ]?secret|authorization|credential|password|passwd|secret|token|key|set-cookie|cookie)\s*[:=]\s*["']?)[A-Za-z0-9._~+\/-]{8,}/gi, '$1[REDACTED]');
   // URL 里的 user:pass@host
   s = s.replace(/([a-z][a-z0-9+.-]*:\/\/)[^/\s:@]+:[^/\s@]+@/gi, '$1[REDACTED]@');
   // JSON 风格的 "apiKey":"xxx" / "authorization":"xxx" / "access_token":"xxx"
   s = s.replace(/("(?:api[-_]?key|authorization|access[-_]?token|refresh[-_]?token|id[-_]?token|token|secret|password)"\s*:\s*")[^"]{4,}(")/gi, '$1[REDACTED]$2');
+  s = s.replace(/("(?:key|x-api-key|credential|passwd|client[-_]?secret|set-cookie|cookie)"\s*:\s*")[^"]{4,}(")/gi, '$1[REDACTED]$2');
   // 绝对路径（发布版不应把构建机路径吐给用户）。
   // 必须先排除 URL 的 scheme 部分，否则 `https://` 会被误当成 `s:/` 盘符路径。
   s = s.replace(/(?<![A-Za-z0-9+.-])[A-Za-z]:[\\/](?![\\/])[^\s"'<>]{3,}/g, '[local-path]');
@@ -142,7 +145,14 @@ export function pickGateway(preference = 'auto') {
 }
 
 function endpoint(gw) {
-  const base = (gw.baseUrl ?? gw.defaultBaseUrl ?? '').replace(/\/+$/, '');
+  const rawBase = gw.baseUrl ?? gw.defaultBaseUrl ?? '';
+  if (gw.provider === 'custom') {
+    const parsed = new URL(normalizeCustomBaseUrl(rawBase));
+    const pathname = parsed.pathname.replace(/\/+$/, '');
+    if (!/\/chat\/completions$/.test(pathname)) parsed.pathname = `${pathname}/chat/completions`;
+    return parsed.toString();
+  }
+  const base = String(rawBase).replace(/\/+$/, '');
   if (/\/chat\/completions$/.test(base)) return base;
   return `${base}/chat/completions`;
 }

@@ -155,7 +155,7 @@ const server = http.createServer(async (req, res) => {
         const masked = setKey(String(body.provider ?? ''), String(body.key ?? ''));
         return json(res, 200, { ok: true, provider: body.provider, masked });
       } catch (e) {
-        return json(res, 400, { error: String(e?.message ?? e) });
+        return json(res, 400, { error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'DELETE' && /^\/api\/keys\/[\w-]+$/.test(url.pathname)) {
@@ -175,7 +175,7 @@ const server = http.createServer(async (req, res) => {
         ], { maxTokens: 64, temperature: 0 });
         return json(res, 200, { ok: true, provider: gw.label ?? gw.provider, model: gw.model, ms: Date.now() - t0, reply: reply.slice(0, 30) });
       } catch (e) {
-        return json(res, 200, { ok: false, provider: gw.label ?? gw.provider, model: gw.model, error: String(e?.message ?? e).slice(0, 200) });
+        return json(res, 200, { ok: false, provider: gw.label ?? gw.provider, model: gw.model, error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/keys/custom/model') {
@@ -184,7 +184,7 @@ const server = http.createServer(async (req, res) => {
         const model = setCustomModel(String(body.id ?? ''), String(body.model ?? ''));
         return json(res, 200, { ok: true, model });
       } catch (e) {
-        return json(res, 400, { error: String(e?.message ?? e) });
+        return json(res, 400, { error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/keys/custom') {
@@ -193,7 +193,7 @@ const server = http.createServer(async (req, res) => {
         const item = addCustom(body);
         return json(res, 200, { ok: true, item });
       } catch (e) {
-        return json(res, 400, { error: String(e?.message ?? e) });
+        return json(res, 400, { error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'GET' && url.pathname === '/api/projects') {
@@ -232,7 +232,7 @@ const server = http.createServer(async (req, res) => {
           catch (cleanupError) { console.warn(`[projects] removed ${target.id}, but could not clean asset references:`, cleanupError.message); }
         } catch (e) {
           return json(res, 500, {
-            error: `删除 ${target.id} 失败：${String(e?.message ?? e).slice(0, 160)}`,
+            error: '删除 ' + target.id + ' 失败：' + sanitizeForOutput(e?.message, 160),
             deleted,
           });
         }
@@ -291,7 +291,7 @@ const server = http.createServer(async (req, res) => {
         if (text.length > 50000) return json(res, 413, { error: '文档过长（>5 万字符），请精简后重试' });
         return json(res, 200, { filename, chars: text.length, text });
       } catch (e) {
-        return json(res, 422, { error: `解析失败：${String(e?.message ?? e)}` });
+        return json(res, 422, { error: '解析失败：' + sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/preflight') {
@@ -336,7 +336,7 @@ const server = http.createServer(async (req, res) => {
           job.phase = '失败';
           job.errorCode = String(e?.code ?? 'INTERNAL_ERROR');
           job.error = sanitizeForOutput(e?.message, 240);
-          console.error('[job-error]', job.id, job.errorCode, String(e?.stack ?? '').split('\n').slice(0, 6).join(' | '));
+          console.error('[job-error]', job.id, job.errorCode, sanitizeForOutput(e?.stack, 1000));
         });
       return json(res, 202, { jobId });
     }
@@ -354,7 +354,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('not found');
   } catch (err) {
-    json(res, 500, { error: String(err?.message ?? err) });
+    json(res, 500, { error: sanitizeForOutput(err?.message, 200) });
   }
 });
 

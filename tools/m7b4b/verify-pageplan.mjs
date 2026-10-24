@@ -20,7 +20,7 @@ const ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'm7b4b-'));
 const PORT = 19600 + Math.floor(Math.random() * 100);
 const KEYS = path.join(TMP, 'keys.json');
-const STUB = 'sk-m7b4b-stub-do-not-use';
+const STUB = 'test-only-stub-key';
 
 const PLAN_OK = {
   schemaVersion: 'orchestrai.pageplan.v1',

@@ -4,7 +4,14 @@ import { validateInteractionNode } from './interactions.mjs';
 import { validateSceneBrief } from './scene-brief.mjs';
 
 export const PAGEPLAN_SCHEMA_VERSION = 'orchestrai.pageplan.v1';
-export const PAGEPLAN_LIMITS = Object.freeze({ maxNodes: 240, maxDepth: 9, maxString: 12_000, maxItems: 80 });
+export const PAGEPLAN_LIMITS = Object.freeze({
+  maxNodes: 240,
+  maxDepth: 9,
+  maxString: 12_000,
+  maxItems: 80,
+  maxVisualPrinciples: 12,
+  maxVisualPrincipleLength: 220,
+});
 
 const ID_RE = /^[a-z][a-z0-9-]{0,49}$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
@@ -142,9 +149,9 @@ export function validatePagePlan(input, options = {}) {
     ownKeysOnly(input.designIntent, ['concept', 'pageDirection', 'visualPrinciples'], 'designIntent', issues);
     checkString(input.designIntent.concept, 'designIntent.concept', issues, { max: 700 });
     checkString(input.designIntent.pageDirection, 'designIntent.pageDirection', issues, { max: 80 });
-    if (!Array.isArray(input.designIntent.visualPrinciples) || input.designIntent.visualPrinciples.length > 12) {
-      issues.push('designIntent.visualPrinciples: expected array with at most 12 items');
-    } else input.designIntent.visualPrinciples.forEach((v, i) => checkString(v, `designIntent.visualPrinciples[${i}]`, issues, { max: 220 }));
+    if (!Array.isArray(input.designIntent.visualPrinciples) || input.designIntent.visualPrinciples.length > PAGEPLAN_LIMITS.maxVisualPrinciples) {
+      issues.push(`designIntent.visualPrinciples: expected array with at most ${PAGEPLAN_LIMITS.maxVisualPrinciples} items`);
+    } else input.designIntent.visualPrinciples.forEach((v, i) => checkString(v, `designIntent.visualPrinciples[${i}]`, issues, { max: PAGEPLAN_LIMITS.maxVisualPrincipleLength }));
   }
 
   if (!plainObject(input.theme)) issues.push('theme: expected object');

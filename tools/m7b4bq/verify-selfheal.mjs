@@ -58,7 +58,7 @@ const stub = http.createServer((req, res) => {
   });
 });
 await new Promise((r) => stub.listen(0, '127.0.0.1', r));
-fs.writeFileSync(KEYS, JSON.stringify({ custom: [{ id: 'stub', label: 'SelfHeal', baseUrl: `http://127.0.0.1:${stub.address().port}/v1`, key: 'sk-selfheal-stub', model: 'stub' }] }));
+fs.writeFileSync(KEYS, JSON.stringify({ custom: [{ id: 'stub', label: 'SelfHeal', baseUrl: `http://127.0.0.1:${stub.address().port}/v1`, key: 'test-only-stub-key', model: 'stub' }] }));
 
 const env = { ...process.env, PORT: String(PORT), ORCHESTRAI_KEYS_FILE: KEYS, ORCHESTRAI_PAGEPLAN: 'on' };
 delete env.ORCHESTRAI_MANAGED_KEY;
