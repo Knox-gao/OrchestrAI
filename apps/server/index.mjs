@@ -33,12 +33,54 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
-function json(res, code, data) {
+/**
+ * 允许的浏览器来源：studio 开发服务器 + 本服务自身。单用户本地工具，
+ * 白名单外的来源不给 CORS 头、不允许写接口调用。
+ */
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:5175',
+  'http://127.0.0.1:5175',
+  'http://localhost:8787',
+  'http://127.0.0.1:8787',
+  'null',
+]);
+
+/** CORS：仅白名单来源回显，其余不给头（浏览器照常拦截跨站读取）。 */
+function applyCors(req, res) {
+  const origin = String(req.headers.origin ?? 'null');
+  if (ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-filename');
+  }
+}
+
+/** 写接口来源校验：浏览器跨站写请求必带 Origin，白名单外 403。 */
+function requireSameSite(req, res) {
+  const origin = String(req.headers.origin ?? '');
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('forbidden: cross-origin write');
+  return false;
+}
+
+/** 目录边界：startsWith 有前缀绕过（workspaces-backup），必须用 relative+realtime。 */
+function isInsideDir(target, base) {
+  let rt; let rb;
+  try { rt = fs.realpathSync(target); rb = fs.realpathSync(base); }
+  catch { return { ok: false }; }
+  const rel = path.relative(rb, rt);
+  return { ok: rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel) };
+}
+
+function json(req, res, code, data) {
   const body = JSON.stringify(data);
+  applyCors(req, res);
   res.writeHead(code, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
-    'Access-Control-Allow-Origin': '*',
   });
   res.end(body);
 }
@@ -47,7 +89,9 @@ function serveStatic(req, res, urlPath) {
   // /preview/<id>/<rest> → workspaces/<id>/<rest>（禁止穿越）
   const rel = decodeURIComponent(urlPath.replace(/^\/preview\//, ''));
   const abs = path.normalize(path.join(WORKSPACES, rel));
-  if (!abs.startsWith(WORKSPACES)) { res.writeHead(403); res.end('forbidden'); return; }
+  // 边界用 relative+realpath 判断；startsWith 可被 workspaces-backup 前缀绕过
+  const boundary = isInsideDir(abs, WORKSPACES);
+  if (!boundary.ok) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('forbidden'); return; }
   let target = abs;
   if (!fs.existsSync(target) || fs.statSync(target).isDirectory()) {
     target = path.join(abs, 'index.html');
@@ -57,13 +101,16 @@ function serveStatic(req, res, urlPath) {
     res.end('not found');
     return;
   }
+  // realpath 复核：防符号链接把目标指到 workspaces 之外
+  const realCheck = isInsideDir(target, WORKSPACES);
+  if (!realCheck.ok) { res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('forbidden'); return; }
   const ext = path.extname(target).toLowerCase();
   const body = fs.readFileSync(target);
+  applyCors(req, res);
   res.writeHead(200, {
     'Content-Type': MIME[ext] ?? 'application/octet-stream',
     'Content-Length': body.length,
     'Cache-Control': 'no-store',
-    'Access-Control-Allow-Origin': '*',
   });
   res.end(body);
 }
@@ -134,66 +181,65 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://127.0.0.1:${PORT}`);
   try {
     if (req.method === 'OPTIONS') {
-      res.writeHead(204, {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      });
+      applyCors(req, res);
+      res.writeHead(204);
       res.end();
       return;
     }
     if (req.method === 'GET' && url.pathname === '/api/health') {
-      return json(res, 200, { ok: true, mode: 'real-generation', node: process.version });
+      return json(req, res, 200, { ok: true, mode: 'real-generation', node: process.version });
     }
     if (req.method === 'GET' && url.pathname === '/api/keys') {
-      return json(res, 200, maskedKeys());
+      return json(req, res, 200, maskedKeys());
     }
     if (req.method === 'PUT' && url.pathname === '/api/keys') {
       const raw = await readBody(req);
       const body = JSON.parse((raw.toString('utf-8') || '{}') || '{}');
       try {
         const masked = setKey(String(body.provider ?? ''), String(body.key ?? ''));
-        return json(res, 200, { ok: true, provider: body.provider, masked });
+        return json(req, res, 200, { ok: true, provider: body.provider, masked });
       } catch (e) {
-        return json(res, 400, { error: sanitizeForOutput(e?.message, 200) });
+        return json(req, res, 400, { error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'DELETE' && /^\/api\/keys\/[\w-]+$/.test(url.pathname)) {
       const id = url.pathname.split('/').pop();
       if (id.startsWith('c')) removeCustom(id); else deleteKey(id);
-      return json(res, 200, { ok: true });
+      return json(req, res, 200, { ok: true });
     }
+    // 写接口统一来源校验：浏览器跨站写请求必带 Origin，白名单外 403（防 CSRF）
+    if (req.method === 'POST' && !requireSameSite(req, res)) return;
     if (req.method === 'POST' && url.pathname === '/api/keys/test') {
       const body = JSON.parse(await readBody(req).then((b) => b.toString('utf-8')) || '{}');
       const pref = typeof body.llm === 'string' && body.llm ? body.llm : 'auto';
       const gw = pickGateway(pref);
-      if (!gw) return json(res, 200, { ok: false, error: pref === 'rule' ? '规则识别（不调用模型）' : '未找到可用的模型网关（请先配置 Key）' });
+      if (!gw) return json(req, res, 200, { ok: false, error: pref === 'rule' ? '规则识别（不调用模型）' : '未找到可用的模型网关（请先配置 Key）' });
       const t0 = Date.now();
       try {
         const reply = await chat(gw, [
           { role: 'user', content: '回复两个字：正常' },
         ], { maxTokens: 64, temperature: 0 });
-        return json(res, 200, { ok: true, provider: gw.label ?? gw.provider, model: gw.model, ms: Date.now() - t0, reply: reply.slice(0, 30) });
+        return json(req, res, 200, { ok: true, provider: gw.label ?? gw.provider, model: gw.model, ms: Date.now() - t0, reply: reply.slice(0, 30) });
       } catch (e) {
-        return json(res, 200, { ok: false, provider: gw.label ?? gw.provider, model: gw.model, error: sanitizeForOutput(e?.message, 200) });
+        return json(req, res, 200, { ok: false, provider: gw.label ?? gw.provider, model: gw.model, error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/keys/custom/model') {
       const body = JSON.parse(await readBody(req).then((b) => b.toString('utf-8')) || '{}');
       try {
         const model = setCustomModel(String(body.id ?? ''), String(body.model ?? ''));
-        return json(res, 200, { ok: true, model });
+        return json(req, res, 200, { ok: true, model });
       } catch (e) {
-        return json(res, 400, { error: sanitizeForOutput(e?.message, 200) });
+        return json(req, res, 400, { error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/keys/custom') {
       const body = JSON.parse(await readBody(req).then((b) => b.toString('utf-8')) || '{}');
       try {
         const item = addCustom(body);
-        return json(res, 200, { ok: true, item });
+        return json(req, res, 200, { ok: true, item });
       } catch (e) {
-        return json(res, 400, { error: sanitizeForOutput(e?.message, 200) });
+        return json(req, res, 400, { error: sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'GET' && url.pathname === '/api/projects') {
@@ -206,21 +252,21 @@ const server = http.createServer(async (req, res) => {
         try { projects.push(JSON.parse(fs.readFileSync(metaPath, 'utf-8'))); } catch {}
       }
       projects.sort((a, b) => b.createdAt - a.createdAt);
-      return json(res, 200, projects);
+      return json(req, res, 200, projects);
     }
     if (req.method === 'POST' && url.pathname === '/api/projects/delete') {
       const origin = req.headers.origin;
-      if (origin && !isLocalOrigin(origin)) return json(res, 403, { error: 'project deletion is only available to the local app' });
+      if (origin && !isLocalOrigin(origin)) return json(req, res, 403, { error: 'project deletion is only available to the local app' });
       let body;
       try { body = JSON.parse(await readBody(req, 256 * 1024).then((b) => b.toString('utf-8')) || '{}'); }
-      catch { return json(res, 400, { error: 'invalid JSON body' }); }
+      catch { return json(req, res, 400, { error: 'invalid JSON body' }); }
       if (!Array.isArray(body.ids) || body.ids.length < 1 || body.ids.length > 2000) {
-        return json(res, 400, { error: 'ids must contain between 1 and 2000 project ids' });
+        return json(req, res, 400, { error: 'ids must contain between 1 and 2000 project ids' });
       }
       const ids = [...new Set(body.ids)];
       const targets = ids.map((id) => ({ id, ...resolveDeletableProject(id) }));
       const invalid = targets.find((target) => target.error);
-      if (invalid) return json(res, invalid.status, { error: `${invalid.id}: ${invalid.error}` });
+      if (invalid) return json(req, res, invalid.status, { error: `${invalid.id}: ${invalid.error}` });
 
       const deleted = [];
       let cleanedAssetRefs = 0;
@@ -231,45 +277,44 @@ const server = http.createServer(async (req, res) => {
           try { cleanedAssetRefs += removeProjectAssetReferences(target.id); }
           catch (cleanupError) { console.warn(`[projects] removed ${target.id}, but could not clean asset references:`, cleanupError.message); }
         } catch (e) {
-          return json(res, 500, {
+          return json(req, res, 500, {
             error: '删除 ' + target.id + ' 失败：' + sanitizeForOutput(e?.message, 160),
             deleted,
           });
         }
       }
-      return json(res, 200, { ok: true, deleted, cleanedAssetRefs });
+      return json(req, res, 200, { ok: true, deleted, cleanedAssetRefs });
     }
     if (req.method === 'GET' && /^\/api\/projects\/[\w-]+$/.test(url.pathname)) {
       const id = url.pathname.split('/').pop();
       const dir = path.join(WORKSPACES, id);
       const metaPath = path.join(dir, 'project.json');
-      if (!fs.existsSync(metaPath)) return json(res, 404, { error: 'project not found' });
+      if (!fs.existsSync(metaPath)) return json(req, res, 404, { error: 'project not found' });
       const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
       let cues = [];
       try { cues = JSON.parse(fs.readFileSync(path.join(dir, 'timeline.json'), 'utf-8')); } catch {}
-      return json(res, 200, { meta, cues });
+      return json(req, res, 200, { meta, cues });
     }
     if (req.method === 'GET' && /^\/api\/projects\/[\w-]+\/export$/.test(url.pathname)) {
       const id = url.pathname.split('/').at(-2);
       const fmt = url.searchParams.get('fmt') ?? 'zip';
       // 内测版范围：只交付桌面版网页（ZIP）。原生应用打包（exe/apk）不在内测版范围内。
       if (fmt === 'exe' || fmt === 'apk') {
-        return json(res, 409, {
+        return json(req, res, 409, {
           error: '本版本只支持生成网页（桌面版），不提供 .exe / .apk 原生应用打包',
           supported: ['zip'],
         });
       }
-      if (fmt !== 'zip') return json(res, 400, { error: 'fmt must be zip' });
+      if (fmt !== 'zip') return json(req, res, 400, { error: 'fmt must be zip' });
       const dir = path.join(WORKSPACES, id);
       const metaPath = path.join(dir, 'project.json');
-      if (!fs.existsSync(metaPath)) return json(res, 404, { error: 'project not found' });
+      if (!fs.existsSync(metaPath)) return json(req, res, 404, { error: 'project not found' });
       const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
       const zipBuf = zipSync(buildExport(fmt, meta, dir));
       res.writeHead(200, {
         'Content-Type': 'application/zip',
         'Content-Length': zipBuf.length,
         'Content-Disposition': `attachment; filename="${id}-${fmt}.zip"`,
-        'Access-Control-Allow-Origin': '*',
       });
       res.end(zipBuf);
       return;
@@ -278,38 +323,38 @@ const server = http.createServer(async (req, res) => {
       return serveStatic(req, res, url.pathname);
     }
     if (req.method === 'GET' && url.pathname === '/api/styles') {
-      return json(res, 200, { count: STYLE_COUNT, styles: CATALOG });
+      return json(req, res, 200, { count: STYLE_COUNT, styles: CATALOG });
     }
     if (req.method === 'POST' && url.pathname === '/api/requirements/parse') {
       const rawName = req.headers['x-filename'] ?? 'untitled.txt';
       const filename = decodeURIComponent(String(rawName));
-      if (!isSupported(filename)) return json(res, 415, { error: '仅支持 .docx / .txt / .md' });
+      if (!isSupported(filename)) return json(req, res, 415, { error: '仅支持 .docx / .txt / .md' });
       const buf = await readBody(req, 8 * 1024 * 1024);
-      if (buf.length === 0) return json(res, 400, { error: '文件为空' });
+      if (buf.length === 0) return json(req, res, 400, { error: '文件为空' });
       try {
         const text = extractText(filename, buf);
-        if (text.length > 50000) return json(res, 413, { error: '文档过长（>5 万字符），请精简后重试' });
-        return json(res, 200, { filename, chars: text.length, text });
+        if (text.length > 50000) return json(req, res, 413, { error: '文档过长（>5 万字符），请精简后重试' });
+        return json(req, res, 200, { filename, chars: text.length, text });
       } catch (e) {
-        return json(res, 422, { error: '解析失败：' + sanitizeForOutput(e?.message, 200) });
+        return json(req, res, 422, { error: '解析失败：' + sanitizeForOutput(e?.message, 200) });
       }
     }
     if (req.method === 'POST' && url.pathname === '/api/preflight') {
       const raw = await readBody(req);
       const body = JSON.parse((raw.toString('utf-8') || '{}') || '{}');
       const requirement = String(body.requirement ?? body.sentence ?? '').trim();
-      if (!requirement) return json(res, 400, { error: 'requirement required' });
+      if (!requirement) return json(req, res, 400, { error: 'requirement required' });
       const llm = typeof body.llm === 'string' && body.llm ? body.llm : 'auto';
       const r = await preflight(requirement.slice(0, 4000), llm);
-      return json(res, 200, r);
+      return json(req, res, 200, r);
     }
     if (req.method === 'POST' && url.pathname === '/api/generate') {
       const raw = await readBody(req);
       const body = JSON.parse((raw.toString('utf-8') || '{}') || '{}');
       const name = String(body.name ?? '').trim().slice(0, 60);
       const requirement = String(body.requirement ?? body.sentence ?? '').trim();
-      if (!requirement) return json(res, 400, { error: 'requirement required' });
-      if (requirement.length > 50000) return json(res, 400, { error: 'requirement too long' });
+      if (!requirement) return json(req, res, 400, { error: 'requirement required' });
+      if (requirement.length > 50000) return json(req, res, 400, { error: 'requirement too long' });
       const style = typeof body.style === 'string' && body.style ? body.style : undefined;
       const fx = typeof body.fx === 'string' && body.fx ? body.fx : undefined;
       const styleDescription = typeof body.styleDescription === 'string' ? body.styleDescription.trim().slice(0, 120) : undefined;
@@ -338,12 +383,12 @@ const server = http.createServer(async (req, res) => {
           job.error = sanitizeForOutput(e?.message, 240);
           console.error('[job-error]', job.id, job.errorCode, sanitizeForOutput(e?.stack, 1000));
         });
-      return json(res, 202, { jobId });
+      return json(req, res, 202, { jobId });
     }
     if (req.method === 'GET' && /^\/api\/jobs\/[\w-]+$/.test(url.pathname)) {
       const job = JOBS.get(url.pathname.split('/').pop());
-      if (!job) return json(res, 404, { error: 'job not found' });
-      return json(res, 200, {
+      if (!job) return json(req, res, 404, { error: 'job not found' });
+      return json(req, res, 200, {
         id: job.id, status: job.status, phase: job.phase,
         startedAt: job.startedAt, elapsedMs: Date.now() - job.startedAt,
         // 只返回稳定错误码 + 脱敏短消息；stack/上游响应正文仅留在服务端日志。
@@ -354,7 +399,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('not found');
   } catch (err) {
-    json(res, 500, { error: sanitizeForOutput(err?.message, 200) });
+    json(req, res, 500, { error: sanitizeForOutput(err?.message, 200) });
   }
 });
 

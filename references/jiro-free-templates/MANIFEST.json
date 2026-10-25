@@ -1,0 +1,56 @@
+{
+  "source": "https://jiro.build/templates/free",
+  "fetchedAt": "2026-10-25T05:00:31.139Z",
+  "note": "仅包含站点标注为 Free 的模板。preview.html 为站点公开预览端点返回的完整生成页面；提示词正文需站点账号（匿名点击 Copy Prompt 无网络请求、剪贴板为空），故不含。",
+  "templates": [
+    {
+      "slug": "smm-agency-landing-page-growlio",
+      "category": "agency",
+      "name": "SMM Agency Landing Page - Growlio",
+      "status": "ok",
+      "bytes": 25519
+    },
+    {
+      "slug": "online-yoga-programs-landing-page-solra",
+      "category": "health-wellness",
+      "name": "Online Yoga Programs Landing Page - Solra",
+      "status": "ok",
+      "bytes": 25570
+    },
+    {
+      "slug": "mindfulness-landing-page-design-solra",
+      "category": "health-wellness",
+      "name": "Mindfulness Landing Page Design - Solra",
+      "status": "ok",
+      "bytes": 25564
+    },
+    {
+      "slug": "finance-management-landing-page-finsyc",
+      "category": "fintech",
+      "name": "Finance Management Landing Page - Finsyc",
+      "status": "ok",
+      "bytes": 25543
+    },
+    {
+      "slug": "ai-budget-tracking-landing-page-velara-ai",
+      "category": "fintech",
+      "name": "AI Budget Tracking Landing Page - Velara AI",
+      "status": "ok",
+      "bytes": 25552
+    },
+    {
+      "slug": "ai-marketing-landing-page-kelo",
+      "category": "marketing-sales",
+      "name": "AI Marketing Landing Page - Kelo",
+      "status": "ok",
+      "bytes": 25543
+    },
+    {
+      "slug": "ai-customer-support-landing-page-kelo",
+      "category": "ai-agents-chatbots",
+      "name": "AI Customer Support Landing Page - Kelo",
+      "status": "ok",
+      "bytes": 25573
+    }
+  ]
+}

@@ -88,8 +88,10 @@ test('修复验证：第一次超时后，第二次用新预算成功（父任�
       () => chatDetailed(GW(stub.port), [{ role: 'user', content: 'a' }], { maxTokens: 10, timeoutMs: 100 }),
       (e) => e.code === 'LLM_TIMEOUT',
     );
-    // 第二次用充足预算（真实链路里 PagePlan 现在默认给 250s）→ 成功
-    const r = await chatDetailed(GW(stub.port), [{ role: 'user', content: 'b' }], { maxTokens: 10, timeoutMs: 8000 });
+    // 第二次用充足预算（真实链路里 PagePlan 现在默认给 250s）→ 成功。
+    // 注意预算要远大于全量回归时的并行调度抖动：8s 曾在多文件并行
+    // （渲染测试起 headless Edge）时被调度延迟顶穿，产生与被测行为无关的假超时。
+    const r = await chatDetailed(GW(stub.port), [{ role: 'user', content: 'b' }], { maxTokens: 10, timeoutMs: 30_000 });
     assert.equal(r.text, '{"ok":1}');
     assert.equal(r.usage.total_tokens, 3, 'usage 应来自供应商响应');
   } finally { await stub.close(); }

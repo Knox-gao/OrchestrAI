@@ -1,0 +1,25 @@
+{
+  "name": "SMM Agency Landing Page - Growlio",
+  "slug": "smm-agency-landing-page-growlio",
+  "category": "agency",
+  "detailUrl": "https://jiro.build/templates/agency/smm-agency-landing-page-growlio",
+  "previewUrl": "https://jiro.build/preview/template/agency/smm-agency-landing-page-growlio",
+  "categoryLabel": "Agency",
+  "categoryGroup": "templates",
+  "description": "A modern SMM agency landing page designed to showcase social media strategy, content creation, paid advertising, and audience growth services. Combines engaging visuals, campaign highlights, case studies, testimonials, and conversion-focused sections to help brands build a stronger social presence and achieve measurable growth.",
+  "dependencies": [],
+  "createdAt": "2026-09-30T12:57:01.186997+00:00",
+  "updatedAt": "2026-09-30T12:57:01.186997+00:00",
+  "tags": [
+    "light",
+    "animated text",
+    "video",
+    "dashboard preview",
+    "interactive",
+    "marquee",
+    "brand logos"
+  ],
+  "isNew": true,
+  "thumbnail": "SMM/images/header.png",
+  "videoPreview": "SMM/video/Header.mp4"
+}
