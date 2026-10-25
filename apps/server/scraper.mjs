@@ -386,7 +386,8 @@ async function bingSearch(query, count) {
 /** 被墙的图片 CDN（下载也需经代理） */
 const PROXIED_HOSTS = /(^|\.)((wikimedia\.org)|(wikipedia\.org)|(duckduckgo\.com)|(reddit\.com)|(redd\.it)|(redditstatic\.com))$/i;
 
-async function downloadImage(url) {
+/** 下载图片为 buffer（导出给 pipeline 的 Wikipedia 肖像路径复用）。 */
+export async function downloadImage(url) {
   // 被墙 CDN：经代理下载（直连会挂起直到超时）；其余直连
   if (PROXIED_HOSTS.test(new URL(url).hostname)) {
     const r = await proxyFetch(url, { headers: { 'User-Agent': UA }, timeout: PER_IMAGE_TIMEOUT });

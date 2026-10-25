@@ -9,7 +9,8 @@ import { parseSentence, buildFiles, extractSubject, TEMPLATES } from './generato
 import { staticCheck } from './generator/quality.mjs';
 import { staticCheckPagePlan, buildWorkspaceTest } from './generator/pageplan/pageplan-gate.mjs';
 import { runNodeTests } from './runner.mjs';
-import { collectImages, queryCascade, bestMatch, extractEnglishTokens } from './scraper.mjs';
+import { collectImages, queryCascade, bestMatch, extractEnglishTokens, downloadImage } from './scraper.mjs';
+import { wikipediaCharacterPortraitCandidates } from './wiki-portrait.mjs';
 import { visualAudit } from './visualaudit.mjs';
 import { auditRequirementCoverage } from './reqcoverage.mjs';
 import { generatePagePlan, PagePlanGenerationError, assessPagePlanVisualComposition } from './generator/pageplan/generate.mjs';
@@ -830,13 +831,30 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         onPhase?.(`按主题搜寻配图（${imageSearchGroups.length} 个不同图位）…`);
         const keys = getKeys();
         const imageSearchResults = await mapPool(imageSearchGroups, 2, async (group) => {
-          // 人物/角色：先试 Wikipedia 权威肖像（官方形象，且不受搜图源限流影响）
+          // 人物/角色：先取 Wikipedia 角色条目正文里的官方形象图。
+          // 实测这比搜索引擎准确得多 —— 搜 "Doctor Strange Marvel" 会拿到 cosplay，
+          // 下游需要的是已下载的 { buf, ext }，所以这里必须下载；
+          // 下载失败就换下一个候选，全失败则回退搜索（不让整次生成崩掉）。
           if (looksLikePersonQuery(group.query)) {
             for (const wikiTitle of wikipediaTitleCandidates(group.query)) {
-              const wiki = await collectImages({ query: group.query, count: 4, keys, wikiTitle });
-              const wikiUsable = wiki.images.filter((item) => imageCandidateUsable(item, group.query));
-              if (wikiUsable.length) {
-                return { group, provider: wiki.provider, candidates: wikiUsable };
+              let portraits = [];
+              try {
+                portraits = await wikipediaCharacterPortraitCandidates(wikiTitle, 2);
+              } catch {
+                portraits = [];
+              }
+              for (const portrait of portraits) {
+                try {
+                  // 必须走 scraper 的 downloadImage：Wikimedia 直连会超时、
+                  // 裸 fetch 经代理会被 403（UA 不合规）。该函数已处理代理与 UA。
+                  const got = await downloadImage(portrait.url);
+                  if (!got || got.buf.length < 10_000 || got.buf.length > 8_000_000) continue;
+                  return {
+                    group,
+                    provider: 'Wikipedia 角色肖像',
+                    candidates: [{ ...portrait, buf: got.buf, ext: got.ext }],
+                  };
+                } catch { /* 下载失败，试下一张 */ }
               }
             }
           }
