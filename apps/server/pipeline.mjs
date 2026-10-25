@@ -236,20 +236,86 @@ function sourceTitle(candidate) {
     .trim();
 }
 
+/**
+ * 判断查询是否在找「具体人物/角色」。只在人物类查询上启用素材类型偏好。
+ */
+function looksLikePersonQuery(query) {
+  const q = String(query ?? '');
+  const hasLatinName = /\b[A-Z][a-z]+(?:[ -][A-Z][a-z]+)+\b/.test(q) || /\b(?:Marvel|Avengers|X-Men)\b/i.test(q);
+  const hasCjkRole = /[\u4e00-\u9fff]{1,4}(?:侠|队长|博士|王|人|神)/.test(q);
+  return hasLatinName || hasCjkRole;
+}
+
+/**
+ * 人物/角色图的素材类型分层：2=official, 1=neutral, 0=weak。
+ * weak 不是不能用，只是排在后面 —— 搜不到更好的时候它仍比矢量插画强。
+ */
+/**
+ * 从搜索词推导 Wikipedia 条目名候选（仅用于人物/角色查询）。
+ *
+ * 例："Gamora Marvel" → ["Gamora"]；"Iron Man armor" → ["Iron Man", "Iron"]
+ * 不做别名猜测 —— 映射错了会拿到完全不相干的条目。
+ */
+const FRANCHISE_WORDS = new Set(['Marvel', 'DC', 'Disney', 'Pixar', 'Star', 'Wars', 'Avengers', 'X-Men', 'XMen', 'Guardians', 'Galaxy', 'Comics', 'Comic', 'Universe', 'MCU', 'Studios']);
+
+function wikipediaTitleCandidates(query) {
+  const tokens = String(query ?? '').split(/[\s,]+/).filter(Boolean);
+  const leading = [];
+  for (const t of tokens) {
+    if (/^[A-Z]/.test(t)) leading.push(t);
+    else break;
+  }
+  const cleaned = leading.filter((t) => !FRANCHISE_WORDS.has(t.replace(/[^A-Za-z-]/g, '')));
+  const out = [];
+  if (cleaned.length >= 2) out.push(cleaned.slice(0, 3).join(' '));
+  if (cleaned.length >= 1) out.push(cleaned[0]);
+  const full = cleaned.join(' ');
+  if (full && !out.includes(full)) out.push(full);
+  return [...new Set(out.filter(Boolean))].slice(0, 3);
+}
+
+function personaAssetTier(candidate) {
+  const meta = `${candidate?.cand?.title ?? candidate?.title ?? ''} ${candidate?.cand?.page ?? candidate?.page ?? ''}`;
+  if (/\b(?:official|marvel studios|movie still|film still|promotional|press photo|character poster|comic cover)\b|官方|剧照|海报|漫画封面/i.test(meta)) return 2;
+  if (/\b(?:cosplay|costume contest|statue|figurine|action figure|toy|graffiti|mural|billboard|storefront|merchandise|shelf|poster shop)\b|cosplay|手办|人偶|涂鸦|墙绘|广告牌|周边|商品/i.test(meta)) return 0;
+  return 1;
+}
+
+/**
+ * 查询里的「区分词」：能把这个角色和同名角色/同名事物区分开。
+ *
+ * 例："Captain Marvel Marvel" 里的 Marvel —— 没有它就会搜到
+ * 1940 年代另一家公司的 Captain Marvel 老照片。
+ */
+const DISAMBIGUATORS = ['marvel', 'dc', 'avengers', 'x-men', 'xmen', 'mcu', 'disney', 'pixar', 'star wars', 'guardians'];
+
+function disambiguatorsIn(query) {
+  const q = String(query ?? '').toLowerCase();
+  return DISAMBIGUATORS.filter((d) => q.includes(d));
+}
+
 function imageCandidateUsable(candidate, query = '') {
   const { width = 0, height = 0 } = candidate?.dims?.tech ?? {};
   const visualIntent = /\b(?:illustration|diagram|icon|vector|drawing|artwork)\b|插画|示意图|图标|矢量|绘画/i.test(query);
   const metadata = `${candidate?.cand?.title ?? candidate?.title ?? ''} ${candidate?.cand?.page ?? candidate?.page ?? ''}`;
   const disallowed = visualIntent ? /\b(?:ai[- ]?generated|watermark|wallpaper|logo|clipart)\b|人工智能生成|水印|壁纸|标志/i
-    : /\b(?:ai[- ]?generated|wallpaper|logo|clipart|vector|illustration|concept art|render(?:ed|ing)?)\b|人工智能生成|壁纸|标志|矢量插画/i;
+    // 手办/周边类素材：即使查询词带了 figure，也一律拒收 ——
+    // 实测这类图会让「黑豹」卡位出现古希腊陶罐、「蜘蛛侠」出现出租车旁玩偶。
+    : /\b(?:ai[- ]?generated|wallpaper|logo|clipart|vector|illustration|concept art|render(?:ed|ing)?|figurine|action figure|model kit|collectible|statue|toy|merchandise|bobblehead|amigurumi)\b|人工智能生成|壁纸|标志|矢量插画|手办|人偶|模型套件|周边/i;
   const nonPhotoGameAsset = /\b(?:ETS2|ATS|Euro Truck Simulator|American Truck Simulator|Assetto Corsa|Forza Horizon|Gran Turismo|BeamNG|CarX Drift|GTA V)\b|游戏截图|游戏模组|模组下载|3D 模型下载/i.test(metadata);
   const modelAnchors = String(query).match(/\b(?:[A-Za-z]+\d+[A-Za-z0-9-]*|\d+[A-Za-z][A-Za-z0-9-]*)\b/g) ?? [];
   const hasExactModelAnchor = modelAnchors.length === 0 || modelAnchors.some((anchor) => {
     const escaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`(?:^|[^A-Za-z0-9])${escaped}(?:$|[^A-Za-z0-9])`, 'i').test(metadata);
   });
+  // 区分词约束：查询里带 Marvel/DC 这类限定词时，候选也必须带，
+  // 否则会混进同名角色（如 1940 年代的 Captain Marvel 老照片）。
+  const disambig = disambiguatorsIn(query);
+  const disambigOk = disambig.length === 0 || disambig.some((d) => metadata.toLowerCase().includes(d));
+
   return !disallowed.test(metadata)
     && !nonPhotoGameAsset
+    && disambigOk
     && hasExactModelAnchor
     && candidate?.dims?.content?.level === 'strong'
     && candidate?.dims?.tech?.score > 0
@@ -745,8 +811,12 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         }
       }
       const allImageSearchGroups = [...queryGroups.values()];
-      const imageSearchGroups = allImageSearchGroups.slice(0, 8);
-      const omittedImageSearchGroups = allImageSearchGroups.slice(8);
+      // 图位上限：图鉴/名录类页面每个条目都要配图，8 个远远不够
+      // （实测 12 个英雄的页面，第 9 个之后全被砍成矢量插画）。
+      // 保留 24 的硬上限防止异常计划拖垮耗时与内存；超出部分如实标记，不假装有图。
+      const IMAGE_SEARCH_LIMIT = 24;
+      const imageSearchGroups = allImageSearchGroups.slice(0, IMAGE_SEARCH_LIMIT);
+      const omittedImageSearchGroups = allImageSearchGroups.slice(IMAGE_SEARCH_LIMIT);
       for (const group of omittedImageSearchGroups) {
         for (const node of group.nodes) {
           node.src = '';
@@ -754,12 +824,23 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         }
       }
       if (omittedImageSearchGroups.length) {
-        emit(425, [{ type: 'log', level: 'warn', from: 'designer', message: `图片搜索请求过多，已处理前 8 个不同图位；其余图位将改用主题矢量插画。` }]);
+        emit(425, [{ type: 'log', level: 'warn', from: 'designer', message: `图片搜索请求过多，已处理前 ${IMAGE_SEARCH_LIMIT} 个不同图位；其余图位将改用主题矢量插画。` }]);
       }
       if (imageSearchGroups.length) {
         onPhase?.(`按主题搜寻配图（${imageSearchGroups.length} 个不同图位）…`);
         const keys = getKeys();
         const imageSearchResults = await mapPool(imageSearchGroups, 2, async (group) => {
+          // 人物/角色：先试 Wikipedia 权威肖像（官方形象，且不受搜图源限流影响）
+          if (looksLikePersonQuery(group.query)) {
+            for (const wikiTitle of wikipediaTitleCandidates(group.query)) {
+              const wiki = await collectImages({ query: group.query, count: 4, keys, wikiTitle });
+              const wikiUsable = wiki.images.filter((item) => imageCandidateUsable(item, group.query));
+              if (wikiUsable.length) {
+                return { group, provider: wiki.provider, candidates: wikiUsable };
+              }
+            }
+          }
+
           const queries = imageSearchQueryCascade(group.query);
           for (const query of queries) {
             const skippedProviders = new Set();
@@ -768,7 +849,13 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
               if (!result.images.length) break;
               const { ranked } = rankCandidates(result.images, { targets: imageSearchTargets(query) });
               const candidates = ranked.filter((item) => imageCandidateUsable(item, query))
-                .sort((a, b) => imageCandidateRelevance(b.cand, group.query) - imageCandidateRelevance(a.cand, group.query))
+                .sort((a, b) => {
+                if (looksLikePersonQuery(group.query)) {
+                  const dt = personaAssetTier(b.cand) - personaAssetTier(a.cand);
+                  if (dt !== 0) return dt;
+                }
+                return imageCandidateRelevance(b.cand, group.query) - imageCandidateRelevance(a.cand, group.query);
+              })
                 .map((item) => item.cand);
               if (candidates.length) return { group, provider: result.provider, candidates };
               if (!result.provider || result.provider === 'none') break;

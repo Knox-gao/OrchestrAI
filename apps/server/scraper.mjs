@@ -25,6 +25,7 @@ const PER_IMAGE_TIMEOUT = 12_000;
 const PER_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
 
 async function fetchJson(url, headers = {}, timeout = 15_000) {
+  await bingThrottle();
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
   try {
@@ -277,6 +278,22 @@ export function buildBingRelevance(query) {
   return { anchor, anchorIsProperNoun, enTokens, cjkTokens, contentTokens, secondaries, needsSecondary, hitStrict, hitRelaxed };
 }
 
+/**
+ * Bing 的最小请求间隔。
+ *
+ * 实测：短时间内连发 images/async 请求时，Bing 会返回 HTTP 200 但只有 1 条
+ * 无关结果（不是报错）—— 很容易被误判成"搜索功能坏了"。
+ * 图位上限从 8 提到 24 后并发压力更大，所以这里串行化并保证间隔。
+ */
+const BING_MIN_INTERVAL_MS = 900;
+let bingNextSlot = 0;
+async function bingThrottle() {
+  const now = Date.now();
+  const wait = Math.max(0, bingNextSlot - now);
+  bingNextSlot = Math.max(now, bingNextSlot) + BING_MIN_INTERVAL_MS;
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+}
+
 async function bingSearch(query, count) {
   const url = `https://www.bing.com/images/async?q=${encodeURIComponent(query)}&first=1&count=35`
     + `&qft=${encodeURIComponent('+filterui:photo-photo+filterui:imagesize-large')}&adlt=moderate`;
@@ -425,7 +442,7 @@ export async function collectImages({ query, count = 10, keys = {}, wikiTitle, s
         result.errors.push(`${ad.name}: 过滤低清图（${Math.round(got.buf.length / 1024)}KB）`);
         continue;
       }
-      images.push({ buf: got.buf, ext: got.ext, title: c.title, author: c.author, license: c.license, page: c.page, src: imageSrc, size: got.buf.length });
+      images.push({ buf: got.buf, ext: got.ext, title: c.title, author: c.author, license: c.license, page: c.page, src: imageSrc, size: got.buf.length, provider: ad.name });
     }
     if (images.length > 0) {
       // 大图优先：门面位置放最高清的素材
