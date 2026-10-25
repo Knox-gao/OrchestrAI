@@ -109,3 +109,28 @@ test('品牌词大小写不敏感', () => {
   assert.equal(hitRelaxed('Ferrari Showroom', 'FERRARI 308 GTB'), true);
   assert.equal(hitRelaxed('FERRARI showroom', 'ferrari 308 gtb'), true);
 });
+
+// ---------- 厂牌词不得当主体锚点（实测 bug 回归） ----------
+
+test('厂牌词不当锚点：Iron Man Marvel 的锚点是 iron，不是 marvel', () => {
+  const r = buildBingRelevance('Iron Man Marvel');
+  assert.notEqual(r.anchor, 'marvel', 'marvel 是限定词，不能当主体');
+  assert.equal(r.anchor, 'iron');
+});
+
+test('只含 Marvel 的其它角色图不得通过钢铁侠的判定', () => {
+  // 实测 bug：锚点被选成 marvel 后，「马克战甲」卡位配上了蜘蛛侠涂鸦墙
+  const q = 'Iron Man Marvel';
+  assert.equal(hitRelaxed(q, 'Spider-Man Marvel mural', 'https://a.com/x'), false);
+  assert.equal(hitRelaxed(q, 'Captain America Marvel cosplay', 'https://a.com/y'), false);
+  assert.equal(hitRelaxed(q, 'Iron Man Marvel comic cover', 'https://marvel.com/x'), true);
+});
+
+test('非品牌的多词人名要求全部命中：只中 iron 不放行铁矿', () => {
+  const q = 'Iron Man Marvel';
+  assert.equal(hitRelaxed(q, 'Iron ore mining industry', 'https://a.com/z'), false);
+});
+
+test('品牌词本身即是足够强的主体证明（不必再要求修饰词）', () => {
+  assert.equal(hitRelaxed('ferrari showroom architecture', '2013红色ferrari法拉利跑车'), true);
+});

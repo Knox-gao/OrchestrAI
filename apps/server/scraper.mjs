@@ -226,6 +226,10 @@ export function buildBingRelevance(query) {
     'neon', 'vibrant', 'cozy', 'clean', 'simple', 'bold', 'soft', 'warm', 'cool',
   ]);
 
+  // 厂牌/系列词：只做限定，不当主体 —— 否则 "Iron Man Marvel" 的锚点会变成 marvel，
+  // 任何带 Marvel 字样的图（蜘蛛侠涂鸦墙、cosplay 合影）都会通过。
+  const FRANCHISE_TOKENS = new Set(['marvel', 'dc', 'disney', 'pixar', 'avengers', 'x-men', 'xmen', 'mcu', 'studios', 'comics', 'comic', 'universe', 'guardians', 'galaxy', 'star', 'wars']);
+
   const BRAND_TOKENS = new Set([
     'ferrari', 'lamborghini', 'porsche', 'toyota', 'nissan', 'honda', 'mazda', 'subaru',
     'mitsubishi', 'bmw', 'mercedes', 'audi', 'volkswagen', 'volvo', 'ford', 'chevrolet',
@@ -236,12 +240,26 @@ export function buildBingRelevance(query) {
   const isModelCode = (tk) => /(?:[a-z]+\d+[a-z0-9-]*|\d+[a-z][a-z0-9-]*)/.test(tk);
 
   const contentTokens = enTokens.filter((tk) => !MODIFIER_TOKENS.has(tk));
+  // 主体候选：先排除厂牌词，再按 品牌/车型 > 长度 排序
+  const subjectTokens = contentTokens.filter((tk) => !FRANCHISE_TOKENS.has(tk));
   const anchor =
-    enTokens.find((tk) => BRAND_TOKENS.has(tk) || isModelCode(tk))
-    ?? contentTokens.find((tk) => tk.length >= 4)
+    subjectTokens.find((tk) => BRAND_TOKENS.has(tk) || isModelCode(tk))
+    ?? subjectTokens.find((tk) => tk.length >= 4)
+    ?? subjectTokens[0]
     ?? contentTokens[0]
     ?? [...enTokens].sort((a, b) => b.length - a.length)[0]
     ?? null;
+
+  // 人物/角色名的多个词必须全部命中（"iron man" 两词都要在），
+  // 否则只中 "iron" 就会放行铁矿图。只对长度 ≥3 的实词生效，避免被介词干扰。
+  const subjectWords = subjectTokens.filter((tk) => tk.length >= 3);
+  // 品牌词本身就是足够强的主体证明（ferrari 命中即可，不必再要 showroom）；
+  // 只有「非品牌的多词人名」（如 iron + man）才要求全部命中，
+  // 否则只中 iron 会放行铁矿图。
+  const anchorIsBrand = BRAND_TOKENS.has(anchor) || isModelCode(anchor);
+  const requireAllSubjectWords = (hay) => anchorIsBrand
+    || subjectWords.length <= 1
+    || subjectWords.every((tk) => wordHit(hay, tk));
 
   const secondaries = contentTokens.filter((tk) => tk !== anchor);
   const needsSecondary = enTokens.length >= 3 && secondaries.length > 0;
@@ -252,6 +270,7 @@ export function buildBingRelevance(query) {
     if (cjkTokens.some((tk) => hay.includes(tk))) return true;
     if (enTokens.length === 0 || !anchor) return false;
     if (!wordHit(hay, anchor)) return false;
+    if (!requireAllSubjectWords(hay)) return false;
     if (needsSecondary) return secondaries.some((tk) => wordHit(hay, tk));
     return true;
   };
@@ -266,14 +285,19 @@ export function buildBingRelevance(query) {
    */
   // 只有专有名词（品牌/车型编号）才够格单独作为主体证明；
   // 普通名词（aurora / car / studio）太泛，会撞上同名品牌或无关内容。
-  const anchorIsProperNoun = Boolean(anchor) && (BRAND_TOKENS.has(anchor) || isModelCode(anchor));
+  // 专有名词判定：品牌/车型编号，或查询里出现大写开头的词（人名/角色名的典型形态）。
+  // 后者很关键 —— 剔除厂牌词后，"Iron Man Marvel" 的锚点是 "iron"，
+  // 不在 BRAND_TOKENS 里，若不认大写就会让放宽段彻底失效。
+  const hasCapitalizedName = /(?:^|[^A-Za-z])[A-Z][a-z]/.test(String(query ?? ''));
+  const anchorIsProperNoun = Boolean(anchor) && (BRAND_TOKENS.has(anchor) || isModelCode(anchor) || hasCapitalizedName);
 
   const hitRelaxed = (title, page) => {
     const hay = `${title} ${page}`.toLowerCase();
     if (cjkTokens.some((tk) => hay.includes(tk))) return true;
     if (!anchorIsProperNoun) return false;
     if (enTokens.length === 0) return false;
-    return wordHit(hay, anchor);
+    // 放宽段也只放开"额外实词"，不放开主体词 —— 主体必须齐
+    return wordHit(hay, anchor) && requireAllSubjectWords(hay);
   };
   return { anchor, anchorIsProperNoun, enTokens, cjkTokens, contentTokens, secondaries, needsSecondary, hitStrict, hitRelaxed };
 }
