@@ -254,6 +254,65 @@ const server = http.createServer(async (req, res) => {
       projects.sort((a, b) => b.createdAt - a.createdAt);
       return json(req, res, 200, projects);
     }
+    // 迭代：基于已交付项目的 PagePlan 底稿生成新版本（前端 reviseApp 调用）
+    if (req.method === 'POST' && /^\/api\/projects\/[A-Za-z0-9_-]+\/revise$/.test(url.pathname)) {
+      const parentId = url.pathname.split('/')[3];
+      const raw = await readBody(req);
+      let body = {};
+      try { body = JSON.parse((raw.toString('utf-8') || '{}') || '{}'); } catch { return json(req, res, 400, { error: 'invalid json' }); }
+      const changeRequest = String(body.changeRequest ?? '').trim();
+      if (!changeRequest) return json(req, res, 400, { error: 'changeRequest required' });
+      if (changeRequest.length > 20000) return json(req, res, 400, { error: 'changeRequest too long' });
+      const llm = typeof body.llm === 'string' && body.llm ? body.llm : 'auto';
+
+      // 父项目必须存在且已交付
+      const parentDir = path.join(WORKSPACES, parentId);
+      const metaPath = path.join(parentDir, 'project.json');
+      if (!fs.existsSync(metaPath)) return json(req, res, 404, { error: 'project not found' });
+      // 目录边界与符号链接校验（在确认存在之后做，未存在返回 404 即可）
+      const boundary = isInsideDir(parentDir, WORKSPACES);
+      if (!boundary.ok) return json(req, res, 400, { error: 'invalid project id' });
+      let parent;
+      try { parent = JSON.parse(fs.readFileSync(metaPath, 'utf-8')); } catch { return json(req, res, 400, { error: 'parent project meta unreadable' }); }
+      if (parent.delivered !== true) return json(req, res, 409, { error: '只有已交付的项目可以迭代；请先修复该项目或重新生成' });
+
+      // 底稿必须存在：没有 PagePlan 快照的历史项目无法安全还原
+      const snapshotPath = path.join(parentDir, '_model', 'pageplan.json');
+      if (!fs.existsSync(snapshotPath)) return json(req, res, 409, { error: '该项目没有结构化底稿（PagePlan 快照），无法安全迭代' });
+      let baselinePlan;
+      try { baselinePlan = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8')); } catch { return json(req, res, 400, { error: '底稿快照损坏，无法迭代' }); }
+
+      const revisionNumber = (Number(parent.revisionNumber) || 1) + 1;
+      const originalRequirement = String(parent.originalRequirement ?? parent.sentence ?? '').slice(0, 50000);
+      const revisionContext = {
+        parentProjectId: parentId,
+        revisionNumber,
+        changeRequest,
+        originalRequirement,
+        baselinePlan,
+        baseWorkspace: parentDir,
+      };
+
+      // 迭代继承父项目的风格与锁定选择：改版不该悄悄换视觉
+      const inheritedChoices = parent.userChoices ?? null;
+      const style = parent.styleId ?? undefined;
+      const fx = parent.fxLevel ?? undefined;
+      const jobId = 'J' + Date.now().toString(36).toUpperCase();
+      const job = { id: jobId, status: 'running', phase: '准备基于当前版本修改…', startedAt: Date.now(), result: null, error: null };
+      JOBS.set(jobId, job);
+      runPipeline(originalRequirement, style, fx, parent.projectTitle || undefined, parent.styleDescription || undefined, (phase) => { job.phase = phase; }, llm, choicesToParams(inheritedChoices), [], revisionContext)
+        .then((result) => {
+          job.status = 'done'; job.phase = '完成';
+          job.result = { ...result, revisionNumber, failed: Boolean(result.failed), reason: result.reason ?? null };
+        })
+        .catch((e) => {
+          job.status = 'error'; job.phase = '失败';
+          job.errorCode = String(e?.code ?? 'INTERNAL_ERROR');
+          job.error = sanitizeForOutput(e?.message, 240);
+          console.error('[revise-job-error]', job.id, job.errorCode, sanitizeForOutput(e?.stack, 1000));
+        });
+      return json(req, res, 202, { jobId });
+    }
     if (req.method === 'POST' && url.pathname === '/api/projects/delete') {
       const origin = req.headers.origin;
       if (origin && !isLocalOrigin(origin)) return json(req, res, 403, { error: 'project deletion is only available to the local app' });

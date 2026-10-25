@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { initialState, type AgentRole } from '@studio/core';
-import { fetchProject, generateApp, runPreflight, useStudioApp } from './useStudio';
+import { fetchProject, generateApp, reviseApp, runPreflight, useStudioApp } from './useStudio';
 import { TopBar } from './components/TopBar';
 import { TaskBoard } from './components/TaskBoard';
 import { PixelOffice } from './components/PixelOffice';
@@ -10,6 +10,7 @@ import { HomePage } from './components/HomePage';
 import { ChoiceModal, type ChoiceQuestion } from './components/ChoiceModal';
 
 export type Mode = 'demo' | 'real';
+export type StudioView = 'canvas' | 'team';
 
 /** 初始空状态（真实模式尚未生成时，与内核 reducer 同源） */
 const EMPTY_STATE = initialState();
@@ -17,6 +18,7 @@ const EMPTY_STATE = initialState();
 export default function App() {
   const { engine, startDemo, playInNew, enterProject, close } = useStudioApp();
   const [view, setView] = useState<'home' | 'studio'>('home');
+  const [studioView, setStudioView] = useState<StudioView>('team');
   const [mode, setMode] = useState<Mode>('real');
   const [tab, setTab] = useState<TabKey>('req');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -25,6 +27,9 @@ export default function App() {
   const [genError, setGenError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>('');
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projectVersion, setProjectVersion] = useState<number | null>(null);
+  const [projectCanIterate, setProjectCanIterate] = useState<boolean | null>(null);
   const [styleSel, setStyleSel] = useState('');
   const [fxSel, setFxSel] = useState('');
   const [styleDescSel, setStyleDescSel] = useState('');
@@ -37,24 +42,37 @@ export default function App() {
   const [pendingChoice, setPendingChoice] = useState<{ requirement: string; questions: ChoiceQuestion[] } | null>(null);
   const [choices, setChoices] = useState<Record<string, string>>({});
 
-  /** 需求生成：真实流水线 → 新引擎播放（服务端每次生成都创建新项目） */
+  /** 新建或基于当前版本迭代：真实流水线 → 新引擎播放 */
   const submitReal = async (requirement: string, answers: Record<string, string> = {}) => {
     const useName = projectName || (engine?.state.projectName ?? '');
+    const baseProjectId = activeProjectId;
     setGenerating(true);
-    setPhase('创建任务…');
+    setPhase(baseProjectId ? '准备基于当前版本修改…' : '创建任务…');
     setGenerationStartedAt((at) => at ?? Date.now());
     setGenError(null);
-    setPreviewUrl(null);
+    if (!baseProjectId) setPreviewUrl(null);
     setTab('events');
     try {
-      setPhase('创建任务…');
-      const result = await generateApp(requirement, styleSel, fxSel, useName || undefined, styleDescSel || undefined, (p) => {
-        setPhase(p);
-      }, model, answers);
+      const onPhase = (p: string) => setPhase(p);
+      const result = baseProjectId
+        ? await reviseApp(baseProjectId, requirement, model, onPhase)
+        : await generateApp(requirement, styleSel, fxSel, useName || undefined, styleDescSel || undefined, onPhase, model, answers);
+      if (result.failed && baseProjectId) {
+        setGenError(result.reason ?? '本轮修改没有通过交付门禁；上一版仍保留，可以继续预览或调整修改要求。');
+        setTab('preview');
+        setStudioView('canvas');
+        return;
+      }
       playInNew(result.cues);
+      setActiveProjectId(result.failed ? null : result.projectId);
+      setProjectVersion(result.failed ? null : (result.revisionNumber ?? 1));
+      setProjectCanIterate(result.failed ? null : (result.hasPagePlanSnapshot ?? false));
       setPreviewUrl(result.previewUrl);
+      setTab(result.previewUrl && !result.failed ? 'preview' : 'events');
+      setStudioView(result.previewUrl && !result.failed ? 'canvas' : 'team');
     } catch (e) {
       setGenError(e instanceof Error ? e.message : String(e));
+      if (baseProjectId) { setTab('preview'); setStudioView('canvas'); }
     } finally {
       setGenerating(false);
       setPhase(null);
@@ -116,9 +134,15 @@ export default function App() {
     try {
       const { meta, cues } = await fetchProject(id);
       setMode('real');
-      setPreviewUrl(meta.previewUrl ?? fallbackPreviewUrl);
+      setActiveProjectId(id);
+      setProjectVersion(meta.revisionNumber ?? 1);
+      setProjectCanIterate(meta.hasPagePlanSnapshot === true);
+      setProjectName(meta.projectTitle ?? meta.name);
+      const availablePreview = meta.previewUrl ?? fallbackPreviewUrl;
+      setPreviewUrl(availablePreview);
       enterProject(cues);
-      setTab('req');
+      setTab(availablePreview ? 'preview' : 'req');
+      setStudioView(availablePreview ? 'canvas' : 'team');
       setSelectedTaskId(null);
       setSelectedAgent(null);
       setView('studio');
@@ -130,6 +154,10 @@ export default function App() {
   const goHome = () => {
     close();
     setView('home');
+    setStudioView('team');
+    setActiveProjectId(null);
+    setProjectVersion(null);
+    setProjectCanIterate(null);
     setPreviewUrl(null);
     setGenerating(false);
     setPhase(null);
@@ -144,14 +172,14 @@ export default function App() {
         fx={fxSel} setFx={setFxSel}
         styleDesc={styleDescSel} setStyleDesc={setStyleDescSel}
         onSubmitProject={(name) => {
-          setMode('real'); setProjectName(name); setPreviewUrl(null);
+          setMode('real'); setStudioView('team'); setProjectName(name); setActiveProjectId(null); setProjectVersion(null); setProjectCanIterate(null); setPreviewUrl(null);
           setTab('events'); setGenError(null);
           close();
           setView('studio');
           setDockOpen(true); // 创建后自动展开对话面板，引导输入需求
         }}
         onEnterProject={(meta) => { void enterById(meta.id, meta.previewUrl); }}
-        onDemo={() => { setMode('demo'); startDemo(); setTab('req'); setView('studio'); }}
+        onDemo={() => { setMode('demo'); setStudioView('team'); setActiveProjectId(null); setProjectVersion(null); setProjectCanIterate(null); startDemo(); setTab('req'); setView('studio'); }}
       />
     );
   }
@@ -179,8 +207,19 @@ export default function App() {
           <button onClick={() => setGenError(null)}>关闭</button>
         </div>
       )}
-      <div className="app">
-        <TopBar engine={engine} mode={mode} onHome={goHome} fallbackName={projectName} generating={generating} phase={phase} elapsedMs={phaseElapsedMs} />
+      <div className={`app ${studioView === 'canvas' && mode === 'real' && previewUrl ? 'canvas-focus' : ''}`}>
+        <TopBar
+          engine={engine}
+          mode={mode}
+          onHome={goHome}
+          fallbackName={projectVersion ? `${projectName} · 第 ${projectVersion} 版` : projectName}
+          generating={generating}
+          phase={phase}
+          elapsedMs={phaseElapsedMs}
+          studioView={studioView}
+          hasPreview={mode === 'real' && Boolean(previewUrl)}
+          onStudioViewChange={(next) => { setStudioView(next); if (next === 'canvas') setTab('preview'); }}
+        />
         <TaskBoard
           state={engine ? engine.state : EMPTY_STATE}
           selectedTaskId={selectedTaskId}
@@ -201,17 +240,22 @@ export default function App() {
             onSelectTask={(id) => { setSelectedTaskId(id); setTab('task'); }}
             selectedAgent={selectedAgent}
             previewUrl={mode === 'real' ? previewUrl : null}
+            canIterate={mode === 'real' && projectCanIterate === true}
+            onSubmitRevision={(request) => { setDockOpen(true); void submitReal(request); }}
           />
         )}
         <ChatDock
           engine={engine}
           mode={mode}
+          projectId={activeProjectId}
+          projectVersion={projectVersion}
+          projectCanIterate={projectCanIterate}
           generating={generating}
           phase={phase}
           projectName={projectName}
           model={model} setModel={setModel}
           open={dockOpen} setOpen={setDockOpen}
-          onSubmitReal={(req) => void submitWithPreflight(req)}
+          onSubmitReal={(req) => { if (activeProjectId) void submitReal(req); else void submitWithPreflight(req); }}
         />
       </div>
     </>

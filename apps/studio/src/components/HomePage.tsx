@@ -617,6 +617,8 @@ export function HomePage({
                   <h3 className="p-name">{project.name}</h3>
                   <div className="p-chips">
                     {project.styleName && <span className="chip">{project.styleName}</span>}
+                    {project.revisionOf && <span className="chip">迭代第 {project.revisionNumber ?? 2} 版</span>}
+                    <span className={`chip ${project.hasPagePlanSnapshot ? 'green' : ''}`}>{project.hasPagePlanSnapshot ? '可继续迭代' : '仅预览'}</span>
                     {project.hadDefectFix && <span className="chip amber">含缺陷修复</span>}
                     {(project.imageCount ?? 0) > 0 && <span className="chip purple">🖼 {project.imageCount} 张素材</span>}
                   </div>

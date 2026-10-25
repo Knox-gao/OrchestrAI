@@ -10,11 +10,14 @@ import type { Mode } from '../App';
 interface Msg { id: number; role: 'user' | 'sys'; text: string; tone?: 'ok' | 'warn' | 'err'; }
 
 export function ChatDock({
-  engine, mode, generating, phase, projectName, model, setModel,
+  engine, mode, projectId, projectVersion, projectCanIterate, generating, phase, projectName, model, setModel,
   open, setOpen, onSubmitReal,
 }: {
   engine: StudioEngine | null;
   mode: Mode;
+  projectId: string | null;
+  projectVersion: number | null;
+  projectCanIterate: boolean | null;
   generating: boolean;
   phase: string | null;
   projectName: string;
@@ -32,6 +35,8 @@ export function ChatDock({
   const flowRef = useRef<HTMLDivElement | null>(null);
   const st = engine?.status ?? 'idle';
   const isReal = mode === 'real';
+  const isLegacyReadOnly = isReal && Boolean(projectId) && projectCanIterate === false;
+  const isIterating = isReal && Boolean(projectId) && projectCanIterate === true;
   const paused = st === 'paused';
 
   // 主模型列表（已配置的 LLM 网关 + 规则识别）
@@ -116,7 +121,7 @@ export function ChatDock({
   }, [sysMsgs.length, myMsgs.length, phase, open]);
 
   const isDemoChange = mode === 'demo' && st === 'awaiting_change' && text.trim().length > 0 && Boolean(engine);
-  const canSend = (isReal && !generating && text.trim().length > 0) || isDemoChange;
+  const canSend = (isReal && !isLegacyReadOnly && !generating && text.trim().length > 0) || isDemoChange;
 
   return (
     <>
@@ -142,7 +147,13 @@ export function ChatDock({
             <div className="dock-flow" ref={flowRef}>
               {sysMsgs.length === 0 && myMsgs.length === 0 && (
                 <div className="dock-empty">
-                  {projectName ? <>项目「{projectName}」已创建。<br />在下方输入需求，或 📎 附加 Word/txt/md 文档。</> : '输入你的需求开始创建'}
+                  {isIterating
+                    ? <>正在迭代「{projectName}」第 {projectVersion ?? 1} 版。<br />每轮只描述一项修改，并指出对应区域；新版会沿用当前页面作为底稿，旧版仍保留在项目库。</>
+                    : isLegacyReadOnly
+                      ? <>「{projectName}」没有可继续修改的结构化底稿，因此当前仅支持预览。<br />请从项目库创建新项目后开始迭代。</>
+                    : projectName
+                      ? <>项目「{projectName}」已创建。<br />建议说明网站目标、受众、必要板块、视觉参考和关键交互；也可以 📎 附加 Word/txt/md 需求文档。</>
+                      : '输入你的网站目标、受众、主要板块和想要的视觉感觉，先把想法说清楚再开始创作。'}
                 </div>
               )}
               {myMsgs.map((m) => <div className="bubble user" key={`u${m.id}`}>{m.text}</div>)}
@@ -166,13 +177,13 @@ export function ChatDock({
                 type="file" accept=".docx,.txt,.md,.markdown" style={{ display: 'none' }}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); e.target.value = ''; }}
               />
-              <button className="dock-icon" title="附加 Word/txt/md 需求文档" disabled={generating}
+              <button className="dock-icon" title="附加 Word/txt/md 需求文档" disabled={generating || isLegacyReadOnly}
                 onClick={() => (fileRef as { current: HTMLInputElement | null }).current?.click()}>📎</button>
               <textarea
                 rows={1}
                 value={text}
-                disabled={generating}
-                placeholder={isReal ? '输入需求…（Enter 发送）' : st === 'awaiting_change' ? '输入新需求变更…' : '演示模式：变更入口在交付后开启'}
+                disabled={generating || isLegacyReadOnly}
+                placeholder={isLegacyReadOnly ? '此版本没有可用的迭代底稿' : isIterating ? '这轮只改什么？例如：只替换封面图，其他部分保持不变…' : isReal ? '描述网站目标、受众、板块和交互…（Enter 发送）' : st === 'awaiting_change' ? '输入新需求变更…' : '演示模式：变更入口在交付后开启'}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
               />

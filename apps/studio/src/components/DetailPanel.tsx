@@ -19,6 +19,7 @@ const TABS: { key: TabKey; label: string }[] = [
 
 export function DetailPanel({
   engine, tab, setTab, selectedTaskId, onSelectTask, selectedAgent, previewUrl,
+  canIterate = false, onSubmitRevision,
 }: {
   engine: import('@studio/core').StudioEngine;
   tab: TabKey;
@@ -27,11 +28,13 @@ export function DetailPanel({
   onSelectTask: (id: string) => void;
   selectedAgent: import('@studio/core').AgentRole | null;
   previewUrl?: string | null;
+  canIterate?: boolean;
+  onSubmitRevision?: (request: string) => void;
 }) {
   const s = engine.state;
   const pendingApprovals = Object.values(s.approvals).filter((a) => a.status === 'pending');
   const tabs = [...TABS];
-  if (previewUrl) tabs.unshift({ key: 'preview', label: '🎉 预览' });
+  if (previewUrl) tabs.unshift({ key: 'preview', label: '🖥 页面画布' });
   if (selectedAgent) tabs.push({ key: 'agent', label: `Agent·${ROLE_LABELS[selectedAgent]}` });
 
   return (
@@ -47,7 +50,15 @@ export function DetailPanel({
         ))}
       </div>
       <div className="detail-body preview-body">
-        {tab === 'preview' && previewUrl && <PreviewView url={previewUrl} name={s.projectName} projectId={s.projectId} />}
+        {tab === 'preview' && previewUrl && (
+          <PreviewView
+            url={previewUrl}
+            name={s.projectName}
+            projectId={s.projectId}
+            canIterate={canIterate}
+            onSubmitRevision={onSubmitRevision}
+          />
+        )}
         {tab === 'req' && <ReqView s={s} />}
         {tab === 'task' && <TaskView s={s} taskId={selectedTaskId} onOpenTest={() => setTab('test')} />}
         {tab === 'test' && <TestView s={s} />}
@@ -61,33 +72,142 @@ export function DetailPanel({
 }
 
 /* ---------- 预览（真实模式：生成的网站直接可用） ---------- */
-function PreviewView({ url, name, projectId }: { url: string; name: string; projectId: string }) {
+interface PreviewTarget { id: string; label: string }
+
+function PreviewView({ url, name, projectId, canIterate, onSubmitRevision }: {
+  url: string;
+  name: string;
+  projectId: string;
+  canIterate: boolean;
+  onSubmitRevision?: (request: string) => void;
+}) {
   const zipHref = `/api/projects/${encodeURIComponent(projectId)}/export?fmt=zip`;
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const selectedElementRef = useRef<HTMLElement | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [target, setTarget] = useState<PreviewTarget | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selecting) return;
+    const iframe = iframeRef.current;
+    let detachFromDocument = () => {};
+    const installSelector = () => {
+      detachFromDocument();
+      let doc: Document | null = null;
+      try { doc = iframe?.contentDocument ?? null; } catch { doc = null; }
+      if (!doc?.head || !doc.body) {
+        setSelectionError('无法读取画布页面；请在新标签页查看后，回到项目对话描述要修改的区域。');
+        return;
+      }
+      setSelectionError(null);
+      const style = doc.createElement('style');
+      style.dataset.orchestraiSelector = 'true';
+      style.textContent = `
+        body[data-orchestrai-picking], body[data-orchestrai-picking] * { cursor: crosshair !important; }
+        [data-orchestrai-selected] { outline: 3px solid #00d8c5 !important; outline-offset: 3px !important; box-shadow: 0 0 0 6px rgba(0,216,197,.18) !important; }
+      `;
+      doc.head.appendChild(style);
+      doc.body.setAttribute('data-orchestrai-picking', '');
+      const onPick = (event: MouseEvent) => {
+        const clicked = event.target as HTMLElement | null;
+        if (!clicked || typeof clicked.closest !== 'function') return;
+        const element = clicked.closest('section[id], article[id], main[id], header[id], footer[id], [id]') as HTMLElement | null;
+        if (!element || ['HTML', 'BODY', 'SCRIPT', 'STYLE'].includes(element.tagName)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        selectedElementRef.current?.removeAttribute('data-orchestrai-selected');
+        element.setAttribute('data-orchestrai-selected', '');
+        selectedElementRef.current = element;
+        const label = (element.innerText || element.textContent || element.getAttribute('aria-label') || element.tagName)
+          .replace(/\s+/g, ' ').trim().slice(0, 96);
+        setTarget({ id: element.id, label: label || element.tagName.toLowerCase() });
+      };
+      doc.addEventListener('click', onPick, true);
+      detachFromDocument = () => {
+        doc?.removeEventListener('click', onPick, true);
+        doc?.body?.removeAttribute('data-orchestrai-picking');
+        selectedElementRef.current?.removeAttribute('data-orchestrai-selected');
+        selectedElementRef.current = null;
+        style.remove();
+      };
+    };
+    iframe?.addEventListener('load', installSelector);
+    installSelector();
+    return () => {
+      iframe?.removeEventListener('load', installSelector);
+      detachFromDocument();
+    };
+  }, [selecting, url]);
+
+  const submitFeedback = () => {
+    if (!canIterate || !target || !feedback.trim() || !onSubmitRevision) return;
+    const request = `请针对页面选区 ID「${target.id}」（${target.label}）进行修改：${feedback.trim()}。本轮只改这个区域及必要关联部分；其他板块、布局、配图、风格与交互都保持当前版本不变。`;
+    setSelecting(false);
+    setTarget(null);
+    setFeedback('');
+    setExpanded(false);
+    onSubmitRevision(request);
+  };
+
   return (
     <>
-      <div className="sect">
-        <h4>🎉 {name || '你的网站'} · 在线预览</h4>
+      <div className="sect preview-intro">
+        <h4>{name || '你的网站'} · 当前版本</h4>
         <p style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 8, lineHeight: 1.6 }}>
-          这是刚从你的一句话<b>真实生成</b>的网站（文件已写入工作区，测试真实通过）。可以直接在下方使用，或
+          直接检查页面并操作交互。选择具体区域后写一条局部反馈，系统会生成新版本，当前版本保留在项目库。也可以
           <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--cyan)' }}>在新标签页打开 ↗</a>。
         </p>
       </div>
+      <div
+        className={`preview-workspace ${expanded ? 'expanded' : ''}`}
+        role={expanded ? 'dialog' : undefined}
+        aria-modal={expanded ? 'true' : undefined}
+        aria-label={expanded ? `${name || '网站'}全屏预览画布` : undefined}
+        onKeyDown={(event) => { if (expanded && event.key === 'Escape') setExpanded(false); }}
+      >
+        <div className="preview-canvas-toolbar">
+          <div><span className="canvas-live-dot" />页面画布 <small>可交互 · 逐区反馈</small></div>
+          <div className="preview-canvas-actions">
+            <button className={`canvas-action ${selecting ? 'active' : ''}`} aria-pressed={selecting} disabled={!canIterate} onClick={() => setSelecting((value) => !value)} title={canIterate ? '在页面中点击要反馈的区域' : '该历史项目没有结构化版本底稿'}>
+              {selecting ? '结束选区' : '⌖ 选择区域反馈'}
+            </button>
+            <button className="canvas-action" onClick={() => setExpanded((value) => !value)}>{expanded ? '收起画布' : '⤢ 放大画布'}</button>
+          </div>
+        </div>
+        <iframe
+          ref={iframeRef}
+          src={url}
+          title="生成的网站交互画布"
+          className={`preview-frame ${selecting ? 'selecting' : ''}`}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
+        />
+        {selecting && !target && <div className="canvas-hint" role="status">在页面中点击要修改的区域。链接和按钮在选区模式下不会触发。</div>}
+        {selectionError && <div className="canvas-error" role="status">{selectionError}</div>}
+        {!canIterate && <div className="canvas-hint">该项目没有可编辑底稿，只能预览；新建项目后可使用选区反馈。</div>}
+        {target && canIterate && (
+          <div className="canvas-feedback">
+            <div className="canvas-target"><span>已选区域</span><b>{target.label}</b><code>#{target.id}</code></div>
+            <textarea value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="这一区域要怎么改？尽量描述一个具体问题…" aria-label="选中区域的修改要求" />
+            <div className="canvas-feedback-actions">
+              <button className="canvas-action" onClick={() => { selectedElementRef.current?.removeAttribute('data-orchestrai-selected'); selectedElementRef.current = null; setTarget(null); setFeedback(''); }}>清除选区</button>
+              <button className="canvas-revise" disabled={!feedback.trim()} onClick={submitFeedback}>基于当前版本修改 ↗</button>
+            </div>
+          </div>
+        )}
+      </div>
       <div className="sect export-sect">
-        <h4>下载与独立运行</h4>
+        <h4>交付与分享</h4>
         <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginBottom: 8, lineHeight: 1.7 }}>
-          内测版只交付<b>桌面版网页</b>。下载 ZIP 解压后即可独立运行，不需要安装任何运行时；
-          本版不提供 .exe / .apk 原生应用打包。
+          下载的 ZIP 是当前版本的独立网页；每次修改都会保存为新的项目版本。
         </p>
         <div className="export-btns">
-          <a className="btn" href={zipHref} title="下载网页 ZIP（解压即可独立运行，含随包测试）">⬇ 下载网页 ZIP（推荐）</a>
+          <a className="btn" href={zipHref} title="下载当前版本的网页 ZIP">⬇ 下载当前版本 ZIP</a>
         </div>
       </div>
-      <iframe
-        src={url}
-        title="生成的网站预览"
-        className="preview-frame"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups"
-      />
     </>
   );
 }

@@ -1,5 +1,5 @@
 import type { StudioEngine } from '@studio/core';
-import type { Mode } from '../App';
+import type { Mode, StudioView } from '../App';
 import { fmtClock } from '../useStudio';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -9,9 +9,13 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function TopBar({
   engine, mode, onHome, fallbackName, generating = false, phase, elapsedMs = 0,
+  studioView = 'team', hasPreview = false, onStudioViewChange,
 }: {
   engine: StudioEngine | null; mode: Mode; onHome: () => void; fallbackName?: string;
   generating?: boolean; phase?: string | null; elapsedMs?: number;
+  studioView?: StudioView;
+  hasPreview?: boolean;
+  onStudioViewChange?: (view: StudioView) => void;
 }) {
   const s = engine?.state;
   const st = engine?.status ?? 'idle';
@@ -33,6 +37,15 @@ export function TopBar({
       <div className="logo" />
       <span className="name">{s?.projectName || fallbackName || 'OrchestrAI'}</span>
       <span className={`mode-chip ${mode}`}>{mode === 'real' ? '⚡ 真实生成' : '演示剧本'}</span>
+      {hasPreview && onStudioViewChange && (
+        <button
+          className="btn studio-view-switch"
+          onClick={() => onStudioViewChange(studioView === 'canvas' ? 'team' : 'canvas')}
+          aria-label={studioView === 'canvas' ? '切换到团队工作流' : '切换到页面画布'}
+        >
+          {studioView === 'canvas' ? '▦ 团队工作流' : '▣ 页面画布'}
+        </button>
+      )}
       {generating && (
         <span className="generation-phase" title={phase || '模型正在思考'}>
           <span className="generation-pulse" />

@@ -324,7 +324,52 @@ function imageCandidateUsable(candidate, query = '') {
     && width * height >= 640 * 360;
 }
 
-export async function runPipeline(requirement, styleId, fxLevel, projectTitle, styleDescription, onPhase, llmChoice = 'auto', choiceParams = {}, requiredRequirementIds = []) {
+function copyBaselinePagePlanAssets(plan, sourceWorkspace, targetWorkspace) {
+  const root = path.resolve(WORKSPACES);
+  const sourceRoot = path.resolve(sourceWorkspace ?? '');
+  if (path.dirname(sourceRoot) !== root) throw new Error('迭代基线工作区路径无效');
+  const sourceStat = fs.lstatSync(sourceRoot);
+  if (!sourceStat.isDirectory() || sourceStat.isSymbolicLink()) throw new Error('迭代基线工作区不可用');
+  const sourceRootReal = fs.realpathSync(sourceRoot);
+  if (path.dirname(sourceRootReal) !== fs.realpathSync(root)) throw new Error('迭代基线工作区真实路径无效');
+
+  let copiedBytes = 0;
+  let copiedFiles = 0;
+  const copied = new Set();
+  for (const node of collectImageNodes(plan)) {
+    const rel = String(node.src ?? '').replaceAll('\\', '/');
+    if (!rel.startsWith('images/') || copied.has(rel)) continue;
+    copied.add(rel);
+    const parts = rel.split('/');
+    if (copied.size > 64 || rel.length > 248 || parts[0] !== 'images'
+      || parts.length < 2 || parts.slice(1).some((part) => !/^[A-Za-z0-9_.-]+$/.test(part) || part === '.' || part === '..')) {
+      throw new Error('迭代基线图片数量或路径超出安全限制');
+    }
+    const source = path.resolve(sourceRoot, rel);
+    if (!source.startsWith(`${sourceRoot}${path.sep}`)) throw new Error('迭代基线图片路径无效');
+    let current = sourceRoot;
+    for (const [index, part] of parts.entries()) {
+      current = path.join(current, part);
+      const stat = fs.lstatSync(current);
+      if (stat.isSymbolicLink() || (index < parts.length - 1 && !stat.isDirectory())
+        || (index === parts.length - 1 && !stat.isFile())) {
+        throw new Error('迭代基线图片文件不可用');
+      }
+    }
+    if (!fs.realpathSync(source).startsWith(`${sourceRootReal}${path.sep}`)) throw new Error('迭代基线图片真实路径无效');
+    const stat = fs.statSync(source);
+    copiedBytes += stat.size;
+    if (copiedBytes > 256 * 1024 * 1024) throw new Error('迭代基线图片总量超出安全限制');
+    const target = path.resolve(targetWorkspace, rel);
+    if (!target.startsWith(`${path.resolve(targetWorkspace)}${path.sep}`)) throw new Error('迭代图片目标路径无效');
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
+    copiedFiles++;
+  }
+  return { copiedFiles, copiedBytes };
+}
+
+export async function runPipeline(requirement, styleId, fxLevel, projectTitle, styleDescription, onPhase, llmChoice = 'auto', choiceParams = {}, requiredRequirementIds = [], revisionContext = null) {
   const sentence = requirement;
   const projectId = 'P' + Date.now().toString(36).toUpperCase();
   const ws = path.join(WORKSPACES, projectId);
@@ -332,6 +377,13 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
 
   let spec = parseSentence(`${projectTitle ?? ''} ${requirement}`.trim(), { styleId, fxLevel, styleDescription });
   if (projectTitle) spec.title = projectTitle;
+  if (revisionContext) {
+    spec.revisionParentId = revisionContext.parentProjectId;
+    spec.revisionNumber = revisionContext.revisionNumber;
+    spec.revisionRequest = revisionContext.changeRequest;
+    spec.originalRequirement = revisionContext.originalRequirement;
+  }
+  spec.requiredRequirementIds = requiredRequirementIds;
 
   // ---- 用户开工前选择 = 硬约束（不可被 detectStyle / LLM / 默认值静默覆盖）----
   const lockedChoices = { ...(choiceParams ?? {}) };
@@ -710,6 +762,8 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       const planResult = await generatePagePlan({
         requirement,
         projectTitle: projectTitle ?? spec.title,
+        baselinePlan: revisionContext?.baselinePlan ?? null,
+        revisionRequest: revisionContext?.changeRequest ?? '',
         gw,
         userChoices: {
           styleId: spec.styleLocked ? spec.styleId : undefined,
@@ -762,6 +816,10 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
         // 用 chatDetailed：把供应商真实 usage 带出来（chat 历史实现丢掉了 usage）
         callModel: chatDetailed,
       });
+      if (revisionContext?.baselinePlan) {
+        const copied = copyBaselinePagePlanAssets(revisionContext.baselinePlan, revisionContext.baseWorkspace, ws);
+        emit(210, [{ type: 'log', level: 'info', from: 'frontend', message: `本轮基于上一版迭代：保留 ${copied.copiedFiles} 个已批准图片素材。` }]);
+      }
       // PagePlan image nodes may request a real image by searchQuery instead of
       // guessing a URL. Keep only semantically matched, technically usable files.
       const pagePlanImageFiles = new Map();
@@ -987,6 +1045,7 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
       if (!finalVisualAssessment.ok) {
         throw new PagePlanGenerationError('PAGEPLAN_VISUAL_COMPOSITION_INSUFFICIENT', finalVisualAssessment.reason, finalVisualAssessment.metrics);
       }
+      spec.pagePlanSnapshot = structuredClone(planResult.plan);
 
       const rendered = renderPagePlan(planResult.plan, { imageCredits: pagePlanImageCredits });
       files = { ...rendered.files };
@@ -1602,12 +1661,11 @@ export async function runPipeline(requirement, styleId, fxLevel, projectTitle, s
     hadDefectFix: !firstOk, firstOk,
   });
 
-  return { projectId, cues, previewUrl, workspace: ws, failed: false };
+  return { projectId, cues, previewUrl, workspace: ws, failed: false, hasPagePlanSnapshot: Boolean(spec.pagePlanSnapshot) };
 }
 
 /** 项目元数据 + 事件时间线持久化（主页列表与状态恢复的数据源） */
 function persistProject(cues, o) {
-  const { projectTitle } = o;
   const nameSuffix = o.projectTitle ? '' : `（${o.spec.pagePlanUsed ? 'PagePlan 结构化页面' : o.spec.template.meta.name}）`;
   const meta = {
     id: o.projectId,
@@ -1618,11 +1676,19 @@ function persistProject(cues, o) {
     typeName: o.spec.pagePlanUsed ? 'PagePlan 结构化页面' : o.spec.template.meta.name,
     styleId: o.spec.styleDef?.id ?? null,
     styleName: o.spec.styleDef?.name ?? null,
+    projectTitle: o.spec.title,
+    styleDescription: o.spec.styleDescription ?? null,
     // 风格来源审计：user-locked = 用户开工前指定（不可覆盖）；auto-detected / default 为推断
     styleOrigin: o.spec.styleOrigin ?? null,
     userChoices: o.spec.styleLocked || o.spec.fontLocked || o.spec.directionLocked
       ? { style: o.spec.styleLocked ? o.spec.styleId : null, font: o.spec.fontLocked ? o.spec.fontMood : null, direction: o.spec.directionLocked ? o.spec.pageDirection : null }
       : null,
+    revisionOf: o.spec.revisionParentId ?? null,
+    revisionNumber: o.spec.revisionNumber ?? 1,
+    revisionRequest: o.spec.revisionRequest ?? null,
+    originalRequirement: o.spec.originalRequirement ?? o.sentence,
+    requiredRequirementIds: o.spec.requiredRequirementIds ?? [],
+    hasPagePlanSnapshot: false,
     fxLevel: o.spec.resolvedFx ?? 'subtle',
     viaLLM: o.spec.viaLLM ?? false,
     llmProvider: o.spec.llmProvider ?? null,
@@ -1653,6 +1719,16 @@ function persistProject(cues, o) {
       ? (o.spec.pagePlanReport?.features?.images ?? 0)
       : (o.spec.images?.length ?? 0),
   };
+  try {
+    if (o.spec.pagePlanSnapshot) {
+      const internalDir = path.join(o.ws, '_model');
+      fs.mkdirSync(internalDir, { recursive: true });
+      fs.writeFileSync(path.join(internalDir, 'pageplan.json'), JSON.stringify(o.spec.pagePlanSnapshot));
+      meta.hasPagePlanSnapshot = true;
+    }
+  } catch (err) {
+    console.error('[pipeline] pageplan snapshot persist failed:', err.message);
+  }
   try {
     fs.writeFileSync(path.join(o.ws, 'project.json'), JSON.stringify(meta, null, 2));
     fs.writeFileSync(path.join(o.ws, 'timeline.json'), JSON.stringify(cues));

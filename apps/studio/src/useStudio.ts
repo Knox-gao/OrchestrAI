@@ -68,6 +68,10 @@ export interface GenerateResult {
   previewUrl: string | null;
   workspace: string;
   failed?: boolean;
+  reason?: string;
+  revisionOf?: string | null;
+  revisionNumber?: number;
+  hasPagePlanSnapshot?: boolean;
 }
 
 export interface StyleEntry { id: string; name: string; base: string; palette: string }
@@ -96,14 +100,28 @@ export async function generateApp(
   styleDescription?: string, onPhase?: (phase: string, elapsedMs: number) => void,
   model = 'auto', choices?: Record<string, string>,
 ): Promise<GenerateResult> {
-  const res = await fetch('/api/generate', {
+  return await submitGeneration('/api/generate', {
+    requirement, ...(name ? { name } : {}), ...(style ? { style } : {}),
+    ...(fx ? { fx } : {}), ...(styleDescription ? { styleDescription } : {}),
+    llm: model, ...(choices && Object.keys(choices).length ? { choices } : {}),
+  }, onPhase);
+}
+
+export async function reviseApp(
+  projectId: string, changeRequest: string, model = 'auto', onPhase?: (phase: string, elapsedMs: number) => void,
+): Promise<GenerateResult> {
+  return await submitGeneration(`/api/projects/${encodeURIComponent(projectId)}/revise`, {
+    changeRequest, llm: model,
+  }, onPhase);
+}
+
+async function submitGeneration(
+  endpoint: string, body: Record<string, unknown>, onPhase?: (phase: string, elapsedMs: number) => void,
+): Promise<GenerateResult> {
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      requirement, ...(name ? { name } : {}), ...(style ? { style } : {}),
-      ...(fx ? { fx } : {}), ...(styleDescription ? { styleDescription } : {}),
-      llm: model, ...(choices && Object.keys(choices).length ? { choices } : {}),
-    }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -125,6 +143,7 @@ export async function generateApp(
 export interface ProjectMeta {
   id: string;
   name: string;
+  projectTitle?: string;
   sentence: string;
   type: string;
   typeName: string;
@@ -142,6 +161,9 @@ export interface ProjectMeta {
   styleName?: string | null;
   fxLevel?: string | null;
   styleDescription?: string | null;
+  revisionOf?: string | null;
+  revisionNumber?: number;
+  hasPagePlanSnapshot?: boolean;
 }
 
 export async function fetchProjects(): Promise<ProjectMeta[]> {
