@@ -20,6 +20,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SCENE3D_RUNTIME } from './scene3d.mjs';
+import { SCROLL_RUNTIME } from './scrollcinema.mjs';
 import { INTERACTION_RUNTIME } from './interactions.mjs';
 
 const THEME_VARS = ['--pp-bg', '--pp-surface', '--pp-text', '--pp-muted', '--pp-accent', '--pp-accent-soft'];
@@ -54,7 +55,13 @@ export function checkPagePlanHtml(html, expect = {}) {
   const scriptBlocks = [...text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   const executable = scriptBlocks.filter((m) => !/type\s*=\s*"application\/json"/i.test(m[1]));
   const configBlocks = scriptBlocks.filter((m) => /type\s*=\s*"application\/json"/i.test(m[1]));
-  const TRUSTED_RUNTIMES = [SCENE3D_RUNTIME, INTERACTION_RUNTIME, [SCENE3D_RUNTIME, INTERACTION_RUNTIME].join('\n')];
+  // 渲染器按需组合 scene3d / interaction / scroll 三个运行时（canonical 顺序），
+  // 门禁信任所有非空子集的组合；字节级完全一致仍是唯一放行标准。
+  const RUNTIME_POOL = [SCENE3D_RUNTIME, INTERACTION_RUNTIME, SCROLL_RUNTIME];
+  const TRUSTED_RUNTIMES = [];
+  for (let mask = 1; mask < 8; mask += 1) {
+    TRUSTED_RUNTIMES.push(RUNTIME_POOL.filter((_, i) => mask & (1 << i)).join('\n'));
+  }
   const unexpected = executable.filter((m) => !TRUSTED_RUNTIMES.includes(m[2]));
   if (unexpected.length) {
     problems.push(`产物含 ${unexpected.length} 处非可信脚本（只允许与内置运行时字节完全一致的脚本）`);

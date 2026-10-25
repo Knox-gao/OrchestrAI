@@ -25,6 +25,7 @@ const RADII = new Set(['sharp', 'soft', 'rounded', 'pill']);
  */
 export const PAGEPLAN_ENUMS = Object.freeze({
   sectionVariant: ['plain', 'hero', 'panel', 'contrast'],
+  sectionScene: ['pinned', 'gallery'],
   containerLayout: ['stack', 'split', 'grid'],
   linkVariant: ['primary', 'secondary', 'quiet'],
   calloutTone: ['info', 'success', 'warning', 'neutral'],
@@ -37,6 +38,7 @@ export const PAGEPLAN_ENUMS = Object.freeze({
 });
 
 const SECTION_VARIANTS = new Set(['plain', 'hero', 'panel', 'contrast']);
+const SECTION_SCENES = new Set(['pinned', 'gallery']);
 const CONTAINER_LAYOUTS = new Set(['stack', 'split', 'grid']);
 const LINK_VARIANTS = new Set(['primary', 'secondary', 'quiet']);
 const CALLOUT_TONES = new Set(['info', 'success', 'warning', 'neutral']);
@@ -54,7 +56,7 @@ export const PAGEPLAN_FIELD_CONTRACT = Object.freeze({
 });
 
 export const PAGEPLAN_NODE_KEYS = {
-  section: ['id', 'type', 'label', 'eyebrow', 'title', 'description', 'variant', 'children'],
+  section: ['id', 'type', 'label', 'eyebrow', 'title', 'description', 'variant', 'scene', 'children'],
   container: ['id', 'type', 'layout', 'columns', 'children'],
   heading: ['id', 'type', 'level', 'text'],
   text: ['id', 'type', 'text'],
@@ -142,7 +144,7 @@ export function validatePagePlan(input, options = {}) {
   if (!plainObject(input)) throw new PagePlanValidationError(['$: expected plain object']);
   // sceneBrief 是 M7-B4C 新增的可选字段：用于结构化创作意图。
   // 保持向后兼容——旧计划不带它仍合法；带它则必须通过 scene-brief 的结构校验。
-  ownKeysOnly(input, ['schemaVersion', 'meta', 'userConstraints', 'designIntent', 'theme', 'nodes', 'unsupportedRequests', 'sceneBrief'], '$', issues);
+  ownKeysOnly(input, ['schemaVersion', 'meta', 'userConstraints', 'designIntent', 'theme', 'nodes', 'unsupportedRequests', 'sceneBrief', 'cinematic'], '$', issues);
   if (input.schemaVersion !== PAGEPLAN_SCHEMA_VERSION) issues.push(`schemaVersion: expected ${PAGEPLAN_SCHEMA_VERSION}`);
 
   if (input.sceneBrief != null) {
@@ -175,6 +177,7 @@ export function validatePagePlan(input, options = {}) {
     ownKeysOnly(input.designIntent, ['concept', 'pageDirection', 'visualPrinciples'], 'designIntent', issues);
     checkString(input.designIntent.concept, 'designIntent.concept', issues, { max: 700 });
     checkString(input.designIntent.pageDirection, 'designIntent.pageDirection', issues, { max: 80 });
+    if (input.cinematic !== undefined && typeof input.cinematic !== 'boolean') issues.push('cinematic: expected boolean when present');
     if (!Array.isArray(input.designIntent.visualPrinciples) || input.designIntent.visualPrinciples.length > PAGEPLAN_LIMITS.maxVisualPrinciples) {
       issues.push(`designIntent.visualPrinciples: expected array with at most ${PAGEPLAN_LIMITS.maxVisualPrinciples} items`);
     } else input.designIntent.visualPrinciples.forEach((v, i) => checkString(v, `designIntent.visualPrinciples[${i}]`, issues, { max: PAGEPLAN_LIMITS.maxVisualPrincipleLength }));
@@ -236,6 +239,7 @@ export function validatePagePlan(input, options = {}) {
       case 'section':
         for (const k of ['label', 'eyebrow', 'title', 'description']) checkString(node[k], `${path}.${k}`, issues, { required: k === 'title', max: k === 'description' ? 1600 : 300, allowEmpty: k === 'description' });
         checkEnum(node.variant ?? 'plain', SECTION_VARIANTS, `${path}.variant`, issues);
+        if (node.scene != null) checkEnum(node.scene, SECTION_SCENES, `${path}.scene`, issues);
         visitChildren(node.children, `${path}.children`, depth, issues, visit, limits);
         break;
       case 'container':

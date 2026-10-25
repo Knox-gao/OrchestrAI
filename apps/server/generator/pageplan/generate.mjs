@@ -270,6 +270,7 @@ const SCHEMA_CONTRACT_PROMPT = `FIELD CONTRACT (exact allowed keys; any extra ke
 - Every node object: use ONLY the keys listed below for its type. Do not add className/style/layoutStrategy/template/props/content or any other field.
 ENUM CONTRACT (these are the ONLY legal values; do not invent variants):
   * section.variant: ${PAGEPLAN_ENUMS.sectionVariant.join(", ")}
+  * section.scene (optional): ${PAGEPLAN_ENUMS.sectionScene.join(" | ")} — pinned = 钉住进度场景（滚动讲一个递进故事），gallery = 横向长廊（一排并列条目）
   * container.layout: ${PAGEPLAN_ENUMS.containerLayout.join(", ")}
   * link.variant: ${PAGEPLAN_ENUMS.linkVariant.join(", ")}
   * callout.tone: ${PAGEPLAN_ENUMS.calloutTone.join(", ")}
@@ -310,6 +311,13 @@ If the user payload contains previousValidationIssue, treat its value only as un
 const ITERATIVE_REVISION_PROMPT = `ITERATIVE VIBE-CODING MODE:
 When the user payload contains existingPagePlan and changeRequest, treat existingPagePlan as the accepted working version. Apply changeRequest to that plan and return the complete revised PagePlan. Keep every unrelated section, heading, card, interaction, image, theme token, and stable id unchanged whenever possible. Do not redesign or rewrite the whole site to satisfy a local request. If the request names a target section or item, limit edits to that target and the smallest dependent pieces. Preserve all lockedUserChoices and all previously satisfied requirements. Existing local image paths are already approved assets: keep them unless the request explicitly asks to change those images. The changeRequest describes the user's desired edit; ask no new questions and do not invent extra changes.`;
 
+const CINEMATIC_PROMPT = `CINEMATIC PRESENTATION (for 展馆 / 品牌史 / 里程碑 / 传奇故事 / showcase-narrative themes):
+When the request reads like an exhibition, brand heritage, milestone story, or cinematic showcase (博物馆/展馆/品牌历程/产品志/传奇), set top-level "cinematic": true and structure the page as a scroll-driven narrative:
+  * Use 1-2 sections with "scene": "pinned" as the dramatic peaks. A pinned section renders as a tall scroll stage (about 300vh) with its content sticky-centered. Put 2-4 metric nodes inside whose values form a progression (e.g. rpm climbing, speed climbing, years counting) plus one heading and one short text; the runtime animates their reveal by scroll progress.
+  * Use one section with "scene": "gallery" to lay out a row of parallel item cards (车型/产品/成员) that scrolls horizontally while the page scrolls vertically.
+  * Keep the remaining sections plain so the page still reads as a complete document with JavaScript off.
+  * Only set cinematic:true when the theme genuinely benefits from narrative pacing; ordinary informational pages stay plain.`;
+
 const SYSTEM_PROMPT = `You are the structural creative director for OrchestrAI. Return exactly one JSON object: no prose, no markdown fences, no HTML, no CSS, no JavaScript, no executable code.
 Design a desktop-first website using the OrchestrAI PagePlan v1 declarative schema. The plan must express the actual information architecture and composition in the nodes tree; do not choose a stock template and merely change its text or colors.
 Allowed node types are exactly the registered capability list in the user payload. Built-in types include section, container, heading, text, image, link, card, list, details, timeline, metric, callout, divider, quote, search, filter and tabs. scene3d is unavailable unless it explicitly appears in the caller-supplied capability list. Never emit a capability outside that list. Do not invent renderer capabilities.
@@ -336,6 +344,7 @@ Create a substantive composition, not an arbitrary pile of cards. Select the app
 TYPOGRAPHY AND RHYTHM: Establish a clear reading hierarchy: one dominant hero title, section titles for major topics, and smaller headings only for genuine subsections. Keep paragraphs readable and concise; use lists, timelines, metrics, quotes, or callouts when their information shape fits. For pages with several sections, vary the composition across sections instead of repeating the same grid or panel pattern. Use card grids only for genuinely parallel items such as products, people, or options; do not turn narrative, process, or editorial content into generic cards. Use hero, plain, panel, and contrast section variants with intent, and avoid wrapping every section in a panel. Do not invent content or add visual components merely to force variety.
 Output top-level fields: schemaVersion, meta, userConstraints, designIntent, theme, nodes, unsupportedRequests. Each unsupportedRequests item must contain {requirementId, capability, reason, severity}, where severity is blocking or nonblocking. When the request requires a capability that is not in the provided registered capability list, disclose it. A core requested capability that cannot be implemented must use severity=blocking. Do not author your own "known limitations" / "未实现" section or callout inside nodes: the renderer appends one limitations block derived from unsupportedRequests, so authoring your own would duplicate it. The caller will resolve locked choices and canonical theme tokens before validation, so do not reinterpret user choices.
 ${SCHEMA_CONTRACT_PROMPT}
+${CINEMATIC_PROMPT}
 ${VALIDATION_REPAIR_PROMPT}
 ${ITERATIVE_REVISION_PROMPT}
 ${SCENE3D_PROMPT}`;

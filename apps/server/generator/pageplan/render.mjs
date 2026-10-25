@@ -3,6 +3,7 @@ import { validatePagePlan, isSafeUrl } from './schema.mjs';
 import { getPagePlanRenderer } from './registry.mjs';
 import { renderScene3DNode, SCENE3D_RUNTIME } from './scene3d.mjs';
 import { renderSearchNode, renderFilterNode, renderTabsNode, INTERACTION_RUNTIME } from './interactions.mjs';
+import { SCROLL_RUNTIME, SCROLL_CINEMA_CSS } from './scrollcinema.mjs';
 import { listExtensionPagePlanTypes } from './registry.mjs';
 
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({
@@ -41,11 +42,23 @@ function renderNode(node, context) {
     case 'section': {
       const titleTag = node.variant === 'hero' ? 'h1' : 'h2';
       const titleClass = node.variant === 'hero' ? 'pp-section-title pp-h1' : 'pp-section-title pp-h2';
-      const title = node.title ? `<${titleTag} class="${titleClass}" id="${attr(node.id)}-title">${esc(node.title)}</${titleTag}>` : '';
+      const rvTitle = context.cinematic ? ' data-rv data-rv-i="1"' : '';
+      const title = node.title ? `<${titleTag} class="${titleClass}"${rvTitle} id="${attr(node.id)}-title">${esc(node.title)}</${titleTag}>` : '';
       const eyebrow = node.eyebrow ? `<p class="pp-eyebrow">${esc(node.eyebrow)}</p>` : '';
       const description = node.description ? `<p class="pp-section-description">${esc(node.description)}</p>` : '';
       const label = node.label ? ` aria-label="${attr(node.label)}"` : (node.title ? ` aria-labelledby="${attr(node.id)}-title"` : '');
-      return `<section${id} class="pp-section pp-section--${attr(node.variant ?? 'plain')}"${label}>${eyebrow}${title}${description}${c(node.children)}</section>`;
+      if (node.scene === 'pinned') {
+        // 直接子块分配进度阈值（0.12 起步均匀铺开），metric 数值随进度插值
+        const stageChildren = node.children ?? [];
+        const childContext = { ...context, pinnedChild: true };
+        const inner = `${eyebrow}${title}${description}${stageChildren.map((child, i) => renderNode({ ...child, 'data-at': (0.12 + (i * 0.62) / Math.max(1, stageChildren.length)).toFixed(2) }, childContext)).join('')}`;
+        return `<section${id} class="pp-section pp-section--pinned" data-scene="pinned"${label}><div class="pp-pin-stage" style="height:300vh"><div class="pp-pin-view">${inner}</div></div></section>`;
+      }
+      if (node.scene === 'gallery') {
+        return `<section${id} class="pp-section pp-sec-gallery" data-scene="gallery"${label}>${eyebrow}${title}${description}<div class="pp-hstage" data-hstage><div class="pp-htrack" data-track>${c(node.children)}</div></div></section>`;
+      }
+      const rv = context.cinematic ? ' data-rv' : '';
+      return `<section${id} class="pp-section pp-section--${attr(node.variant ?? 'plain')}"${rv}${label}>${eyebrow}${title}${description}${c(node.children)}</section>`;
     }
     case 'container': {
       const layout = node.layout;
@@ -57,8 +70,8 @@ function renderNode(node, context) {
       const status = isCollection ? '<p class="pp-collection-status" data-pp-collection-status aria-live="polite"></p>' : '';
       return `<div${id} class="pp-container ${cls}"${isCollection ? ' data-pp-collection' : ''}>${children}${status}</div>`;
     }
-    case 'heading': return `<h${node.level}${id} class="pp-heading pp-h${node.level}">${esc(node.text)}</h${node.level}>`;
-    case 'text': return `<p${id} class="pp-text">${esc(node.text)}</p>`;
+    case 'heading': return `<h${node.level}${id} class="pp-heading pp-h${node.level}"${context.pinnedChild && node['data-at'] ? ` data-at="${attr(node['data-at'])}"` : ''}>${esc(node.text)}</h${node.level}>`;
+    case 'text': return `<p${id} class="pp-text"${context.pinnedChild && node['data-at'] ? ` data-at="${attr(node['data-at'])}"` : ''}>${esc(node.text)}</p>`;
     case 'image': {
       if (!String(node.src ?? '').trim()) return '';
       if (!isSafeUrl(node.src, { image: true })) throw new Error(`unsafe image src on node ${node.id}`);
@@ -86,7 +99,17 @@ function renderNode(node, context) {
     case 'details': return `<details${id} class="pp-details"><summary>${esc(node.summary)}</summary><div class="pp-details-body">${c(node.children)}</div></details>`;
     // 时间轴是"要读的正文"，默认展开；单独 details 节点才是渐进披露。
     case 'timeline': return `<ol${id} class="pp-timeline">${node.items.map((item) => `<li class="pp-timeline-item"><details class="pp-details" open><summary><time class="pp-date">${esc(item.date)}</time><span>${esc(item.title)}</span></summary><div class="pp-details-body">${esc(item.body)}</div></details></li>`).join('')}</ol>`;
-    case 'metric': return `<div${id} class="pp-metric"><div class="pp-metric-value">${esc(node.value)}</div><div class="pp-metric-label">${esc(node.label)}</div>${node.detail ? `<div class="pp-metric-detail">${esc(node.detail)}</div>` : ''}</div>`;
+    case 'metric': {
+      const m = String(node.value).match(/^(\D*?)([\d,]+(?:\.\d+)?)(.*)$/);
+      // 钉住场景内：数值随滚动进度从 0 插值到终值（data-meter）；普通场景：进入视口一次性计数（data-count）
+      const valueHtml = m
+        ? (context.pinnedChild
+          ? `<div class="pp-metric-value pp-pin-meter"><span data-meter data-from="0" data-to="${m[2].replace(/,/g, '')}" data-dec="${(m[2].split('.')[1] || '').length}" data-pre="${attr(m[1])}" data-suf="${attr(m[3])}">${esc(node.value)}</span></div>`
+          : `<div class="pp-metric-value"><span data-count data-to="${m[2].replace(/,/g, '')}" data-dec="${(m[2].split('.')[1] || '').length}" data-pre="${attr(m[1])}" data-suf="${attr(m[3])}">${esc(node.value)}</span></div>`)
+        : `<div class="pp-metric-value">${esc(node.value)}</div>`;
+      const metricAttrs = context.pinnedChild && m ? ' data-at' : '';
+      return `<div${id}${metricAttrs} class="pp-metric">${valueHtml}<div class="pp-metric-label">${esc(node.label)}</div>${node.detail ? `<div class="pp-metric-detail">${esc(node.detail)}</div>` : ''}</div>`;
+    }
     case 'callout': return `<aside${id} class="pp-callout pp-callout--${attr(node.tone ?? 'neutral')}" role="note"><strong>${esc(node.title)}</strong><p>${esc(node.body)}</p></aside>`;
     case 'divider': return `<hr${id} class="pp-divider">`;
     case 'quote': return `<figure${id} class="pp-quote-wrap"><blockquote class="pp-quote">“${esc(node.text)}”</blockquote>${node.byline ? `<figcaption class="pp-quote-byline">${esc(node.byline)}</figcaption>` : ''}</figure>`;
@@ -126,7 +149,10 @@ export function renderPagePlan(planInput, options = {}) {
   const imageCredits = options.imageCredits instanceof Map
     ? options.imageCredits
     : new Map(Object.entries(options.imageCredits ?? {}));
-  const context = { externalAssets: [], collectionTargets, activeCollectionId: null, sceneBrief: plan.sceneBrief ?? null, imageCredits };
+  const cinemaScenes = collectNodes(plan.nodes).filter((n) => n.type === 'section' && (n.scene === 'pinned' || n.scene === 'gallery')).length;
+  const cinematic = plan.cinematic === true || cinemaScenes > 0;
+  const cinemaCss = cinematic ? SCROLL_CINEMA_CSS : '';
+  const context = { externalAssets: [], collectionTargets, activeCollectionId: null, sceneBrief: plan.sceneBrief ?? null, imageCredits, cinematic };
   // 限制说明只能有一处来源（unsupportedRequests）。模型若自己写了一整段"已知限制/未实现"，
   // 会和渲染器追加的披露重复，而且可能是模型臆造的限制；这里整段剔除，由渲染器统一生成。
   const LIMITS_SECTION_RE = /^(已知限制|本次限制|限制说明|未实现的功能|known limitations?|limitations?)$/i;
@@ -150,7 +176,7 @@ export function renderPagePlan(planInput, options = {}) {
   // 带 crossorigin 的外部脚本会被 CORS 直接拦截（file:// 下本地交付的交互会无法初始化）。
   // CSP hash 的强度不低于 SRI：脚本字节一变，浏览器就不执行。
   const interactionCount = collectNodes(plan.nodes).filter((n) => ['search', 'filter', 'tabs'].includes(n.type)).length;
-  const runtime = [scene3dCount ? SCENE3D_RUNTIME : '', interactionCount ? INTERACTION_RUNTIME : ''].filter(Boolean).join('\n');
+  const runtime = [scene3dCount ? SCENE3D_RUNTIME : '', interactionCount ? INTERACTION_RUNTIME : '', cinematic ? SCROLL_RUNTIME : ''].filter(Boolean).join('\n');
   const runtimeHash = runtime ? `sha256-${createHash('sha256').update(runtime, 'utf8').digest('base64')}` : '';
   const scriptTag = runtime ? `<script>${runtime}</script>` : '';
   const csp = runtime
@@ -166,6 +192,7 @@ export function renderPagePlan(planInput, options = {}) {
 <meta name="color-scheme" content="light">
 <title>${esc(plan.meta.title)}</title>
 <style>${cssFor(plan.theme)}</style>
+${cinemaCss ? `<style>${cinemaCss}</style>` : ''}
 </head>
 <body>
 <a class="pp-skip" href="#main">跳转到主要内容</a>
